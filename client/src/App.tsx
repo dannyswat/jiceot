@@ -13,6 +13,7 @@ import ExpenseTypesPage from './pages/ExpenseTypesPage'
 import ExpenseTypeFormPage from './pages/ExpenseTypeFormPage'
 import ExpenseItemsPage from './pages/ExpenseItemsPage'
 import ExpenseItemFormPage from './pages/ExpenseItemFormPage'
+import ReportsPage from './pages/ReportsPage'
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
                 <Route path="/expense-items" element={<ExpenseItemsPage />} />
                 <Route path="/expense-items/new" element={<ExpenseItemFormPage />} />
                 <Route path="/expense-items/:id/edit" element={<ExpenseItemFormPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/change-password" element={<ChangePasswordPage />} />
               </Routes>
