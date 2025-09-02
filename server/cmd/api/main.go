@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"dannyswat/jiceot/internal"
+	"dannyswat/jiceot/internal/auth"
 	"dannyswat/jiceot/internal/bills"
 	"dannyswat/jiceot/internal/expenses"
 	"dannyswat/jiceot/internal/users"
@@ -44,6 +45,13 @@ func main() {
 
 	log.Println("Database migration completed successfully")
 
+	// Initialize services
+	passwordHasher := &users.BcryptPasswordHasher{}
+	userService := users.NewUserService(db, passwordHasher)
+
+	// Initialize handlers
+	authHandler := auth.NewAuthHandler(userService, config)
+
 	// Initialize Echo
 	e := echo.New()
 
@@ -67,7 +75,20 @@ func main() {
 	// API routes
 	api := e.Group("/api")
 
-	// TODO: Add route handlers
+	// Public routes (no authentication required)
+	api.POST("/auth/login", authHandler.Login)
+	api.POST("/auth/register", authHandler.Register)
+
+	// Protected routes (authentication required)
+	protected := api.Group("")
+	protected.Use(auth.JWTMiddleware(config))
+
+	// Auth routes
+	protected.GET("/auth/me", authHandler.Me)
+	protected.POST("/auth/logout", authHandler.Logout)
+	protected.PUT("/auth/password", authHandler.ChangePassword)
+
+	// API info route
 	api.GET("/", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{
 			"message": "Jiceot API",

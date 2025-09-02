@@ -1,7 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
+import SettingsPage from './pages/SettingsPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -10,11 +13,14 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route path="/*" element={
             <Layout>
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/change-password" element={<ChangePasswordPage />} />
               </Routes>
             </Layout>
           } />

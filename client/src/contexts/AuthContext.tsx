@@ -1,15 +1,12 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
-
-interface User {
-  id: number;
-  email: string;
-  name: string;
-}
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { authAPI, type User, type LoginRequest, type RegisterRequest, type ChangePasswordRequest } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -32,20 +29,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Check for stored user on initial load
+  useEffect(() => {
+    const checkAuth = async (): Promise<void> => {
+      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
+      
+      if (token && storedUser) {
+        try {
+          // Verify token is still valid
+          const currentUser = await authAPI.me();
+          setUser(currentUser);
+        } catch (error) {
+          // Token is invalid, clear storage
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+        }
+      }
+    };
+
+    void checkAuth();
+  }, []);
+
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual API call
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      console.log('Login attempt:', email, password);
-      // Mock user for now
-      const mockUser: User = {
-        id: 1,
-        email,
-        name: 'Dannys',
-      };
+      const credentials: LoginRequest = { email, password };
+      const response = await authAPI.login(credentials);
       
-      setUser(mockUser);
+      // Store token and user
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      setUser(response.user);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -54,14 +69,54 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const register = async (email: string, password: string, name: string): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const userData: RegisterRequest = { email, password, name };
+      const response = await authAPI.register(userData);
+      
+      // Store token and user
+      localStorage.setItem('token', response.token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+      setUser(response.user);
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const passwordData: ChangePasswordRequest = {
+        current_password: currentPassword,
+        new_password: newPassword,
+      };
+      await authAPI.changePassword(passwordData);
+    } catch (error) {
+      console.error('Change password failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = (): void => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
+    // Call API logout (optional, since we're removing token anyway)
+    authAPI.logout().catch(console.error);
   };
 
   const value: AuthContextType = {
     user,
     login,
+    register,
     logout,
+    changePassword,
     isAuthenticated: !!user,
     isLoading,
   };

@@ -17,4 +17,12 @@ export default defineConfig({
     // Fail build on TypeScript errors
     emptyOutDir: true,
   },
+  server: {
+    port: 3000,
+    open: true,
+    // Proxy API requests to the backend server
+    proxy: {
+      '/api': 'http://localhost:8080',
+    },
+  }
 })

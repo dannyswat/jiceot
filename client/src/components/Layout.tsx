@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -17,13 +17,25 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps) {
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleLogout = (): void => {
     logout();
-    void navigate('/login');
+    navigate('/login');
   };
+
+  // Don't render layout if not authenticated
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
@@ -80,9 +92,9 @@ export default function Layout({ children }: LayoutProps) {
                 <UserCircleIcon className="h-8 w-8 text-gray-400" />
                 <div className="hidden md:block">
                   <div className="text-sm font-medium text-gray-900">
-                    {user?.name}
+                    {user.name}
                   </div>
-                  <div className="text-xs text-gray-500">{user?.email}</div>
+                  <div className="text-xs text-gray-500">{user.email}</div>
                 </div>
                 <button
                   onClick={handleLogout}
