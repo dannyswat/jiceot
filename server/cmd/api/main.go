@@ -48,9 +48,11 @@ func main() {
 	// Initialize services
 	passwordHasher := &users.BcryptPasswordHasher{}
 	userService := users.NewUserService(db, passwordHasher)
+	billTypeService := bills.NewBillTypeService(db)
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, config)
+	billTypeHandler := bills.NewBillTypeHandler(billTypeService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -87,6 +89,14 @@ func main() {
 	protected.GET("/auth/me", authHandler.Me)
 	protected.POST("/auth/logout", authHandler.Logout)
 	protected.PUT("/auth/password", authHandler.ChangePassword)
+
+	// Bill Type routes
+	protected.GET("/bill-types", billTypeHandler.ListBillTypes)
+	protected.POST("/bill-types", billTypeHandler.CreateBillType)
+	protected.GET("/bill-types/:id", billTypeHandler.GetBillType)
+	protected.PUT("/bill-types/:id", billTypeHandler.UpdateBillType)
+	protected.DELETE("/bill-types/:id", billTypeHandler.DeleteBillType)
+	protected.POST("/bill-types/:id/toggle", billTypeHandler.ToggleBillType)
 
 	// API info route
 	api.GET("/", func(c echo.Context) error {
