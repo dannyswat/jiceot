@@ -7,6 +7,8 @@ import SettingsPage from './pages/SettingsPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import BillTypesPage from './pages/BillTypesPage'
 import BillTypeFormPage from './pages/BillTypeFormPage'
+import BillPaymentsPage from './pages/BillPaymentsPage'
+import BillPaymentFormPage from './pages/BillPaymentFormPage'
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -24,6 +26,9 @@ function App() {
                 <Route path="/bill-types" element={<BillTypesPage />} />
                 <Route path="/bill-types/new" element={<BillTypeFormPage />} />
                 <Route path="/bill-types/:id/edit" element={<BillTypeFormPage />} />
+                <Route path="/bill-payments" element={<BillPaymentsPage />} />
+                <Route path="/bill-payments/new" element={<BillPaymentFormPage />} />
+                <Route path="/bill-payments/:id/edit" element={<BillPaymentFormPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/change-password" element={<ChangePasswordPage />} />
               </Routes>

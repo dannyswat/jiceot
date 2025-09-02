@@ -108,6 +108,43 @@ export interface BillTypeListResponse {
   total: number;
 }
 
+export interface BillPayment {
+  id: number;
+  bill_type_id: number;
+  year: number;
+  month: number;
+  amount: string;
+  note: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  bill_type?: BillType;
+}
+
+export interface CreateBillPaymentRequest {
+  bill_type_id: number;
+  year: number;
+  month: number;
+  amount: string;
+  note?: string;
+}
+
+export interface UpdateBillPaymentRequest {
+  amount: string;
+  note?: string;
+}
+
+export interface BillPaymentListResponse {
+  bill_payments: BillPayment[];
+  total: number;
+}
+
+export interface MonthlyTotalResponse {
+  year: number;
+  month: number;
+  total: string;
+}
+
 export const authAPI = {
   // Login user
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
@@ -179,6 +216,61 @@ export const billTypeAPI = {
   // Toggle bill type (enable/disable)
   toggle: async (id: number): Promise<BillType> => {
     const response = await api.post<BillType>(`/bill-types/${id}/toggle`);
+    return response.data;
+  },
+
+  // Get bill payments for a specific bill type
+  getPayments: async (id: number): Promise<{ bill_payments: BillPayment[]; total: number }> => {
+    const response = await api.get<{ bill_payments: BillPayment[]; total: number }>(`/bill-types/${id}/payments`);
+    return response.data;
+  },
+};
+
+export interface BillPaymentParams {
+  limit?: number;
+  offset?: number;
+  bill_type_id?: number;
+  year?: number;
+  month?: number;
+}
+
+export const billPaymentAPI = {
+  // List bill payments
+  list: async (params?: BillPaymentParams): Promise<BillPaymentListResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.offset) searchParams.append('offset', params.offset.toString());
+    if (params?.bill_type_id) searchParams.append('bill_type_id', params.bill_type_id.toString());
+    if (params?.year) searchParams.append('year', params.year.toString());
+    if (params?.month) searchParams.append('month', params.month.toString());
+
+    const response = await api.get<BillPaymentListResponse>(`/bill-payments?${searchParams.toString()}`);
+    return response.data;
+  },
+  create: async (data: CreateBillPaymentRequest): Promise<BillPayment> => {
+    const response = await api.post<BillPayment>('/bill-payments', data);
+    return response.data;
+  },
+  get: async (id: number): Promise<BillPayment> => {
+    const response = await api.get<BillPayment>(`/bill-payments/${id}`);
+    return response.data;
+  },
+
+  // Update bill payment
+  update: async (id: number, data: UpdateBillPaymentRequest): Promise<BillPayment> => {
+    const response = await api.put<BillPayment>(`/bill-payments/${id}`, data);
+    return response.data;
+  },
+
+  // Delete bill payment
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/bill-payments/${id}`);
+    return response.data;
+  },
+
+  // Get monthly total
+  getMonthlyTotal: async (year: number, month: number): Promise<MonthlyTotalResponse> => {
+    const response = await api.get<MonthlyTotalResponse>(`/bill-payments/monthly-total?year=${year}&month=${month}`);
     return response.data;
   },
 };

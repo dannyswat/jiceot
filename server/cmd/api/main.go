@@ -49,10 +49,12 @@ func main() {
 	passwordHasher := &users.BcryptPasswordHasher{}
 	userService := users.NewUserService(db, passwordHasher)
 	billTypeService := bills.NewBillTypeService(db)
+	billPaymentService := bills.NewBillPaymentService(db)
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, config)
 	billTypeHandler := bills.NewBillTypeHandler(billTypeService)
+	billPaymentHandler := bills.NewBillPaymentHandler(billPaymentService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -97,6 +99,15 @@ func main() {
 	protected.PUT("/bill-types/:id", billTypeHandler.UpdateBillType)
 	protected.DELETE("/bill-types/:id", billTypeHandler.DeleteBillType)
 	protected.POST("/bill-types/:id/toggle", billTypeHandler.ToggleBillType)
+	protected.GET("/bill-types/:id/payments", billPaymentHandler.GetBillPaymentsByBillType)
+
+	// Bill Payment routes
+	protected.GET("/bill-payments", billPaymentHandler.ListBillPayments)
+	protected.POST("/bill-payments", billPaymentHandler.CreateBillPayment)
+	protected.GET("/bill-payments/:id", billPaymentHandler.GetBillPayment)
+	protected.PUT("/bill-payments/:id", billPaymentHandler.UpdateBillPayment)
+	protected.DELETE("/bill-payments/:id", billPaymentHandler.DeleteBillPayment)
+	protected.GET("/bill-payments/monthly-total", billPaymentHandler.GetMonthlyTotal)
 
 	// API info route
 	api.GET("/", func(c echo.Context) error {

@@ -160,3 +160,6 @@ docs/_build/
 # Local configuration files
 config.local.*
 settings.local.*
+
+# Build executables
+server/main
