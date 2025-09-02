@@ -3,7 +3,7 @@ import { createContext, useContext, useState, type ReactNode } from 'react';
 interface User {
   id: number;
   email: string;
-  loginName: string;
+  name: string;
 }
 
 interface AuthContextType {
@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const mockUser: User = {
         id: 1,
         email,
-        loginName: 'johndoe',
+        name: 'Dannys',
       };
       
       setUser(mockUser);

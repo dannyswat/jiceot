@@ -80,7 +80,7 @@ export default function Layout({ children }: LayoutProps) {
                 <UserCircleIcon className="h-8 w-8 text-gray-400" />
                 <div className="hidden md:block">
                   <div className="text-sm font-medium text-gray-900">
-                    {user?.loginName}
+                    {user?.name}
                   </div>
                   <div className="text-xs text-gray-500">{user?.email}</div>
                 </div>
