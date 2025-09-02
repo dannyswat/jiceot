@@ -9,6 +9,10 @@ import BillTypesPage from './pages/BillTypesPage'
 import BillTypeFormPage from './pages/BillTypeFormPage'
 import BillPaymentsPage from './pages/BillPaymentsPage'
 import BillPaymentFormPage from './pages/BillPaymentFormPage'
+import ExpenseTypesPage from './pages/ExpenseTypesPage'
+import ExpenseTypeFormPage from './pages/ExpenseTypeFormPage'
+import ExpenseItemsPage from './pages/ExpenseItemsPage'
+import ExpenseItemFormPage from './pages/ExpenseItemFormPage'
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -29,6 +33,12 @@ function App() {
                 <Route path="/bill-payments" element={<BillPaymentsPage />} />
                 <Route path="/bill-payments/new" element={<BillPaymentFormPage />} />
                 <Route path="/bill-payments/:id/edit" element={<BillPaymentFormPage />} />
+                <Route path="/expense-types" element={<ExpenseTypesPage />} />
+                <Route path="/expense-types/new" element={<ExpenseTypeFormPage />} />
+                <Route path="/expense-types/:id/edit" element={<ExpenseTypeFormPage />} />
+                <Route path="/expense-items" element={<ExpenseItemsPage />} />
+                <Route path="/expense-items/new" element={<ExpenseItemFormPage />} />
+                <Route path="/expense-items/:id/edit" element={<ExpenseItemFormPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/change-password" element={<ChangePasswordPage />} />
               </Routes>

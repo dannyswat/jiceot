@@ -50,11 +50,15 @@ func main() {
 	userService := users.NewUserService(db, passwordHasher)
 	billTypeService := bills.NewBillTypeService(db)
 	billPaymentService := bills.NewBillPaymentService(db)
+	expenseTypeService := expenses.NewExpenseTypeService(db)
+	expenseItemService := expenses.NewExpenseItemService(db)
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, config)
 	billTypeHandler := bills.NewBillTypeHandler(billTypeService)
 	billPaymentHandler := bills.NewBillPaymentHandler(billPaymentService)
+	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
+	expenseItemHandler := expenses.NewExpenseItemHandler(expenseItemService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -108,6 +112,21 @@ func main() {
 	protected.PUT("/bill-payments/:id", billPaymentHandler.UpdateBillPayment)
 	protected.DELETE("/bill-payments/:id", billPaymentHandler.DeleteBillPayment)
 	protected.GET("/bill-payments/monthly-total", billPaymentHandler.GetMonthlyTotal)
+
+	// Expense Type routes
+	protected.GET("/expense-types", expenseTypeHandler.ListExpenseTypes)
+	protected.POST("/expense-types", expenseTypeHandler.CreateExpenseType)
+	protected.GET("/expense-types/:id", expenseTypeHandler.GetExpenseType)
+	protected.PUT("/expense-types/:id", expenseTypeHandler.UpdateExpenseType)
+	protected.DELETE("/expense-types/:id", expenseTypeHandler.DeleteExpenseType)
+
+	// Expense Item routes
+	protected.GET("/expense-items", expenseItemHandler.ListExpenseItems)
+	protected.POST("/expense-items", expenseItemHandler.CreateExpenseItem)
+	protected.GET("/expense-items/:id", expenseItemHandler.GetExpenseItem)
+	protected.PUT("/expense-items/:id", expenseItemHandler.UpdateExpenseItem)
+	protected.DELETE("/expense-items/:id", expenseItemHandler.DeleteExpenseItem)
+	protected.GET("/expense-items/monthly/:year/:month", expenseItemHandler.GetExpenseItemsByMonth)
 
 	// API info route
 	api.GET("/", func(c echo.Context) error {

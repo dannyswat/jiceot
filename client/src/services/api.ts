@@ -145,6 +145,79 @@ export interface MonthlyTotalResponse {
   total: string;
 }
 
+export interface ExpenseType {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateExpenseTypeRequest {
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface UpdateExpenseTypeRequest {
+  name: string;
+  icon?: string;
+  color?: string;
+}
+
+export interface ExpenseTypeListResponse {
+  expense_types: ExpenseType[];
+  total: number;
+}
+
+// Expense Item interfaces
+export interface ExpenseItem {
+  id: number;
+  bill_payment_id?: number;
+  expense_type_id: number;
+  year: number;
+  month: number;
+  amount: string;
+  note: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+  expense_type?: ExpenseType;
+  bill_payment?: BillPayment;
+}
+
+export interface CreateExpenseItemRequest {
+  bill_payment_id?: number;
+  expense_type_id: number;
+  year: number;
+  month: number;
+  amount: string;
+  note: string;
+}
+
+export interface UpdateExpenseItemRequest {
+  bill_payment_id?: number;
+  expense_type_id: number;
+  year: number;
+  month: number;
+  amount: string;
+  note: string;
+}
+
+export interface ExpenseItemListResponse {
+  expense_items: ExpenseItem[];
+  total: number;
+}
+
+export interface ExpenseItemMonthlyResponse {
+  expense_items: ExpenseItem[];
+  total_amount: string;
+  year: number;
+  month: number;
+}
+
 export const authAPI = {
   // Login user
   login: async (credentials: LoginRequest): Promise<AuthResponse> => {
@@ -271,6 +344,97 @@ export const billPaymentAPI = {
   // Get monthly total
   getMonthlyTotal: async (year: number, month: number): Promise<MonthlyTotalResponse> => {
     const response = await api.get<MonthlyTotalResponse>(`/bill-payments/monthly-total?year=${year}&month=${month}`);
+    return response.data;
+  },
+};
+
+export const expenseTypeAPI = {
+  // List expense types
+  list: async (params?: { limit?: number; offset?: number }): Promise<ExpenseTypeListResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.offset) searchParams.append('offset', params.offset.toString());
+    
+    const response = await api.get<ExpenseTypeListResponse>(`/expense-types?${searchParams.toString()}`);
+    return response.data;
+  },
+
+  // Get expense type by ID
+  get: async (id: number): Promise<ExpenseType> => {
+    const response = await api.get<ExpenseType>(`/expense-types/${id}`);
+    return response.data;
+  },
+
+  // Create new expense type
+  create: async (data: CreateExpenseTypeRequest): Promise<ExpenseType> => {
+    const response = await api.post<ExpenseType>('/expense-types', data);
+    return response.data;
+  },
+
+  // Update expense type
+  update: async (id: number, data: UpdateExpenseTypeRequest): Promise<ExpenseType> => {
+    const response = await api.put<ExpenseType>(`/expense-types/${id}`, data);
+    return response.data;
+  },
+
+  // Delete expense type
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/expense-types/${id}`);
+    return response.data;
+  },
+};
+
+export interface ExpenseItemParams {
+  expense_type_id?: number;
+  bill_payment_id?: number;
+  year?: number;
+  month?: number;
+  limit?: number;
+  offset?: number;
+}
+
+export const expenseItemAPI = {
+  // List expense items with optional filters
+  list: async (params?: ExpenseItemParams): Promise<ExpenseItemListResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.expense_type_id) searchParams.append('expense_type_id', params.expense_type_id.toString());
+    if (params?.bill_payment_id) searchParams.append('bill_payment_id', params.bill_payment_id.toString());
+    if (params?.year) searchParams.append('year', params.year.toString());
+    if (params?.month) searchParams.append('month', params.month.toString());
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.offset) searchParams.append('offset', params.offset.toString());
+    
+    const response = await api.get<ExpenseItemListResponse>(`/expense-items?${searchParams.toString()}`);
+    return response.data;
+  },
+
+  // Get expense item by ID
+  get: async (id: number): Promise<ExpenseItem> => {
+    const response = await api.get<ExpenseItem>(`/expense-items/${id}`);
+    return response.data;
+  },
+
+  // Create new expense item
+  create: async (data: CreateExpenseItemRequest): Promise<ExpenseItem> => {
+    const response = await api.post<ExpenseItem>('/expense-items', data);
+    return response.data;
+  },
+
+  // Update expense item
+  update: async (id: number, data: UpdateExpenseItemRequest): Promise<ExpenseItem> => {
+    const response = await api.put<ExpenseItem>(`/expense-items/${id}`, data);
+    return response.data;
+  },
+
+  // Delete expense item
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/expense-items/${id}`);
+    return response.data;
+  },
+
+  // Get expense items by month with total
+  getByMonth: async (year: number, month: number): Promise<ExpenseItemMonthlyResponse> => {
+    const response = await api.get<ExpenseItemMonthlyResponse>(`/expense-items/monthly/${year}/${month}`);
     return response.data;
   },
 };

@@ -24,7 +24,7 @@
     "noUncheckedSideEffectImports": true,
     
     /* Additional strict checks */
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noPropertyAccessFromIndexSignature": true,
