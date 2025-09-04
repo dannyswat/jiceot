@@ -1,4 +1,4 @@
-package bills
+package expenses
 
 import (
 	"net/http"
@@ -11,11 +11,13 @@ import (
 
 type BillPaymentHandler struct {
 	billPaymentService *BillPaymentService
+	expenseItemService *ExpenseItemService
 }
 
-func NewBillPaymentHandler(billPaymentService *BillPaymentService) *BillPaymentHandler {
+func NewBillPaymentHandler(billPaymentService *BillPaymentService, expenseItemService *ExpenseItemService) *BillPaymentHandler {
 	return &BillPaymentHandler{
 		billPaymentService: billPaymentService,
+		expenseItemService: expenseItemService,
 	}
 }
 
@@ -54,6 +56,25 @@ func (h *BillPaymentHandler) CreateBillPayment(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to create bill payment",
 			})
+		}
+	}
+
+	// Auto-create expense item if bill type has a default expense type
+	if billPayment.BillType.ExpenseTypeID != nil {
+		expenseItemReq := CreateExpenseItemRequest{
+			ExpenseTypeID: *billPayment.BillType.ExpenseTypeID,
+			Year:          billPayment.Year,
+			Month:         billPayment.Month,
+			Amount:        billPayment.Amount,
+			Note:          "Auto-created from bill payment: " + billPayment.BillType.Name,
+			BillPaymentID: &billPayment.ID,
+		}
+
+		_, err := h.expenseItemService.CreateExpenseItem(expenseItemReq, userID)
+		if err != nil {
+			// Log the error but don't fail the bill payment creation
+			// The bill payment was successful, expense item creation is a bonus feature
+			c.Logger().Error("Failed to auto-create expense item for bill payment", err)
 		}
 	}
 

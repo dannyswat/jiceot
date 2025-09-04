@@ -1,7 +1,6 @@
 package expenses
 
 import (
-	"dannyswat/jiceot/internal/bills"
 	"errors"
 	"fmt"
 	"math/big"
@@ -81,7 +80,7 @@ func (s *ExpenseItemService) CreateExpenseItem(req CreateExpenseItemRequest, use
 
 	// If bill payment ID is provided, verify it exists and belongs to user
 	if req.BillPaymentID != nil {
-		var billPayment bills.BillPayment
+		var billPayment BillPayment
 		if err := s.db.Where("id = ? AND user_id = ?", *req.BillPaymentID, userID).First(&billPayment).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, errors.New("bill payment not found")
@@ -173,7 +172,7 @@ func (s *ExpenseItemService) UpdateExpenseItem(id uint, req UpdateExpenseItemReq
 
 	// If bill payment ID is provided, verify it exists and belongs to user
 	if req.BillPaymentID != nil {
-		var billPayment bills.BillPayment
+		var billPayment BillPayment
 		if err := s.db.Where("id = ? AND user_id = ?", *req.BillPaymentID, userID).First(&billPayment).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return nil, errors.New("bill payment not found")

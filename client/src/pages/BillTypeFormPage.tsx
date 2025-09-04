@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { billTypeAPI, type CreateBillTypeRequest, type UpdateBillTypeRequest } from '../services/api';
+import { billTypeAPI, expenseTypeAPI, type CreateBillTypeRequest, type UpdateBillTypeRequest, type ExpenseType } from '../services/api';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const PRESET_COLORS = [
@@ -14,6 +14,13 @@ const PRESET_COLORS = [
   '#f97316', // Orange
   '#ec4899', // Pink
   '#6b7280', // Gray
+];
+
+const PRESET_ICONS = [
+  '💡', '⚡', '🏠', '🏢', '🚰', '💰', '💳', '🍽️', '🛒', 
+  '🚗', '⛽', '🚌', '📱', '💻', '🌐', '📺', '🎵', '🎬',
+  '🏥', '💊', '🦷', '👨‍⚕️', '🎓', '📚', '🏋️', '🏊', '✂️',
+  '👕', '👞', '🛍️', '🎁', '🍕', '☕', '🎉', '🏖️', '✈️'
 ];
 
 const CYCLE_OPTIONS = [
@@ -37,11 +44,27 @@ export default function BillTypeFormPage() {
     bill_cycle: 1,
     fixed_amount: '',
     stopped: false,
+    expense_type_id: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [initialLoading, setInitialLoading] = useState(isEdit);
+  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
+
+  // Load expense types
+  useEffect(() => {
+    const loadExpenseTypes = async (): Promise<void> => {
+      try {
+        const response = await expenseTypeAPI.list();
+        setExpenseTypes(response.expense_types);
+      } catch (err) {
+        console.error('Failed to load expense types:', err);
+      }
+    };
+
+    void loadExpenseTypes();
+  }, []);
 
   // Load existing bill type for editing
   useEffect(() => {
@@ -58,6 +81,7 @@ export default function BillTypeFormPage() {
             bill_cycle: billType.bill_cycle,
             fixed_amount: billType.fixed_amount,
             stopped: billType.stopped,
+            expense_type_id: billType.expense_type_id?.toString() || '',
           });
         } catch (err) {
           console.error('Failed to load bill type:', err);
@@ -88,7 +112,12 @@ export default function BillTypeFormPage() {
         // Only include optional fields if they have values
         if (formData.icon) updateData.icon = formData.icon;
         if (formData.color) updateData.color = formData.color;
-        if (formData.fixed_amount) updateData.fixed_amount = formData.fixed_amount;
+        if (formData.fixed_amount && formData.fixed_amount.trim() !== '') {
+          updateData.fixed_amount = formData.fixed_amount.trim();
+        }
+        if (formData.expense_type_id && formData.expense_type_id.trim() !== '') {
+          updateData.expense_type_id = parseInt(formData.expense_type_id);
+        }
         
         console.log('Sending update data:', updateData);
         await billTypeAPI.update(parseInt(id), updateData);
@@ -102,7 +131,12 @@ export default function BillTypeFormPage() {
         // Only include optional fields if they have values
         if (formData.icon) createData.icon = formData.icon;
         if (formData.color) createData.color = formData.color;
-        if (formData.fixed_amount) createData.fixed_amount = formData.fixed_amount;
+        if (formData.fixed_amount && formData.fixed_amount.trim() !== '') {
+          createData.fixed_amount = formData.fixed_amount.trim();
+        }
+        if (formData.expense_type_id && formData.expense_type_id.trim() !== '') {
+          createData.expense_type_id = parseInt(formData.expense_type_id);
+        }
         
         console.log('Sending create data:', createData);
         await billTypeAPI.create(createData);
@@ -122,10 +156,10 @@ export default function BillTypeFormPage() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>): void => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     
     // Handle numeric fields specifically
-    if (name === 'bill_day' || name === 'bill_cycle' || type === 'number') {
+    if (name === 'bill_day' || name === 'bill_cycle') {
       setFormData(prev => ({
         ...prev,
         [name]: parseInt(value) || 0,
@@ -205,21 +239,45 @@ export default function BillTypeFormPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="icon" className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Icon (optional)
                 </label>
-                <input
-                  type="text"
-                  id="icon"
-                  name="icon"
-                  value={formData.icon}
-                  onChange={handleInputChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="💡 🏠 💳"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Use an emoji or leave empty to use first letter
-                </p>
+                
+                {/* Preset Icons */}
+                <div className="mb-3">
+                  <p className="text-xs text-gray-500 mb-2">Choose a preset icon:</p>
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded-lg">
+                    {PRESET_ICONS.map((icon) => (
+                      <button
+                        key={icon}
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, icon }))}
+                        className={`w-8 h-8 rounded border-2 flex items-center justify-center text-lg hover:bg-gray-100 transition-colors ${
+                          formData.icon === icon ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
+                        }`}
+                      >
+                        {icon}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom Icon Input */}
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Or enter a custom icon:</p>
+                  <input
+                    type="text"
+                    id="icon"
+                    name="icon"
+                    value={formData.icon}
+                    onChange={handleInputChange}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    placeholder="💡 🏠 💳"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Use an emoji or leave empty to use first letter
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -316,6 +374,29 @@ export default function BillTypeFormPage() {
               </p>
             </div>
 
+            <div>
+              <label htmlFor="expense_type_id" className="block text-sm font-medium text-gray-700">
+                Default Expense Type (optional)
+              </label>
+              <select
+                id="expense_type_id"
+                name="expense_type_id"
+                value={formData.expense_type_id}
+                onChange={handleInputChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              >
+                <option value="">No default expense type</option>
+                {expenseTypes.map((expenseType) => (
+                  <option key={expenseType.id} value={expenseType.id}>
+                    {expenseType.icon} {expenseType.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                When a bill payment is added, it will automatically create an expense item with this type
+              </p>
+            </div>
+
             {isEdit && (
               <div className="flex items-center">
                 <input
@@ -352,6 +433,8 @@ export default function BillTypeFormPage() {
                     {CYCLE_OPTIONS.find(opt => opt.value === formData.bill_cycle)?.label}
                     {formData.bill_day > 0 && ` • Due on ${formData.bill_day}${formData.bill_day === 1 ? 'st' : formData.bill_day === 2 ? 'nd' : formData.bill_day === 3 ? 'rd' : 'th'}`}
                     {formData.fixed_amount && ` • $${formData.fixed_amount}`}
+                    {formData.expense_type_id && expenseTypes.find(et => et.id.toString() === formData.expense_type_id) && 
+                      ` • Auto-expense: ${expenseTypes.find(et => et.id.toString() === formData.expense_type_id)?.name}`}
                   </p>
                 </div>
               </div>

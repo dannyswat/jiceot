@@ -6,7 +6,6 @@ import (
 
 	"dannyswat/jiceot/internal"
 	"dannyswat/jiceot/internal/auth"
-	"dannyswat/jiceot/internal/bills"
 	"dannyswat/jiceot/internal/expenses"
 	"dannyswat/jiceot/internal/users"
 
@@ -35,8 +34,8 @@ func main() {
 	// Auto migrate the schema
 	if err := db.AutoMigrate(
 		&users.User{},
-		&bills.BillType{},
-		&bills.BillPayment{},
+		&expenses.BillType{},
+		&expenses.BillPayment{},
 		&expenses.ExpenseType{},
 		&expenses.ExpenseItem{},
 	); err != nil {
@@ -48,15 +47,15 @@ func main() {
 	// Initialize services
 	passwordHasher := &users.BcryptPasswordHasher{}
 	userService := users.NewUserService(db, passwordHasher)
-	billTypeService := bills.NewBillTypeService(db)
-	billPaymentService := bills.NewBillPaymentService(db)
+	billTypeService := expenses.NewBillTypeService(db)
+	billPaymentService := expenses.NewBillPaymentService(db)
 	expenseTypeService := expenses.NewExpenseTypeService(db)
 	expenseItemService := expenses.NewExpenseItemService(db)
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, config)
-	billTypeHandler := bills.NewBillTypeHandler(billTypeService)
-	billPaymentHandler := bills.NewBillPaymentHandler(billPaymentService)
+	billTypeHandler := expenses.NewBillTypeHandler(billTypeService)
+	billPaymentHandler := expenses.NewBillPaymentHandler(billPaymentService, expenseItemService)
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
 	expenseItemHandler := expenses.NewExpenseItemHandler(expenseItemService)
 

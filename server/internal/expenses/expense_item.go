@@ -1,7 +1,6 @@
 package expenses
 
 import (
-	"dannyswat/jiceot/internal/bills"
 	"math/big"
 	"time"
 
@@ -22,8 +21,8 @@ type ExpenseItem struct {
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
 
 	// Associations
-	ExpenseType ExpenseType        `json:"expense_type,omitempty" gorm:"foreignKey:ExpenseTypeID"`
-	BillPayment *bills.BillPayment `json:"bill_payment,omitempty" gorm:"foreignKey:BillPaymentID"`
+	ExpenseType ExpenseType `json:"expense_type,omitempty" gorm:"foreignKey:ExpenseTypeID"`
+	BillPayment BillPayment `json:"bill_payment,omitempty" gorm:"foreignKey:BillPaymentID"`
 }
 
 // GetAmountAsBigFloat converts the stored string amount to big.Float

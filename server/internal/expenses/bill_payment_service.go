@@ -1,4 +1,4 @@
-package bills
+package expenses
 
 import (
 	"errors"
