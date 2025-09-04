@@ -368,7 +368,7 @@ export default function BillTypeFormPage() {
                 value={formData.fixed_amount}
                 onChange={handleInputChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="0.00"
+                placeholder="0"
               />
               <p className="mt-1 text-xs text-gray-500">
                 Leave empty if the amount varies each time

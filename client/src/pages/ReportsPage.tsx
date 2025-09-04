@@ -163,7 +163,7 @@ export default function ReportsPage() {
       billTypeBreakdown[typeName].count += 1;
     });
 
-    const totalExpenseAmount = expenseItems.reduce((sum, item) => sum + parseFloat(item.amount), 0);
+    const totalExpenseAmount = expenseItems.reduce((sum, item) => sum + (item.bill_payment_id ? 0 : parseFloat(item.amount)), 0);
     const totalBillAmount = billPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
 
     return {
@@ -181,6 +181,7 @@ export default function ReportsPage() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 
@@ -346,7 +347,7 @@ export default function ReportsPage() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-900">Total Transactions</h3>
                   <p className="text-2xl font-bold text-gray-700">
-                    {monthlyData.expenseItems.length + monthlyData.billPayments.length}
+                    {monthlyData.expenseItems.length}
                   </p>
                 </div>
               </div>

@@ -74,7 +74,8 @@ export default function BillPaymentsPage() {
     const num = parseFloat(amount);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(num);
   };
 

@@ -122,11 +122,12 @@ export default function ExpenseItemFormPage() {
   ];
 
   const formatPreviewAmount = () => {
-    if (!formData.amount) return '$0.00';
+    if (!formData.amount) return '$0';
     const amount = parseFloat(formData.amount);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(isNaN(amount) ? 0 : amount);
   };
 
@@ -271,7 +272,7 @@ export default function ExpenseItemFormPage() {
                   onChange={handleInputChange}
                   step="0.01"
                   min="0"
-                  placeholder="0.00"
+                  placeholder="0"
                   required
                   className="w-full pl-7 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />

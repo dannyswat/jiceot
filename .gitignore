@@ -102,6 +102,8 @@ vendor/
 *.sqlite
 *.sqlite3
 
+secret.key
+
 # IDE and Editor files
 .vscode/
 .idea/

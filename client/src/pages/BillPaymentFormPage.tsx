@@ -189,7 +189,7 @@ export default function BillPaymentFormPage() {
     const newExpenseItem: Partial<ExpenseItem> = {
       id: Date.now(), // Temporary ID for new items
       expense_type_id: expenseTypes[0]!.id,
-      amount: '0.00',
+      amount: '0',
       note: '',
       year: formData.year,
       month: formData.month,
@@ -248,12 +248,13 @@ export default function BillPaymentFormPage() {
   };
 
   const formatCurrency = (amount: string): string => {
-    if (!amount) return '$0.00';
+    if (!amount) return '$0';
     const num = parseFloat(amount);
-    if (isNaN(num)) return '$0.00';
+    if (isNaN(num)) return '$0';
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(num);
   };
 
@@ -396,7 +397,7 @@ export default function BillPaymentFormPage() {
                   onChange={handleInputChange}
                   step="0.01"
                   min="0"
-                  placeholder="0.00"
+                  placeholder="0"
                   className="block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                   required
                 />
@@ -499,7 +500,7 @@ export default function BillPaymentFormPage() {
                               min="0"
                               max={formData.amount}
                               className="w-full pl-6 pr-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                              placeholder="0.00"
+                              placeholder="0"
                             />
                           </div>
                         </div>

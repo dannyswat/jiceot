@@ -65,7 +65,7 @@ const Dashboard: React.FC = () => {
 
       // Calculate statistics
       const totalExpenseAmount = expenseItemsResponse.expense_items.reduce(
-        (sum, item) => sum + parseFloat(item.amount), 0
+        (sum, item) => sum + (item.bill_payment_id ? 0 : parseFloat(item.amount)), 0
       );
       const totalBillAmount = billPaymentsResponse.bill_payments.reduce(
         (sum, payment) => sum + parseFloat(payment.amount), 0
@@ -75,7 +75,7 @@ const Dashboard: React.FC = () => {
         totalExpenses: totalExpenseAmount + totalBillAmount,
         billsPaid: billPaymentsResponse.bill_payments.length,
         pendingBills: getUpcomingBillsCount(billTypesResponse.bill_types, billPaymentsResponse.bill_payments),
-        categories: expenseTypesResponse.expense_types.length + billTypesResponse.bill_types.length,
+        categories: expenseTypesResponse.expense_types.length,
       });
 
       // Prepare recent activity (combine bill payments and expense items)
@@ -132,6 +132,7 @@ const Dashboard: React.FC = () => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
+      maximumFractionDigits: 0,
     }).format(amount);
   };
 

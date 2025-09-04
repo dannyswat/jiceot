@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   HomeIcon,
+  BanknotesIcon,
   CreditCardIcon,
-  DocumentTextIcon,
   ChartBarIcon,
   Cog6ToothIcon,
-  ArrowRightOnRectangleIcon,
+  RectangleGroupIcon,
+  ReceiptPercentIcon,
+  ArrowRightStartOnRectangleIcon,
   BellIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -52,9 +54,9 @@ export default function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Bill Types', href: '/bill-types', icon: CreditCardIcon },
-    { name: 'Bill Payments', href: '/bill-payments', icon: DocumentTextIcon },
-    { name: 'Expense Types', href: '/expense-types', icon: DocumentTextIcon },
-    { name: 'Expense Items', href: '/expense-items', icon: DocumentTextIcon },
+    { name: 'Bill Payments', href: '/bill-payments', icon: BanknotesIcon },
+    { name: 'Expense Types', href: '/expense-types', icon: RectangleGroupIcon },
+    { name: 'Expense Items', href: '/expense-items', icon: ReceiptPercentIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
   ];
@@ -113,7 +115,7 @@ export default function Layout({ children }: LayoutProps) {
                   className="p-2 text-gray-400 hover:text-gray-500"
                   title="Logout"
                 >
-                  <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                  <ArrowRightStartOnRectangleIcon className="h-5 w-5" />
                 </button>
               </div>
             </div>
