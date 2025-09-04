@@ -26,6 +26,7 @@ const PRESET_ICONS = [
 const CYCLE_OPTIONS = [
   { value: 0, label: 'One-time only' },
   { value: 1, label: 'Monthly' },
+  { value: 2, label: 'Bi-monthly' },
   { value: 3, label: 'Quarterly' },
   { value: 6, label: 'Semi-annually' },
   { value: 12, label: 'Annually' },

@@ -108,7 +108,7 @@ const Dashboard: React.FC = () => {
     const currentDay = currentDate.getDate();
 
     return billTypes.filter(billType => {
-      if (billType.stopped) return false;
+      if (billType.stopped || billType.bill_cycle === 0) return false;
 
       // Check if this bill has already been paid this month
       const alreadyPaid = billPayments.some(payment => 

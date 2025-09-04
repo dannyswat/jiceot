@@ -59,8 +59,8 @@ export default function ExpenseItemsPage() {
       setTotal(response.total);
       setError(null);
     } catch (err) {
-      setError('Failed to load expense items');
-      console.error('Failed to load expense items:', err);
+      setError('Failed to load expenses');
+      console.error('Failed to load expenses:', err);
     } finally {
       setLoading(false);
     }
@@ -138,7 +138,7 @@ export default function ExpenseItemsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Expense Items</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Expenses</h1>
           <p className="text-gray-600">Track your individual expenses</p>
         </div>
         <Link
@@ -146,7 +146,7 @@ export default function ExpenseItemsPage() {
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
-          Add Expense Item
+          Add Expense
         </Link>
       </div>
 
