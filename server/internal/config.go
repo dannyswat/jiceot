@@ -2,14 +2,12 @@ package internal
 
 import (
 	"os"
-	"strconv"
 	"time"
 )
 
 type Config struct {
 	// Server
-	Port        string
-	Environment string
+	Port string
 
 	// Database
 	DBPath string
@@ -17,20 +15,37 @@ type Config struct {
 	// JWT
 	JWTSecret string
 	JWTExpiry time.Duration
-
-	// Frontend
-	FrontendURL string
 }
 
 func LoadConfig() *Config {
 	return &Config{
-		Port:        getEnv("PORT", "8080"),
-		Environment: getEnv("ENVIRONMENT", "development"),
-		DBPath:      getEnv("DB_PATH", "./jiceot.db"),
-		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
-		JWTExpiry:   getDurationEnv("JWT_EXPIRY", "24h"),
-		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:3000"),
+		Port:      getEnv("PORT", "8080"),
+		DBPath:    getEnv("DB_PATH", "./data/jiceot.db"),
+		JWTSecret: getSecret(),
+		JWTExpiry: getDurationEnv("JWT_EXPIRY", "24h"),
 	}
+}
+
+func getSecret() string {
+	path := "./data/secret.key"
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		secret := generateRandomSecret(32)
+		os.MkdirAll("./data", 0o755)
+		if err := os.WriteFile(path, []byte(secret), 0o600); err != nil {
+			panic("Failed to write secret key: " + err.Error())
+		}
+	}
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		panic("Failed to read secret key: " + err.Error())
+	}
+
+	if len(data) == 0 {
+		panic("Secret key is empty")
+	}
+
+	return string(data)
 }
 
 func getEnv(key, defaultValue string) string {
@@ -50,11 +65,12 @@ func getDurationEnv(key, defaultValue string) time.Duration {
 	return duration
 }
 
-func getIntEnv(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		if intValue, err := strconv.Atoi(value); err == nil {
-			return intValue
-		}
+// generateRandomSecret generates a random string of the given length using crypto/rand.
+func generateRandomSecret(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[int(time.Now().UnixNano())%len(charset)]
 	}
-	return defaultValue
+	return string(b)
 }

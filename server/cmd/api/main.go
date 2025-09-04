@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"dannyswat/jiceot/internal"
 	"dannyswat/jiceot/internal/auth"
@@ -25,6 +27,7 @@ func main() {
 	// Load configuration
 	config := internal.LoadConfig()
 
+	os.MkdirAll(filepath.Dir(config.DBPath), 0o755)
 	// Initialize database
 	db, err := gorm.Open(sqlite.Open(config.DBPath), &gorm.Config{})
 	if err != nil {
@@ -65,11 +68,6 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{config.FrontendURL},
-		AllowMethods: []string{http.MethodGet, http.MethodPut, http.MethodPost, http.MethodDelete},
-		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-	}))
 
 	// Health check route
 	e.GET("/health", func(c echo.Context) error {
@@ -78,6 +76,16 @@ func main() {
 			"service": "jiceot-api",
 		})
 	})
+
+	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		Root:       "client",
+		Skipper:    nil,
+		Index:      "index.html",
+		Browse:     false,
+		HTML5:      true,
+		IgnoreBase: false,
+		Filesystem: nil,
+	}))
 
 	// API routes
 	api := e.Group("/api")
@@ -127,15 +135,12 @@ func main() {
 	protected.DELETE("/expense-items/:id", expenseItemHandler.DeleteExpenseItem)
 	protected.GET("/expense-items/monthly/:year/:month", expenseItemHandler.GetExpenseItemsByMonth)
 
-	// API info route
-	api.GET("/", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, map[string]string{
-			"message": "Jiceot API",
-			"version": "1.0.0",
-		})
+	// Start server
+	e.GET("*", func(c echo.Context) error {
+		c.Response().Header().Set(echo.HeaderCacheControl, "no-cache, no-store, must-revalidate")
+		return c.File("client/index.html")
 	})
 
-	// Start server
-	log.Printf("Starting server on port %s", config.Port)
-	log.Fatal(e.Start(":" + config.Port))
+	e.Logger.Printf("Server started at port %s", config.Port)
+	e.Logger.Fatal(e.Start(":" + config.Port))
 }
