@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build --emptyOutDir --outDir ../dist/client",
+    "build:docker": "tsc -b && vite build --emptyOutDir",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "type-check": "tsc --noEmit",
