@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { 
   billPaymentAPI, 
   billTypeAPI, 
@@ -18,14 +18,23 @@ import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 export default function BillPaymentFormPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const isEdit = id !== undefined && id !== 'new';
 
-  const [formData, setFormData] = useState({
-    bill_type_id: 0,
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-    amount: '',
-    note: '',
+  const [formData, setFormData] = useState(() => {
+    // Initialize with query parameters if present
+    const billTypeId = searchParams.get('bill_type_id');
+    const year = searchParams.get('year');
+    const month = searchParams.get('month');
+    const amount = searchParams.get('amount');
+    
+    return {
+      bill_type_id: billTypeId ? parseInt(billTypeId) : 0,
+      year: year ? parseInt(year) : new Date().getFullYear(),
+      month: month ? parseInt(month) : new Date().getMonth() + 1,
+      amount: amount || '',
+      note: '',
+    };
   });
 
   const [billTypes, setBillTypes] = useState<BillType[]>([]);
@@ -47,7 +56,8 @@ export default function BillPaymentFormPage() {
         setBillTypes(billTypesResponse.bill_types.filter(bt => !bt.stopped));
         setExpenseTypes(expenseTypesResponse.expense_types);
         
-        if (billTypesResponse.bill_types.length > 0 && !isEdit) {
+        // Only set default bill type if not already set from query params and not editing
+        if (billTypesResponse.bill_types.length > 0 && !isEdit && formData.bill_type_id === 0) {
           setFormData(prev => ({ ...prev, bill_type_id: billTypesResponse.bill_types[0]!.id }));
         }
       } catch (err) {
@@ -57,7 +67,20 @@ export default function BillPaymentFormPage() {
     };
 
     void loadData();
-  }, [isEdit]);
+  }, [isEdit, formData.bill_type_id]);
+
+  // Pre-fill amount when bill type changes and has fixed amount
+  useEffect(() => {
+    if (!isEdit && formData.bill_type_id > 0 && billTypes.length > 0) {
+      const selectedBillType = billTypes.find(bt => bt.id === formData.bill_type_id);
+      if (selectedBillType?.fixed_amount && !formData.amount) {
+        setFormData(prev => ({
+          ...prev,
+          amount: selectedBillType.fixed_amount
+        }));
+      }
+    }
+  }, [formData.bill_type_id, billTypes, isEdit, formData.amount]);
 
   // Load existing bill payment and linked expense items for editing
   useEffect(() => {
@@ -169,10 +192,20 @@ export default function BillPaymentFormPage() {
     
     // Handle numeric fields specifically (but keep amount as string)
     if (name === 'bill_type_id' || name === 'year' || name === 'month') {
-      setFormData(prev => ({
-        ...prev,
+      const newFormData = {
+        ...formData,
         [name]: parseInt(value) || 0,
-      }));
+      };
+
+      // If bill type changed and has fixed amount, pre-fill amount unless user already entered one
+      if (name === 'bill_type_id' && !isEdit) {
+        const selectedBillType = billTypes.find(bt => bt.id === parseInt(value));
+        if (selectedBillType?.fixed_amount && (!formData.amount || formData.amount === '0' || formData.amount === '')) {
+          newFormData.amount = selectedBillType.fixed_amount;
+        }
+      }
+
+      setFormData(newFormData);
     } else {
       // Keep amount and note as strings
       setFormData(prev => ({
@@ -286,9 +319,16 @@ export default function BillPaymentFormPage() {
         >
           <ArrowLeftIcon className="h-5 w-5" />
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">
-          {isEdit ? 'Edit Bill Payment' : 'Add New Bill Payment'}
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isEdit ? 'Edit Bill Payment' : 'Add New Bill Payment'}
+          </h1>
+          {!isEdit && searchParams.get('bill_type_id') && (
+            <p className="text-sm text-gray-600 mt-1">
+              Pre-filled from Bills Due page
+            </p>
+          )}
+        </div>
       </div>
 
       {error && (
