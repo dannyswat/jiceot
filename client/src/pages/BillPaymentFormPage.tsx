@@ -1,7 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { billPaymentAPI, billTypeAPI, type CreateBillPaymentRequest, type UpdateBillPaymentRequest, type BillType } from '../services/api';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { 
+  billPaymentAPI, 
+  billTypeAPI, 
+  expenseTypeAPI,
+  expenseItemAPI,
+  type CreateBillPaymentRequest, 
+  type UpdateBillPaymentRequest, 
+  type BillType,
+  type ExpenseType,
+  type ExpenseItem,
+  type CreateExpenseItemRequest,
+  type UpdateExpenseItemRequest
+} from '../services/api';
+import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 export default function BillPaymentFormPage() {
   const navigate = useNavigate();
@@ -17,35 +29,47 @@ export default function BillPaymentFormPage() {
   });
 
   const [billTypes, setBillTypes] = useState<BillType[]>([]);
+  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
+  const [linkedExpenseItems, setLinkedExpenseItems] = useState<ExpenseItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [initialLoading, setInitialLoading] = useState(isEdit);
 
-  // Load bill types
+  // Load bill types and expense types
   useEffect(() => {
-    const loadBillTypes = async (): Promise<void> => {
+    const loadData = async (): Promise<void> => {
       try {
-        const response = await billTypeAPI.list();
-        setBillTypes(response.bill_types.filter(bt => !bt.stopped));
-        if (response.bill_types.length > 0 && !isEdit) {
-          setFormData(prev => ({ ...prev, bill_type_id: response.bill_types[0]!.id }));
+        const [billTypesResponse, expenseTypesResponse] = await Promise.all([
+          billTypeAPI.list(),
+          expenseTypeAPI.list()
+        ]);
+        
+        setBillTypes(billTypesResponse.bill_types.filter(bt => !bt.stopped));
+        setExpenseTypes(expenseTypesResponse.expense_types);
+        
+        if (billTypesResponse.bill_types.length > 0 && !isEdit) {
+          setFormData(prev => ({ ...prev, bill_type_id: billTypesResponse.bill_types[0]!.id }));
         }
       } catch (err) {
-        console.error('Failed to load bill types:', err);
-        setError('Failed to load bill types');
+        console.error('Failed to load data:', err);
+        setError('Failed to load required data');
       }
     };
 
-    void loadBillTypes();
+    void loadData();
   }, [isEdit]);
 
-  // Load existing bill payment for editing
+  // Load existing bill payment and linked expense items for editing
   useEffect(() => {
     if (isEdit && id) {
       const loadBillPayment = async (): Promise<void> => {
         try {
           setInitialLoading(true);
-          const billPayment = await billPaymentAPI.get(parseInt(id));
+          const [billPayment, expenseItemsResponse] = await Promise.all([
+            billPaymentAPI.get(parseInt(id)),
+            expenseItemAPI.list({ bill_payment_id: parseInt(id) })
+          ]);
+          
           setFormData({
             bill_type_id: billPayment.bill_type_id,
             year: billPayment.year,
@@ -53,6 +77,8 @@ export default function BillPaymentFormPage() {
             amount: billPayment.amount,
             note: billPayment.note,
           });
+          
+          setLinkedExpenseItems(expenseItemsResponse.expense_items || []);
         } catch (err) {
           console.error('Failed to load bill payment:', err);
           setError('Failed to load bill payment');
@@ -73,16 +99,22 @@ export default function BillPaymentFormPage() {
       return;
     }
 
+    if (!isExpenseTotalValid()) {
+      setError('Total expense amount cannot exceed the bill payment amount');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
 
+      let billPayment;
       if (isEdit && id) {
         const updateData: UpdateBillPaymentRequest = {
           amount: formData.amount,
           note: formData.note,
         };
-        await billPaymentAPI.update(parseInt(id), updateData);
+        billPayment = await billPaymentAPI.update(parseInt(id), updateData);
       } else {
         const createData: CreateBillPaymentRequest = {
           bill_type_id: formData.bill_type_id,
@@ -91,7 +123,32 @@ export default function BillPaymentFormPage() {
           amount: formData.amount,
           note: formData.note,
         };
-        await billPaymentAPI.create(createData);
+        billPayment = await billPaymentAPI.create(createData);
+      }
+
+      // Save expense items
+      for (const expenseItem of linkedExpenseItems) {
+        if (expenseItem.id > 1000000000) { // New item (timestamp ID)
+          const createExpenseData: CreateExpenseItemRequest = {
+            bill_payment_id: billPayment.id,
+            expense_type_id: expenseItem.expense_type_id,
+            year: formData.year,
+            month: formData.month,
+            amount: expenseItem.amount,
+            note: expenseItem.note || '',
+          };
+          await expenseItemAPI.create(createExpenseData);
+        } else { // Existing item
+          const updateExpenseData: UpdateExpenseItemRequest = {
+            bill_payment_id: billPayment.id,
+            expense_type_id: expenseItem.expense_type_id,
+            year: formData.year,
+            month: formData.month,
+            amount: expenseItem.amount,
+            note: expenseItem.note || '',
+          };
+          await expenseItemAPI.update(expenseItem.id, updateExpenseData);
+        }
       }
 
       navigate('/bill-payments');
@@ -123,6 +180,63 @@ export default function BillPaymentFormPage() {
         [name]: value,
       }));
     }
+  };
+
+  // Expense item management functions
+  const addExpenseItem = () => {
+    if (expenseTypes.length === 0) return;
+    
+    const newExpenseItem: Partial<ExpenseItem> = {
+      id: Date.now(), // Temporary ID for new items
+      expense_type_id: expenseTypes[0]!.id,
+      amount: '0.00',
+      note: '',
+      year: formData.year,
+      month: formData.month,
+      bill_payment_id: isEdit ? parseInt(id!) : undefined,
+    };
+    
+    setLinkedExpenseItems(prev => [...prev, newExpenseItem as ExpenseItem]);
+  };
+
+  const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
+    setLinkedExpenseItems(prev => 
+      prev.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const removeExpenseItem = async (index: number) => {
+    const item = linkedExpenseItems[index];
+    if (!item) return;
+
+    // If it's an existing expense item (has a real ID), delete it from the server
+    if (item.id < 1000000000 && isEdit) { // Real IDs are smaller than timestamp IDs
+      try {
+        await expenseItemAPI.delete(item.id);
+      } catch (err) {
+        console.error('Failed to delete expense item:', err);
+        setError('Failed to delete expense item');
+        return;
+      }
+    }
+
+    setLinkedExpenseItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const getTotalExpenseAmount = () => {
+    return linkedExpenseItems.reduce((sum, item) => sum + parseFloat(item.amount || '0'), 0);
+  };
+
+  const getBillAmount = () => {
+    return parseFloat(formData.amount || '0');
+  };
+
+  const isExpenseTotalValid = () => {
+    const billAmount = getBillAmount();
+    const expenseTotal = getTotalExpenseAmount();
+    return billAmount === 0 || expenseTotal <= billAmount;
   };
 
   const getMonthName = (month: number): string => {
@@ -308,6 +422,126 @@ export default function BillPaymentFormPage() {
               />
             </div>
 
+            {/* Linked Expense Items */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Linked Expense Items
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Break down this bill payment into expense categories
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addExpenseItem}
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  <PlusIcon className="h-4 w-4 mr-1" />
+                  Add Expense
+                </button>
+              </div>
+
+              {/* Expense Total Validation */}
+              {linkedExpenseItems.length > 0 && (
+                <div className={`mb-4 p-3 rounded-lg ${!isExpenseTotalValid() ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-medium">Total Expenses:</span>
+                    <span className={!isExpenseTotalValid() ? 'text-red-700' : 'text-green-700'}>
+                      {formatCurrency(getTotalExpenseAmount().toString())} / {formatCurrency(formData.amount)}
+                    </span>
+                  </div>
+                  {!isExpenseTotalValid() && (
+                    <p className="text-red-700 text-xs mt-1">
+                      Expense total cannot exceed bill payment amount
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Expense Items List */}
+              <div className="space-y-3">
+                {linkedExpenseItems.map((item, index) => {
+                  return (
+                    <div key={item.id || index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Expense Type *
+                          </label>
+                          <select
+                            value={item.expense_type_id}
+                            onChange={(e) => updateExpenseItem(index, 'expense_type_id', parseInt(e.target.value))}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                          >
+                            {expenseTypes.map((expenseType) => (
+                              <option key={expenseType.id} value={expenseType.id}>
+                                {expenseType.icon} {expenseType.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Amount *
+                          </label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                              <span className="text-gray-500 text-sm">$</span>
+                            </div>
+                            <input
+                              type="number"
+                              value={item.amount}
+                              onChange={(e) => updateExpenseItem(index, 'amount', e.target.value)}
+                              step="0.01"
+                              min="0"
+                              max={formData.amount}
+                              className="w-full pl-6 pr-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                              placeholder="0.00"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-end">
+                          <button
+                            type="button"
+                            onClick={() => removeExpenseItem(index)}
+                            className="w-full px-3 py-1.5 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                          >
+                            <TrashIcon className="h-4 w-4 mx-auto" />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Note (Optional)
+                        </label>
+                        <input
+                          type="text"
+                          value={item.note || ''}
+                          onChange={(e) => updateExpenseItem(index, 'note', e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder="Expense description..."
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {linkedExpenseItems.length === 0 && (
+                  <div className="text-center py-8 border-2 border-dashed border-gray-300 rounded-lg">
+                    <p className="text-gray-500 text-sm">No expense items added</p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      Add expense items to categorize this bill payment
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Submit Button */}
             <div className="flex justify-end space-x-3">
               <button
@@ -319,7 +553,7 @@ export default function BillPaymentFormPage() {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !isExpenseTotalValid()}
                 className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
                 {loading ? 'Saving...' : isEdit ? 'Update Payment' : 'Add Payment'}
@@ -354,6 +588,35 @@ export default function BillPaymentFormPage() {
                 {formatCurrency(formData.amount)}
               </p>
             </div>
+
+            {linkedExpenseItems.length > 0 && (
+              <div className="border-t pt-4">
+                <p className="text-sm text-gray-500 mb-2">Linked Expenses ({linkedExpenseItems.length})</p>
+                <div className="space-y-2">
+                  {linkedExpenseItems.map((item, index) => {
+                    const expenseType = expenseTypes.find(et => et.id === item.expense_type_id);
+                    return (
+                      <div key={item.id || index} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: expenseType?.color || '#6b7280' }}
+                          />
+                          <span>{expenseType?.name || 'Unknown'}</span>
+                        </div>
+                        <span className="font-medium">{formatCurrency(item.amount)}</span>
+                      </div>
+                    );
+                  })}
+                  <div className="border-t pt-2 flex justify-between text-sm font-medium">
+                    <span>Total Expenses:</span>
+                    <span className={!isExpenseTotalValid() ? 'text-red-600' : 'text-gray-900'}>
+                      {formatCurrency(getTotalExpenseAmount().toString())}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
             
             {formData.note && (
               <div className="border-t pt-4">
