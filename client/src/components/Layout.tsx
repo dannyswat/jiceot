@@ -61,7 +61,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Bill Types', href: '/bill-types', icon: CreditCardIcon },
     { name: 'Bill Payments', href: '/bill-payments', icon: BanknotesIcon },
     { name: 'Expense Types', href: '/expense-types', icon: RectangleGroupIcon },
-    { name: 'Expense Items', href: '/expense-items', icon: ReceiptPercentIcon },
+    { name: 'Expenses', href: '/expense-items', icon: ReceiptPercentIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
   ];

@@ -4,16 +4,18 @@ import { billTypeAPI, expenseTypeAPI, type CreateBillTypeRequest, type UpdateBil
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 const PRESET_COLORS = [
-  '#6366f1', // Indigo
-  '#ef4444', // Red  
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#8b5cf6', // Violet
-  '#06b6d4', // Cyan
-  '#84cc16', // Lime
+  '#ef4444', // Red
   '#f97316', // Orange
+  '#f59e0b', // Amber
+  '#84cc16', // Lime
+  '#10b981', // Emerald
+  '#06b6d4', // Cyan
+  '#3b82f6', // Blue
+  '#6366f1', // Indigo
+  '#8b5cf6', // Violet
   '#ec4899', // Pink
   '#6b7280', // Gray
+  '#78716c', // Stone
 ];
 
 const PRESET_ICONS = [
@@ -298,6 +300,16 @@ export default function BillTypeFormPage() {
                     />
                   ))}
                 </div>
+                <p className="text-xs text-gray-500 mb-1 mt-4">Or enter a custom color:</p>
+                <input
+                  type="text"
+                  id="color"
+                  name="color"
+                  value={formData.color}
+                  onChange={handleInputChange}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  placeholder="#ef4444"
+                />
               </div>
             </div>
           </div>
