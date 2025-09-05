@@ -68,7 +68,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg">
         <div className="flex h-16 items-center justify-center border-b border-gray-200">
-          <h1 className="text-xl font-bold text-gray-900">Jiceot</h1>
+          <img src="/jiceot.svg" alt="Jiceot, a simple personal expenses management system" className="h-8 w-auto" />
         </div>
         
         <nav className="mt-8 px-4">

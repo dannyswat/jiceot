@@ -49,17 +49,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br flex items-center justify-center p-4">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 bg-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-xl font-bold text-white">J</span>
-          </div>
-          <h2 className="mt-6 text-3xl font-bold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <img src="/jiceot.svg" alt="Jiceot, a simple personal expenses management system" className="h-12 inline" />
+          <p className="mt-6 text-sm text-gray-600">
             Join Jiceot to start managing your bills and expenses
           </p>
         </div>
