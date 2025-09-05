@@ -261,7 +261,7 @@ func (s *BillPaymentService) validateCreateBillPaymentRequest(req CreateBillPaym
 
 	// Check if amount is positive
 	zero := new(big.Float)
-	if amount.Cmp(zero) <= 0 {
+	if amount.Cmp(zero) < 0 {
 		return ErrInvalidBillPaymentAmount
 	}
 

@@ -37,6 +37,13 @@ func (h *BillPaymentHandler) CreateBillPayment(c echo.Context) error {
 		})
 	}
 
+	paymentAmount, err := strconv.ParseFloat(req.Amount, 64)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid payment amount",
+		})
+	}
+
 	billPayment, err := h.billPaymentService.CreateBillPayment(userID, req)
 	if err != nil {
 		switch err {
@@ -60,7 +67,7 @@ func (h *BillPaymentHandler) CreateBillPayment(c echo.Context) error {
 	}
 
 	// Auto-create expense item if bill type has a default expense type
-	if billPayment.BillType.ExpenseTypeID != nil {
+	if billPayment.BillType.ExpenseTypeID != nil && paymentAmount > 0 {
 		expenseItemReq := CreateExpenseItemRequest{
 			ExpenseTypeID: *billPayment.BillType.ExpenseTypeID,
 			Year:          billPayment.Year,

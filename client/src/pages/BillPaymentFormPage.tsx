@@ -117,8 +117,8 @@ export default function BillPaymentFormPage() {
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
     
-    if (!formData.bill_type_id || !formData.amount) {
-      setError('Please fill in all required fields');
+    if (!formData.bill_type_id) {
+      setError('Please select a bill type');
       return;
     }
 
@@ -131,10 +131,13 @@ export default function BillPaymentFormPage() {
       setLoading(true);
       setError('');
 
+      // Allow empty amount (will be treated as 0) to mark bill as settled
+      const processedAmount = formData.amount === '' ? '0' : formData.amount;
+
       let billPayment;
       if (isEdit && id) {
         const updateData: UpdateBillPaymentRequest = {
-          amount: formData.amount,
+          amount: processedAmount,
           note: formData.note,
         };
         billPayment = await billPaymentAPI.update(parseInt(id), updateData);
@@ -143,7 +146,7 @@ export default function BillPaymentFormPage() {
           bill_type_id: formData.bill_type_id,
           year: formData.year,
           month: formData.month,
-          amount: formData.amount,
+          amount: processedAmount,
           note: formData.note,
         };
         billPayment = await billPaymentAPI.create(createData);
@@ -423,7 +426,7 @@ export default function BillPaymentFormPage() {
             {/* Amount */}
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-gray-700">
-                Amount *
+                Amount
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -439,11 +442,10 @@ export default function BillPaymentFormPage() {
                   min="0"
                   placeholder="0"
                   className="block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  required
                 />
               </div>
               <p className="mt-1 text-xs text-gray-500">
-                Enter the amount you paid for this bill
+                Enter the amount you paid for this bill. Leave empty or enter 0 to mark the bill as settled without payment.
               </p>
             </div>
 

@@ -137,6 +137,18 @@ export default function BillPaymentDue() {
     navigate(`/bill-payments/new?${queryParams.toString()}`);
   };
 
+  const handleMarkAsSettled = (billType: BillType) => {
+    // Navigate to bill payment form with zero amount (settled without payment)
+    const queryParams = new URLSearchParams({
+      bill_type_id: billType.id.toString(),
+      year: selectedYear.toString(),
+      month: selectedMonth.toString(),
+      amount: '0'
+    });
+    
+    navigate(`/bill-payments/new?${queryParams.toString()}`);
+  };
+
   const getStatusIcon = (status: string, hasPaid: boolean) => {
     if (hasPaid) {
       return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
@@ -391,19 +403,30 @@ export default function BillPaymentDue() {
                         <span className="text-sm font-medium">Paid</span>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => handleCreatePayment(dueBill)}
-                        className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
-                          dueBill.status === 'overdue' 
-                            ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
-                            : dueBill.status === 'due_soon'
-                            ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
-                            : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
-                        }`}
-                      >
-                        <CurrencyDollarIcon className="-ml-1 mr-2 h-5 w-5" />
-                        Pay Now
-                      </button>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleCreatePayment(dueBill)}
+                          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+                            dueBill.status === 'overdue' 
+                              ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
+                              : dueBill.status === 'due_soon'
+                              ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+                              : 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500'
+                          }`}
+                        >
+                          <CurrencyDollarIcon className="-ml-1 mr-2 h-5 w-5" />
+                          Pay Now
+                        </button>
+                        
+                        <button
+                          onClick={() => handleMarkAsSettled(dueBill)}
+                          className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                          title="Mark as settled without payment"
+                        >
+                          <CheckCircleIcon className="-ml-1 mr-2 h-4 w-4" />
+                          Mark Settled
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -231,9 +231,20 @@ export default function BillPaymentsPage() {
                     </div>
                     
                     <div className="flex items-center space-x-4">
-                      <span className="text-lg font-semibold text-gray-900">
-                        {formatCurrency(payment.amount)}
-                      </span>
+                      {parseFloat(payment.amount) === 0 ? (
+                        <div className="flex items-center space-x-2">
+                          <span className="text-lg font-semibold text-green-600">
+                            Settled
+                          </span>
+                          <span className="text-sm text-gray-500 bg-green-100 px-2 py-1 rounded-full">
+                            $0
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-lg font-semibold text-gray-900">
+                          {formatCurrency(payment.amount)}
+                        </span>
+                      )}
                       
                       <div className="flex space-x-2">
                         <Link
