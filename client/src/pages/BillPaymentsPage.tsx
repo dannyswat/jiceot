@@ -126,49 +126,53 @@ export default function BillPaymentsPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex items-center space-x-4">
-          <FunnelIcon className="h-5 w-5 text-gray-400" />
-          <span className="text-sm font-medium text-gray-700">Filters:</span>
+      <div className="bg-white shadow rounded-lg p-4 sm:p-6">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:space-y-0 sm:space-x-4">
+          <div className="flex items-center space-x-2 flex-shrink-0">
+            <FunnelIcon className="h-5 w-5 text-gray-400" />
+            <span className="text-sm font-medium text-gray-700">Filters:</span>
+          </div>
           
-          <select
-            value={filterBillType}
-            onChange={(e) => setFilterBillType(e.target.value ? parseInt(e.target.value) : '')}
-            className="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="">All Bill Types</option>
-            {billTypes.map((billType) => (
-              <option key={billType.id} value={billType.id}>
-                {billType.name}
-              </option>
-            ))}
-          </select>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 w-full sm:w-auto">
+            <select
+              value={filterBillType}
+              onChange={(e) => setFilterBillType(e.target.value ? parseInt(e.target.value) : '')}
+              className="w-full rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="">All Bill Types</option>
+              {billTypes.map((billType) => (
+                <option key={billType.id} value={billType.id}>
+                  {billType.name}
+                </option>
+              ))}
+            </select>
 
-          <select
-            value={filterYear}
-            onChange={(e) => setFilterYear(e.target.value ? parseInt(e.target.value) : '')}
-            className="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="">All Years</option>
-            {yearOptions.map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value ? parseInt(e.target.value) : '')}
+              className="w-full rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="">All Years</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
 
-          <select
-            value={filterMonth}
-            onChange={(e) => setFilterMonth(e.target.value ? parseInt(e.target.value) : '')}
-            className="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
-          >
-            <option value="">All Months</option>
-            {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-              <option key={month} value={month}>
-                {getMonthName(month)}
-              </option>
-            ))}
-          </select>
+            <select
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(e.target.value ? parseInt(e.target.value) : '')}
+              className="w-full rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="">All Months</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                <option key={month} value={month}>
+                  {getMonthName(month)}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -235,9 +239,6 @@ export default function BillPaymentsPage() {
                         <div className="flex items-center space-x-2">
                           <span className="text-lg font-semibold text-green-600">
                             Settled
-                          </span>
-                          <span className="text-sm text-gray-500 bg-green-100 px-2 py-1 rounded-full">
-                            $0
                           </span>
                         </div>
                       ) : (

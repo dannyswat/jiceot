@@ -361,26 +361,26 @@ export default function BillPaymentDue() {
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-indigo-700"
               >
                 <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
-                Add Bill Type
+                New Bill
               </button>
             </div>
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
             {dueBills.map((dueBill) => (
-              <div key={dueBill.id} className="p-6 hover:bg-gray-50 transition-colors">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4 flex-1">
+              <div key={dueBill.id} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
                     {/* Bill Type Info */}
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div 
-                        className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold flex-shrink-0"
                         style={{ backgroundColor: dueBill.color || '#6b7280' }}
                       >
                         {dueBill.icon || dueBill.name.charAt(0).toUpperCase()}
                       </div>
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">{dueBill.name}</h3>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-lg font-medium text-gray-900 truncate">{dueBill.name}</h3>
                         <p className="text-sm text-gray-500">
                           Due: {formatDate(dueBill.next_due_date)}
                           {dueBill.fixed_amount && ` • ${formatCurrency(dueBill.fixed_amount)}`}
@@ -388,25 +388,30 @@ export default function BillPaymentDue() {
                       </div>
                     </div>
 
-                    {/* Status */}
-                    <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(dueBill.status, dueBill.has_current_payment)}`}>
+                    {/* Status - shown inline on mobile, separate on desktop */}
+                    <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border flex-shrink-0 ${getStatusColor(dueBill.status, dueBill.has_current_payment)}`}>
                       {getStatusIcon(dueBill.status, dueBill.has_current_payment)}
-                      <span>{getStatusText(dueBill)}</span>
+                      <span className="hidden sm:inline">{getStatusText(dueBill)}</span>
+                      <span className="sm:hidden">
+                        {dueBill.has_current_payment ? 'Paid' : 
+                         dueBill.status === 'overdue' ? 'Overdue' :
+                         dueBill.status === 'due_soon' ? 'Due Soon' : 'Upcoming'}
+                      </span>
                     </div>
                   </div>
 
                   {/* Action Button */}
-                  <div className="flex items-center space-x-3">
+                  <div className="flex items-center">
                     {dueBill.has_current_payment ? (
                       <div className="flex items-center space-x-2 text-green-600">
                         <CheckCircleIcon className="h-5 w-5" />
                         <span className="text-sm font-medium">Paid</span>
                       </div>
                     ) : (
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                         <button
                           onClick={() => handleCreatePayment(dueBill)}
-                          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+                          className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
                             dueBill.status === 'overdue' 
                               ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
                               : dueBill.status === 'due_soon'
@@ -414,17 +419,17 @@ export default function BillPaymentDue() {
                               : 'bg-blue-600 hover:bg-indigo-700 focus:ring-indigo-500'
                           }`}
                         >
-                          <CurrencyDollarIcon className="-ml-1 mr-2 h-5 w-5" />
-                          Pay Now
+                          <CurrencyDollarIcon className="-ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                          <span className="whitespace-nowrap">Pay Now</span>
                         </button>
                         
                         <button
                           onClick={() => handleMarkAsSettled(dueBill)}
-                          className="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                          className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
                           title="Mark as settled without payment"
                         >
                           <CheckCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                          Mark Settled
+                          <span className="whitespace-nowrap">Settled</span>
                         </button>
                       </div>
                     )}

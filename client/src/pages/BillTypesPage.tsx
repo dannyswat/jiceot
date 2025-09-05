@@ -5,8 +5,6 @@ import {
   PlusIcon, 
   PencilIcon, 
   TrashIcon,
-  EyeIcon,
-  EyeSlashIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 
@@ -32,16 +30,6 @@ export default function BillTypesPage() {
   useEffect(() => {
     void loadBillTypes();
   }, [includesStopped]);
-
-  const handleToggleBillType = async (id: number): Promise<void> => {
-    try {
-      await billTypeAPI.toggle(id);
-      void loadBillTypes(); // Reload the list
-    } catch (err) {
-      console.error('Failed to toggle bill type:', err);
-      setError('Failed to toggle bill type');
-    }
-  };
 
   const handleDeleteBillType = async (id: number, name: string): Promise<void> => {
     if (!window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
@@ -89,10 +77,10 @@ export default function BillTypesPage() {
         </div>
         <Link
           to="/bill-types/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors min-w-[120px]"
         >
           <PlusIcon className="h-4 w-4 mr-2" />
-          Add Bill Type
+          New Bill
         </Link>
       </div>
 
@@ -131,7 +119,7 @@ export default function BillTypesPage() {
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <PlusIcon className="h-4 w-4 mr-2" />
-                Add Bill Type
+                New Bill
               </Link>
             </div>
           </div>
@@ -177,18 +165,6 @@ export default function BillTypesPage() {
 
                   {/* Actions */}
                   <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleToggleBillType(billType.id)}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-                      title={billType.stopped ? 'Enable bill type' : 'Disable bill type'}
-                    >
-                      {billType.stopped ? (
-                        <EyeIcon className="h-5 w-5" />
-                      ) : (
-                        <EyeSlashIcon className="h-5 w-5" />
-                      )}
-                    </button>
-                    
                     <Link
                       to={`/bill-types/${billType.id}/edit`}
                       className="p-2 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors"
