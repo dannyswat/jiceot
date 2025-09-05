@@ -144,7 +144,7 @@ export default function ExpenseItemsPage() {
         </div>
         <Link
           to="/expense-items/new"
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Add Expense
@@ -265,7 +265,7 @@ export default function ExpenseItemsPage() {
             </p>
             <Link
               to="/expense-items/new"
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
               Add First Expense Item

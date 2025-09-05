@@ -300,7 +300,7 @@ export default function ExpenseItemFormPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
               </button>

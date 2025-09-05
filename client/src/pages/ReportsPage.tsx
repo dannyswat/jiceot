@@ -247,7 +247,7 @@ export default function ReportsPage() {
             onClick={() => setViewMode('monthly')}
             className={`px-4 py-2 rounded-lg transition-colors ${
               viewMode === 'monthly'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -257,7 +257,7 @@ export default function ReportsPage() {
             onClick={() => setViewMode('yearly')}
             className={`px-4 py-2 rounded-lg transition-colors ${
               viewMode === 'yearly'
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
@@ -577,7 +577,7 @@ export default function ReportsPage() {
                       <div className="flex-1 relative">
                         <div className="w-full bg-gray-200 rounded-full h-8 relative overflow-hidden">
                           <div 
-                            className="h-8 bg-indigo-600 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
+                            className="h-8 bg-blue-600 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
                             style={{ width: `${widthPercentage}%` }}
                           >
                             {monthData.totalAmount > 0 && (

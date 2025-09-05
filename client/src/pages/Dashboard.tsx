@@ -261,7 +261,7 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-500 mb-4">No recent activity</p>
                     <Link
                       to="/expense-items/new"
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
                     >
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Add Expense
@@ -316,10 +316,10 @@ const Dashboard: React.FC = () => {
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-lg font-medium text-gray-900">Upcoming Bills</h2>
                 <Link 
-                  to="/bill-types" 
+                  to="/bill-payments/due" 
                   className="text-sm text-indigo-600 hover:text-indigo-500"
                 >
-                  Manage bills
+                  Pay bills
                 </Link>
               </div>
               <div className="p-6">
@@ -329,7 +329,7 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-500 mb-4">No upcoming bills</p>
                     <Link
                       to="/bill-types/new"
-                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
                     >
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Add Bill Type
