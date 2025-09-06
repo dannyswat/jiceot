@@ -391,12 +391,7 @@ export default function BillPaymentDue() {
                     {/* Status - shown inline on mobile, separate on desktop */}
                     <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border flex-shrink-0 ${getStatusColor(dueBill.status, dueBill.has_current_payment)}`}>
                       {getStatusIcon(dueBill.status, dueBill.has_current_payment)}
-                      <span className="hidden sm:inline">{getStatusText(dueBill)}</span>
-                      <span className="sm:hidden">
-                        {dueBill.has_current_payment ? 'Paid' : 
-                         dueBill.status === 'overdue' ? 'Overdue' :
-                         dueBill.status === 'due_soon' ? 'Due Soon' : 'Upcoming'}
-                      </span>
+                      <span className="inline">{getStatusText(dueBill)}</span>
                     </div>
                   </div>
 
@@ -408,7 +403,7 @@ export default function BillPaymentDue() {
                         <span className="text-sm font-medium">Paid</span>
                       </div>
                     ) : (
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                      <div className="flex flex-row items-stretch sm:items-center gap-2 sm:gap-3">
                         <button
                           onClick={() => handleCreatePayment(dueBill)}
                           className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
