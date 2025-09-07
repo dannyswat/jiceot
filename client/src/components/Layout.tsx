@@ -124,6 +124,7 @@ export default function Layout({ children }: LayoutProps) {
               >
                 <Bars3Icon className="h-6 w-6" />
               </button>
+              <img src="/jiceot.svg" alt="Jiceot" className="h-8 w-auto lg:hidden" />
             </div>
             
             <div className="flex items-center space-x-2 sm:space-x-4">
