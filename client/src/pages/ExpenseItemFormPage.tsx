@@ -300,7 +300,7 @@ export default function ExpenseItemFormPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
               </button>
@@ -351,7 +351,7 @@ export default function ExpenseItemFormPage() {
             {/* Amount Preview */}
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm font-medium text-gray-700">Amount:</span>
-              <span className="text-lg font-bold text-indigo-600">
+              <span className="text-lg font-bold text-blue-600">
                 {formatPreviewAmount()}
               </span>
             </div>

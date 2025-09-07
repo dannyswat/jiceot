@@ -144,7 +144,7 @@ export default function ExpenseItemsPage() {
         </div>
         <Link
           to="/expense-items/new"
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors flex items-center min-w-[120px]"
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center min-w-[120px]"
         >
           <PlusIcon className="h-5 w-5 mr-2" />
           Expense
@@ -231,7 +231,7 @@ export default function ExpenseItemsPage() {
             <div className="text-sm text-gray-600">Total Items</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-indigo-600">
+            <div className="text-2xl font-bold text-cyan-600">
               {formatAmount(
                 expenseItems.reduce((sum, item) => sum + parseFloat(item.amount), 0).toString()
               )}
@@ -265,7 +265,7 @@ export default function ExpenseItemsPage() {
             </p>
             <Link
               to="/expense-items/new"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
             >
               <PlusIcon className="h-5 w-5 mr-2" />
               Add First Expense Item
@@ -321,7 +321,7 @@ export default function ExpenseItemsPage() {
                         <div className="flex items-center justify-end space-x-2">
                           <Link
                             to={`/expense-items/${item.id}/edit`}
-                            className="text-indigo-600 hover:text-indigo-900 p-1"
+                            className="text-blue-600 hover:text-blue-900 p-1"
                             title="Edit"
                           >
                             <PencilIcon className="h-4 w-4" />
@@ -355,7 +355,7 @@ export default function ExpenseItemsPage() {
                   >
                     Previous
                   </button>
-                  <span className="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded">
+                  <span className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded">
                     {currentPage} of {totalPages}
                   </span>
                   <button

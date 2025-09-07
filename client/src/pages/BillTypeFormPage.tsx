@@ -256,7 +256,7 @@ export default function BillTypeFormPage() {
                         type="button"
                         onClick={() => setFormData(prev => ({ ...prev, icon }))}
                         className={`w-8 h-8 rounded border-2 flex items-center justify-center text-lg hover:bg-gray-100 transition-colors ${
-                          formData.icon === icon ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
+                          formData.icon === icon ? 'border-indigo-500 bg-blue-50' : 'border-gray-300'
                         }`}
                       >
                         {icon}
@@ -418,7 +418,7 @@ export default function BillTypeFormPage() {
                   name="stopped"
                   checked={formData.stopped}
                   onChange={handleCheckboxChange}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-blue-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
                 <label htmlFor="stopped" className="ml-2 block text-sm text-gray-700">
                   Mark as stopped (won't appear in reminders)
@@ -459,7 +459,7 @@ export default function BillTypeFormPage() {
             <button
               type="submit"
               disabled={loading || !formData.name.trim()}
-              className="flex-1 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex-1 flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

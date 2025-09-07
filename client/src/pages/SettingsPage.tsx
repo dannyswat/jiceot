@@ -63,8 +63,8 @@ export default function SettingsPage() {
       {/* User Info Card */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-            <UserCircleIcon className="w-10 h-10 text-indigo-600" />
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+            <UserCircleIcon className="w-10 h-10 text-blue-600" />
           </div>
           <div>
             <h2 className="text-lg font-medium text-gray-900">{user?.name}</h2>

@@ -77,7 +77,7 @@ export default function BillTypesPage() {
         </div>
         <Link
           to="/bill-types/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors min-w-[120px]"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors min-w-[120px]"
         >
           <PlusIcon className="h-4 w-4 mr-2" />
           New Bill
@@ -92,7 +92,7 @@ export default function BillTypesPage() {
               type="checkbox"
               checked={includesStopped}
               onChange={(e) => setIncludesStopped(e.target.checked)}
-              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+              className="h-4 w-4 text-blue-600 focus:ring-indigo-500 border-gray-300 rounded"
             />
             <span className="ml-2 text-sm text-gray-700">Include stopped bill types</span>
           </label>
@@ -116,7 +116,7 @@ export default function BillTypesPage() {
             <div className="mt-6">
               <Link
                 to="/bill-types/new"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <PlusIcon className="h-4 w-4 mr-2" />
                 New Bill
@@ -167,7 +167,7 @@ export default function BillTypesPage() {
                   <div className="flex items-center space-x-2">
                     <Link
                       to={`/bill-types/${billType.id}/edit`}
-                      className="p-2 text-gray-400 hover:text-indigo-600 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100 transition-colors"
                       title="Edit bill type"
                     >
                       <PencilIcon className="h-5 w-5" />
@@ -194,7 +194,7 @@ export default function BillTypesPage() {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Statistics</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">
+              <div className="text-2xl font-bold text-blue-600">
                 {billTypes.filter(bt => !bt.stopped).length}
               </div>
               <div className="text-sm text-gray-500">Active Bill Types</div>

@@ -112,7 +112,7 @@ export default function BillPaymentsPage() {
         <h1 className="text-2xl font-bold text-gray-900">Bill Payments</h1>
         <Link
           to="/bill-payments/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
           Add Payment
@@ -203,7 +203,7 @@ export default function BillPaymentsPage() {
             <div className="mt-6">
               <Link
                 to="/bill-payments/new"
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
                 Add Payment
@@ -250,7 +250,7 @@ export default function BillPaymentsPage() {
                       <div className="flex space-x-2">
                         <Link
                           to={`/bill-payments/${payment.id}/edit`}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          className="text-blue-600 hover:text-blue-900"
                         >
                           <PencilIcon className="h-4 w-4" />
                         </Link>

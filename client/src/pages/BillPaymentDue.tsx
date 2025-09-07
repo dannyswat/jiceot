@@ -40,7 +40,7 @@ export default function BillPaymentDue() {
         billPaymentAPI.list({ year: selectedYear, month: selectedMonth })
       ]);
 
-      const activeBillTypes = billTypesResponse.bill_types.filter(bt => !bt.stopped);
+      const activeBillTypes = billTypesResponse.bill_types.filter(bt => !bt.stopped && bt.bill_cycle);
       const existingPayments = billPaymentsResponse.bill_payments;
 
       const dueBillsWithStatus: DueBillType[] = activeBillTypes.map(billType => {
@@ -299,7 +299,7 @@ export default function BillPaymentDue() {
             <button
               onClick={loadDueBills}
               disabled={loading}
-              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
             >
               {loading ? 'Loading...' : 'Refresh'}
             </button>
@@ -358,7 +358,7 @@ export default function BillPaymentDue() {
             <div className="mt-6">
               <button
                 onClick={() => navigate('/bill-types')}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-indigo-700"
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
                 <PlusIcon className="-ml-1 mr-2 h-5 w-5" />
                 New Bill
@@ -411,7 +411,7 @@ export default function BillPaymentDue() {
                               ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
                               : dueBill.status === 'due_soon'
                               ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
-                              : 'bg-blue-600 hover:bg-indigo-700 focus:ring-indigo-500'
+                              : 'bg-blue-600 hover:bg-blue-700 focus:ring-indigo-500'
                           }`}
                         >
                           <CurrencyDollarIcon className="-ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5" />

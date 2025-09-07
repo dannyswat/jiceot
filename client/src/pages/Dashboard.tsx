@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   billPaymentAPI, 
@@ -7,8 +7,7 @@ import {
   expenseItemAPI, 
   expenseTypeAPI,
   type BillPayment,
-  type BillType,
-  type ExpenseItem
+  type BillType
 } from '../services/api';
 import { 
   CurrencyDollarIcon,
@@ -28,13 +27,14 @@ interface DashboardStats {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalExpenses: 0,
     billsPaid: 0,
     pendingBills: 0,
     categories: 0,
   });
-  const [recentActivity, setRecentActivity] = useState<(BillPayment | ExpenseItem)[]>([]);
+  const [onDemandBills, setOnDemandBills] = useState<BillType[]>([]);
   const [upcomingBills, setUpcomingBills] = useState<BillType[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,17 +78,12 @@ const Dashboard: React.FC = () => {
         categories: expenseTypesResponse.expense_types.length,
       });
 
-      // Prepare recent activity (combine bill payments and expense items)
-      const recentItems: (BillPayment | ExpenseItem)[] = [
-        ...billPaymentsResponse.bill_payments.slice(0, 3),
-        ...expenseItemsResponse.expense_items.slice(0, 3),
-      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
-
-      setRecentActivity(recentItems);
-
       // Calculate upcoming bills
       const upcoming = getUpcomingBills(billTypesResponse.bill_types, billPaymentsResponse.bill_payments);
       setUpcomingBills(upcoming);
+
+      const onDemand = billTypesResponse.bill_types.filter(bt => bt.bill_cycle === 0 && !bt.stopped);
+      setOnDemandBills(onDemand);
 
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
@@ -162,8 +157,14 @@ const Dashboard: React.FC = () => {
     return "text-blue-500";
   };
 
-  const isBillPayment = (item: BillPayment | ExpenseItem): item is BillPayment => {
-    return 'bill_type_id' in item;
+    const handleCreatePayment = (billType: BillType) => {
+    // Navigate to bill payment form with pre-selected data
+    const queryParams = new URLSearchParams({
+      bill_type_id: billType.id.toString(),
+      amount: billType.fixed_amount || ''
+    });
+    
+    navigate(`/bill-payments/new?${queryParams.toString()}`);
   };
 
   return (
@@ -188,7 +189,7 @@ const Dashboard: React.FC = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
                     <CurrencyDollarIcon className="h-5 w-5 text-white" />
                   </div>
                 </div>
@@ -242,68 +243,57 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Recent activity and upcoming bills */}
+          {/* On-demand bills and upcoming bills */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg shadow">
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
+                <h2 className="text-lg font-medium text-gray-900">On-demand Payments</h2>
                 <Link 
-                  to="/expense-items" 
-                  className="text-sm text-indigo-600 hover:text-indigo-500"
+                  to="/bill-payments" 
+                  className="text-sm text-blue-600 hover:text-blue-500"
                 >
-                  View all
+                  View payments
                 </Link>
               </div>
               <div className="p-6">
-                {recentActivity.length === 0 ? (
+                {onDemandBills.length === 0 ? (
                   <div className="text-center py-8">
                     <CurrencyDollarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">No recent activity</p>
+                    <p className="text-gray-500 mb-4">No on-demand bill types</p>
                     <Link
-                      to="/expense-items/new"
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+                      to="/bill-types/new"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
                     >
                       <PlusIcon className="h-4 w-4 mr-2" />
-                      Add Expense
+                      Add Bill Type
                     </Link>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {recentActivity.map((item, index) => {
-                      const isBill = isBillPayment(item);
-                      const name = isBill 
-                        ? item.bill_type?.name || 'Bill Payment'
-                        : item.expense_type?.name || 'Expense';
-                      const icon = isBill 
-                        ? item.bill_type?.icon || '💳'
-                        : item.expense_type?.icon || '💰';
-                      const color = isBill 
-                        ? item.bill_type?.color || '#3B82F6'
-                        : item.expense_type?.color || '#10B981';
+                    {onDemandBills.map((billType) => {
 
                       return (
-                        <div key={`${isBill ? 'bill' : 'expense'}-${item.id}-${index}`} className="flex items-center justify-between">
+                        <div key={billType.id} className="flex items-center justify-between">
                           <div className="flex items-center">
                             <div 
                               className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
-                              style={{ backgroundColor: color }}
+                              style={{ backgroundColor: billType.color }}
                             >
-                              {icon}
+                              {billType.icon}
                             </div>
                             <div className="ml-3">
-                              <p className="text-sm font-medium text-gray-900">{name}</p>
-                              <p className="text-xs text-gray-500">
-                                {isBill ? 'Bill paid' : 'Expense added'} {' '}
-                                {new Date(item.created_at).toLocaleDateString('en-US', {
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </p>
+                              <p className="text-sm font-medium text-gray-900">{billType.name}</p>
                             </div>
                           </div>
-                          <span className="text-sm font-medium text-gray-900">
-                            {formatAmount(parseFloat(item.amount))}
-                          </span>
+                          <button
+                          onClick={() => handleCreatePayment(billType)}
+                          className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+                            'bg-blue-600 hover:bg-blue-700 focus:ring-indigo-500'
+                          }`}
+                        >
+                          <CurrencyDollarIcon className="-ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5" />
+                          <span className="whitespace-nowrap">Pay Now</span>
+                        </button>
                         </div>
                       );
                     })}
@@ -317,7 +307,7 @@ const Dashboard: React.FC = () => {
                 <h2 className="text-lg font-medium text-gray-900">Upcoming Bills</h2>
                 <Link 
                   to="/bill-payments/due" 
-                  className="text-sm text-indigo-600 hover:text-indigo-500"
+                  className="text-sm text-blue-600 hover:text-blue-500"
                 >
                   Pay bills
                 </Link>
@@ -329,7 +319,7 @@ const Dashboard: React.FC = () => {
                     <p className="text-gray-500 mb-4">No upcoming bills</p>
                     <Link
                       to="/bill-types/new"
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors inline-flex items-center"
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
                     >
                       <PlusIcon className="h-4 w-4 mr-2" />
                       Add Bill Type
