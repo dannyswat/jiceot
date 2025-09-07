@@ -101,9 +101,9 @@ update_version_file() {
 # Function to build Docker image
 build_docker_image() {
     print_status "Building Docker image..."
-    
     # Build with multiple tags
-    docker build -t "${DOCKER_REPO}:${NEW_VERSION}" \
+    docker build --platform linux/arm64,linux/amd64 \
+                 -t "${DOCKER_REPO}:${NEW_VERSION}" \
                  -t "${DOCKER_REPO}:latest" \
                  -f "$DOCKERFILE" .
     
@@ -113,29 +113,6 @@ build_docker_image() {
         print_error "Docker build failed"
         exit 1
     fi
-}
-
-# Function to check Docker Hub login
-check_docker_login() {
-    print_status "Checking Docker Hub authentication..."
-    
-    if ! docker info | grep -q "Username:"; then
-        print_warning "Not logged into Docker Hub. Please run 'docker login' first."
-        echo -n "Do you want to login now? (y/N): "
-        read -r response
-        if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]; then
-            docker login
-            if [[ $? -ne 0 ]]; then
-                print_error "Docker login failed"
-                exit 1
-            fi
-        else
-            print_error "Docker Hub login required to push images"
-            exit 1
-        fi
-    fi
-    
-    print_success "Docker Hub authentication verified"
 }
 
 # Function to push images to Docker Hub
@@ -198,10 +175,11 @@ show_usage() {
     echo "Usage: $0 [OPTIONS]"
     echo ""
     echo "Options:"
-    echo "  -h, --help     Show this help message"
-    echo "  --no-push      Build image but don't push to Docker Hub"
-    echo "  --no-cleanup   Skip cleanup of dangling images"
-    echo "  --dry-run      Show what would be done without actually doing it"
+    echo "  -h, --help       Show this help message"
+    echo "  --no-push        Build image but don't push to Docker Hub"
+    echo "  --no-cleanup     Skip cleanup of dangling images"
+    echo "  --keep-version   Use current version without incrementing"
+    echo "  --dry-run        Show what would be done without actually doing it"
     echo ""
     echo "Environment Variables:"
     echo "  DOCKER_REPO    Docker repository (default: dannys/jiceot)"
@@ -209,6 +187,7 @@ show_usage() {
     echo "Example:"
     echo "  $0                    # Build, version, and push"
     echo "  $0 --no-push         # Build and version only"
+    echo "  $0 --keep-version    # Build with current version"
     echo "  $0 --dry-run         # Show what would be done"
 }
 
@@ -216,6 +195,7 @@ show_usage() {
 NO_PUSH=false
 NO_CLEANUP=false
 DRY_RUN=false
+KEEP_VERSION=false
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -233,6 +213,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --keep-version)
+            KEEP_VERSION=true
             shift
             ;;
         *)
@@ -266,7 +250,12 @@ main() {
     
     # Version management
     get_current_version
-    increment_minor_version
+    if [[ "$KEEP_VERSION" == false ]]; then
+        increment_minor_version
+    else
+        NEW_VERSION="$CURRENT_VERSION"
+        print_status "Keeping current version: $NEW_VERSION"
+    fi
     
     if [[ "$DRY_RUN" == true ]]; then
         print_status "Would update version from $CURRENT_VERSION to $NEW_VERSION"
@@ -282,14 +271,17 @@ main() {
     fi
     
     # Update version
-    update_version_file
+    if [[ "$KEEP_VERSION" == false ]]; then
+        update_version_file
+    else
+        print_status "Version file unchanged (--keep-version specified)"
+    fi
     
     # Build image
     build_docker_image
     
     # Push to Docker Hub (unless --no-push is specified)
     if [[ "$NO_PUSH" == false ]]; then
-        check_docker_login
         push_images
     else
         print_warning "Skipping push to Docker Hub (--no-push specified)"
