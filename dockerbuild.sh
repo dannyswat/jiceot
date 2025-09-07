@@ -1,0 +1,1 @@
+docker build --platform linux/arm64,linux/amd64 -t dannyswat/jiceot .
