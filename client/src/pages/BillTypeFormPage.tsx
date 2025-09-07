@@ -51,6 +51,7 @@ export default function BillTypeFormPage() {
   });
 
   const [loading, setLoading] = useState(false);
+  const [creatingExpenseType, setCreatingExpenseType] = useState(false);
   const [error, setError] = useState('');
   const [initialLoading, setInitialLoading] = useState(isEdit);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
@@ -181,6 +182,59 @@ export default function BillTypeFormPage() {
       ...prev,
       [name]: checked,
     }));
+  };
+
+  const handleCreateMatchingExpenseType = async (): Promise<void> => {
+    if (!formData.name.trim()) {
+      setError('Please enter a bill type name first');
+      return;
+    }
+
+    // Check if an expense type with the same name already exists
+    const existingExpenseType = expenseTypes.find(
+      et => et.name.toLowerCase() === formData.name.trim().toLowerCase()
+    );
+    
+    if (existingExpenseType) {
+      // Just select the existing one
+      setFormData(prev => ({
+        ...prev,
+        expense_type_id: existingExpenseType.id.toString(),
+      }));
+      return;
+    }
+
+    try {
+      setCreatingExpenseType(true);
+      setError('');
+
+      const createData = {
+        name: formData.name.trim(),
+        icon: formData.icon || '',
+        color: formData.color || PRESET_COLORS[0],
+      };
+
+      const newExpenseType = await expenseTypeAPI.create(createData);
+      
+      // Add the new expense type to the list
+      setExpenseTypes(prev => [...prev, newExpenseType]);
+      
+      // Set it as the selected expense type
+      setFormData(prev => ({
+        ...prev,
+        expense_type_id: newExpenseType.id.toString(),
+      }));
+
+    } catch (err: unknown) {
+      console.error('Failed to create expense type:', err);
+      if (err instanceof Error) {
+        setError(`Failed to create expense type: ${err.message}`);
+      } else {
+        setError('Failed to create expense type');
+      }
+    } finally {
+      setCreatingExpenseType(false);
+    }
   };
 
   if (initialLoading) {
@@ -405,9 +459,30 @@ export default function BillTypeFormPage() {
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                When a bill payment is added, it will automatically create an expense item with this type
-              </p>
+              <div className="mt-2 flex items-center justify-between">
+                <p className="text-xs text-gray-500 flex-1 pr-4">
+                  When a bill payment is added, it will automatically create an expense item with this type
+                </p>
+                {formData.name.trim() && (
+                  <button
+                    type="button"
+                    onClick={handleCreateMatchingExpenseType}
+                    disabled={creatingExpenseType || loading}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    title={
+                      expenseTypes.find(et => et.name.toLowerCase() === formData.name.trim().toLowerCase())
+                        ? `Select existing "${formData.name}" expense type`
+                        : `Create "${formData.name}" as an expense type`
+                    }
+                  >
+                    {creatingExpenseType ? 'Creating...' : 
+                     expenseTypes.find(et => et.name.toLowerCase() === formData.name.trim().toLowerCase())
+                       ? 'Use existing expense type'
+                       : 'Create expense type with same name'
+                    }
+                  </button>
+                )}
+              </div>
             </div>
 
             {isEdit && (
