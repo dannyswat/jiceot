@@ -178,7 +178,7 @@ func (h *BillTypeHandler) ListBillTypes(c echo.Context) error {
 	}
 
 	// Parse query parameters
-	limit := 10
+	limit := 50
 	if l := c.QueryParam("limit"); l != "" {
 		if parsedLimit, err := strconv.Atoi(l); err == nil {
 			limit = parsedLimit
