@@ -208,10 +208,11 @@ const Dashboard: React.FC = () => {
   };
 
     const handleCreatePayment = (billType: BillType) => {
-    // Navigate to bill payment form with pre-selected data
+    // Navigate to bill payment form with pre-selected data and returnUrl
     const queryParams = new URLSearchParams({
       bill_type_id: billType.id.toString(),
-      amount: billType.fixed_amount || ''
+      amount: billType.fixed_amount || '',
+      returnUrl: '/'
     });
     
     navigate(`/bill-payments/new?${queryParams.toString()}`);

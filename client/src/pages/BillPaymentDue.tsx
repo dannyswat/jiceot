@@ -143,24 +143,26 @@ export default function BillPaymentDue() {
   };
 
   const handleCreatePayment = (billType: BillType) => {
-    // Navigate to bill payment form with pre-selected data
+    // Navigate to bill payment form with pre-selected data and returnUrl
     const queryParams = new URLSearchParams({
       bill_type_id: billType.id.toString(),
       year: selectedYear.toString(),
       month: selectedMonth.toString(),
-      amount: billType.fixed_amount || ''
+      amount: billType.fixed_amount || '',
+      returnUrl: '/bill-payments/due'
     });
     
     navigate(`/bill-payments/new?${queryParams.toString()}`);
   };
 
   const handleMarkAsSettled = (billType: BillType) => {
-    // Navigate to bill payment form with zero amount (settled without payment)
+    // Navigate to bill payment form with zero amount (settled without payment) and returnUrl
     const queryParams = new URLSearchParams({
       bill_type_id: billType.id.toString(),
       year: selectedYear.toString(),
       month: selectedMonth.toString(),
-      amount: '0'
+      amount: '0',
+      returnUrl: '/bill-payments/due'
     });
     
     navigate(`/bill-payments/new?${queryParams.toString()}`);

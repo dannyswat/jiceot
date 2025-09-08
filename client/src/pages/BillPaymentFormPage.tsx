@@ -20,6 +20,9 @@ export default function BillPaymentFormPage() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const isEdit = id !== undefined && id !== 'new';
+  
+  // Get returnUrl from search params
+  const returnUrl = searchParams.get('returnUrl') || '/bill-payments';
 
   const [formData, setFormData] = useState(() => {
     // Initialize with query parameters if present
@@ -177,7 +180,7 @@ export default function BillPaymentFormPage() {
         }
       }
 
-      navigate('/bill-payments');
+      navigate(returnUrl);
     } catch (err: unknown) {
       console.error('Failed to save bill payment:', err);
       if (err instanceof Error) {
@@ -317,7 +320,7 @@ export default function BillPaymentFormPage() {
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button
-          onClick={() => navigate('/bill-payments')}
+          onClick={() => navigate(returnUrl)}
           className="p-2 text-gray-400 hover:text-gray-600"
         >
           <ArrowLeftIcon className="h-5 w-5" />
@@ -328,7 +331,9 @@ export default function BillPaymentFormPage() {
           </h1>
           {!isEdit && searchParams.get('bill_type_id') && (
             <p className="text-sm text-gray-600 mt-1">
-              Pre-filled from Bills Due page
+              {searchParams.get('returnUrl') === '/bill-payments/due' 
+                ? 'Pre-filled from Bills Due page' 
+                : 'Pre-filled from Dashboard'}
             </p>
           )}
         </div>
@@ -589,7 +594,7 @@ export default function BillPaymentFormPage() {
             <div className="flex justify-end space-x-3">
               <button
                 type="button"
-                onClick={() => navigate('/bill-payments')}
+                onClick={() => navigate(returnUrl)}
                 className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
                 Cancel
