@@ -25,6 +25,11 @@ interface DashboardStats {
   categories: number;
 }
 
+interface UpcomingBill extends BillType {
+  nextDueDate: Date;
+  daysUntilDue: number;
+}
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -35,7 +40,7 @@ const Dashboard: React.FC = () => {
     categories: 0,
   });
   const [onDemandBills, setOnDemandBills] = useState<BillType[]>([]);
-  const [upcomingBills, setUpcomingBills] = useState<BillType[]>([]);
+  const [upcomingBills, setUpcomingBills] = useState<UpcomingBill[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,34 +57,39 @@ const Dashboard: React.FC = () => {
 
       // Load data in parallel
       const [
-        billPaymentsResponse,
+        allBillPaymentsResponse, // Get all payments to check payment history
         expenseItemsResponse,
         billTypesResponse,
         expenseTypesResponse,
       ] = await Promise.all([
-        billPaymentAPI.list({ year: currentYear, month: currentMonth }),
+        billPaymentAPI.list({}), // Get all payments for proper calculation
         expenseItemAPI.list({ year: currentYear, month: currentMonth }),
         billTypeAPI.list(),
         expenseTypeAPI.list(),
       ]);
 
+      // Get current month payments for stats
+      const currentMonthPayments = allBillPaymentsResponse.bill_payments.filter(
+        payment => payment.year === currentYear && payment.month === currentMonth
+      );
+
       // Calculate statistics
       const totalExpenseAmount = expenseItemsResponse.expense_items.reduce(
         (sum, item) => sum + (item.bill_payment_id ? 0 : parseFloat(item.amount)), 0
       );
-      const totalBillAmount = billPaymentsResponse.bill_payments.reduce(
+      const totalBillAmount = currentMonthPayments.reduce(
         (sum, payment) => sum + parseFloat(payment.amount), 0
       );
 
       setStats({
         totalExpenses: totalExpenseAmount + totalBillAmount,
-        billsPaid: billPaymentsResponse.bill_payments.length,
-        pendingBills: getUpcomingBillsCount(billTypesResponse.bill_types, billPaymentsResponse.bill_payments),
+        billsPaid: currentMonthPayments.length,
+        pendingBills: getUpcomingBillsCount(billTypesResponse.bill_types, allBillPaymentsResponse.bill_payments),
         categories: expenseTypesResponse.expense_types.length,
       });
 
       // Calculate upcoming bills
-      const upcoming = getUpcomingBills(billTypesResponse.bill_types, billPaymentsResponse.bill_payments);
+      const upcoming = getUpcomingBills(billTypesResponse.bill_types, allBillPaymentsResponse.bill_payments);
       setUpcomingBills(upcoming);
 
       const onDemand = billTypesResponse.bill_types.filter(bt => bt.bill_cycle === 0 && !bt.stopped);
@@ -92,35 +102,88 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Calculate next due date based on last payment and bill cycle
+  const calculateNextDueDateFromLastPayment = (
+    billType: BillType,
+    lastPayment: BillPayment | undefined,
+    currentYear: number,
+    currentMonth: number
+  ): Date => {
+    // If no last payment, bill is due in current month
+    if (!lastPayment) {
+      if (billType.bill_day === 0) {
+        // No specific day, use end of month
+        return new Date(currentYear, currentMonth, 0);
+      }
+      return new Date(currentYear, currentMonth - 1, billType.bill_day);
+    }
+
+    // Calculate next due date based on last payment + bill cycle
+    let nextDueYear = lastPayment.year;
+    let nextDueMonth = lastPayment.month + billType.bill_cycle;
+
+    // Handle year overflow
+    while (nextDueMonth > 12) {
+      nextDueYear++;
+      nextDueMonth -= 12;
+    }
+
+    if (billType.bill_day === 0) {
+      // No specific day, use end of month
+      return new Date(nextDueYear, nextDueMonth, 0);
+    }
+
+    return new Date(nextDueYear, nextDueMonth - 1, billType.bill_day);
+  };
+
   const getUpcomingBillsCount = (billTypes: BillType[], billPayments: BillPayment[]): number => {
     return getUpcomingBills(billTypes, billPayments).length;
   };
 
-  const getUpcomingBills = (billTypes: BillType[], billPayments: BillPayment[]): BillType[] => {
+  const getUpcomingBills = (billTypes: BillType[], allPayments: BillPayment[]): UpcomingBill[] => {
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth() + 1;
-    const currentDay = currentDate.getDate();
 
-    return billTypes.filter(billType => {
-      if (billType.stopped || billType.bill_cycle === 0) return false;
+    const upcomingBills = billTypes
+      .filter(billType => !billType.stopped && billType.bill_cycle > 0)
+      .map(billType => {
+        const lastPayment = allPayments
+          .filter(payment => payment.bill_type_id === billType.id)
+          .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))[0];
 
-      // Check if this bill has already been paid this month
-      const alreadyPaid = billPayments.some(payment => 
-        payment.bill_type_id === billType.id &&
-        payment.year === currentYear &&
-        payment.month === currentMonth
-      );
+        // Calculate next due date based on last payment + bill cycle
+        const nextDueDate = calculateNextDueDateFromLastPayment(billType, lastPayment, currentYear, currentMonth);
+        const daysUntilDue = Math.ceil((nextDueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Check for current month payment
+        const hasCurrentPayment = allPayments.some(payment => 
+          payment.bill_type_id === billType.id && 
+          payment.year === currentYear && 
+          payment.month === currentMonth
+        );
 
-      if (alreadyPaid) return false;
+        // Determine if bill should be shown as paid:
+        // - If there's a payment for current month, OR
+        // - If the next due date is not in the current month
+        const nextDueDateMonth = nextDueDate.getMonth() + 1;
+        const nextDueDateYear = nextDueDate.getFullYear();
+        const isNextDueDateInCurrentMonth = nextDueDateMonth === currentMonth && nextDueDateYear === currentYear;
+        
+        const isPaid = hasCurrentPayment || !isNextDueDateInCurrentMonth;
 
-      // Check if bill is due this month
-      if (billType.bill_cycle === 1) { // Monthly
-        return billType.bill_day >= currentDay;
-      }
+        return {
+          ...billType,
+          nextDueDate,
+          daysUntilDue,
+          isPaid
+        };
+      })
+      .filter(bill => !bill.isPaid && bill.daysUntilDue >= 0) // Only show unpaid bills that are due soon
+      .sort((a, b) => a.daysUntilDue - b.daysUntilDue) // Sort by days until due
+      .slice(0, 5); // Take top 5
 
-      return true; // For other cycles, consider them upcoming for now
-    }).slice(0, 5);
+    return upcomingBills;
   };
 
   const formatAmount = (amount: number) => {
@@ -129,19 +192,6 @@ const Dashboard: React.FC = () => {
       currency: 'USD',
       maximumFractionDigits: 0,
     }).format(amount);
-  };
-
-  const getDaysUntilDue = (billDay: number): number => {
-    const currentDate = new Date();
-    const currentDay = currentDate.getDate();
-    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-    
-    if (billDay >= currentDay) {
-      return billDay - currentDay;
-    } else {
-      // Next month
-      return (daysInMonth - currentDay) + billDay;
-    }
   };
 
   const getDueDateText = (daysUntil: number): string => {
@@ -327,29 +377,28 @@ const Dashboard: React.FC = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {upcomingBills.map((billType) => {
-                      const daysUntil = getDaysUntilDue(billType.bill_day);
-                      const dueDateText = getDueDateText(daysUntil);
-                      const dueDateColor = getDueDateColor(daysUntil);
+                    {upcomingBills.map((upcomingBill) => {
+                      const dueDateText = getDueDateText(upcomingBill.daysUntilDue);
+                      const dueDateColor = getDueDateColor(upcomingBill.daysUntilDue);
 
                       return (
-                        <div key={billType.id} className="flex items-center justify-between">
+                        <div key={upcomingBill.id} className="flex items-center justify-between">
                           <div className="flex items-center">
                             <div 
                               className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
-                              style={{ backgroundColor: billType.color }}
+                              style={{ backgroundColor: upcomingBill.color }}
                             >
-                              {billType.icon}
+                              {upcomingBill.icon}
                             </div>
                             <div className="ml-3">
-                              <p className="text-sm font-medium text-gray-900">{billType.name}</p>
+                              <p className="text-sm font-medium text-gray-900">{upcomingBill.name}</p>
                               <p className={`text-xs ${dueDateColor}`}>
                                 {dueDateText}
                               </p>
                             </div>
                           </div>
                           <span className="text-sm font-medium text-gray-900">
-                            {billType.fixed_amount ? formatAmount(parseFloat(billType.fixed_amount)) : 'Variable'}
+                            {upcomingBill.fixed_amount ? formatAmount(parseFloat(upcomingBill.fixed_amount)) : 'Variable'}
                           </span>
                         </div>
                       );
