@@ -46,8 +46,9 @@ export default function BillTypesPage() {
   };
 
   const formatCycle = (cycle: number): string => {
-    if (cycle === 0) return 'One-time';
+    if (cycle === 0) return 'On-demand';
     if (cycle === 1) return 'Monthly';
+    if (cycle === 2) return 'Bi-monthly';
     if (cycle === 3) return 'Quarterly';
     if (cycle === 6) return 'Semi-annually';
     if (cycle === 12) return 'Annually';

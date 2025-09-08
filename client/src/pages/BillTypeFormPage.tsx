@@ -26,7 +26,7 @@ const PRESET_ICONS = [
 ];
 
 const CYCLE_OPTIONS = [
-  { value: 0, label: 'One-time only' },
+  { value: 0, label: 'On-demand' },
   { value: 1, label: 'Monthly' },
   { value: 2, label: 'Bi-monthly' },
   { value: 3, label: 'Quarterly' },
@@ -459,7 +459,7 @@ export default function BillTypeFormPage() {
                   </option>
                 ))}
               </select>
-              <div className="mt-2 flex items-center justify-between">
+              <div className="mt-2 flex flex-col items-center justify-between">
                 <p className="text-xs text-gray-500 flex-1 pr-4">
                   When a bill payment is added, it will automatically create an expense item with this type
                 </p>
@@ -468,7 +468,7 @@ export default function BillTypeFormPage() {
                     type="button"
                     onClick={handleCreateMatchingExpenseType}
                     disabled={creatingExpenseType || loading}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap mt-2"
                     title={
                       expenseTypes.find(et => et.name.toLowerCase() === formData.name.trim().toLowerCase())
                         ? `Select existing "${formData.name}" expense type`

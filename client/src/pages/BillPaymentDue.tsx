@@ -230,10 +230,9 @@ export default function BillPaymentDue() {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-GB', {
       month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+      day: 'numeric'
     });
   };
 
@@ -417,7 +416,7 @@ export default function BillPaymentDue() {
                     </div>
 
                     {/* Status - shown inline on mobile, separate on desktop */}
-                    <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border flex-shrink-0 ${getStatusColor(dueBill.status, dueBill.has_current_payment)}`}>
+                    <div className={`inline-flex flex-1 sm:flex-none me-0 sm:me-2 items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border flex-shrink-0 ${getStatusColor(dueBill.status, dueBill.has_current_payment)}`}>
                       {getStatusIcon(dueBill.status, dueBill.has_current_payment)}
                       <span className="inline">{getStatusText(dueBill)}</span>
                     </div>
