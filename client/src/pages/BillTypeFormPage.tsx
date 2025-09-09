@@ -30,6 +30,7 @@ const CYCLE_OPTIONS = [
   { value: 1, label: 'Monthly' },
   { value: 2, label: 'Bi-monthly' },
   { value: 3, label: 'Quarterly' },
+  { value: 4, label: 'Every 4 months' },
   { value: 6, label: 'Semi-annually' },
   { value: 12, label: 'Annually' },
 ];
