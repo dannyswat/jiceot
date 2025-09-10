@@ -101,43 +101,76 @@ func (s *UserSettingService) TriggerManualReminder(userID uint, customDays *int)
 		daysBefore = *customDays
 	}
 
-	// Calculate the target date range for reminders
 	now := time.Now()
-	reminderDate := now.AddDate(0, 0, daysBefore)
-	targetMonth := reminderDate.Month()
-	targetYear := reminderDate.Year()
 
-	log.Printf("Manual reminder for user %d: checking bills due in %d days (target: %d-%02d)",
-		userID, daysBefore, targetYear, int(targetMonth))
+	log.Printf("Manual reminder for user %d: checking bills due in %d days", userID, daysBefore)
 
-	// Find all active bill types for this user
+	// Find all active bill types for this user (including those with bill_day = 0)
 	var billTypes []expenses.BillType
-	if err := s.db.Where("user_id = ? AND stopped = ? AND bill_day > 0", userID, false).Find(&billTypes).Error; err != nil {
+	if err := s.db.Where("user_id = ? AND stopped = ? AND bill_cycle > 0", userID, false).Find(&billTypes).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch bill types: %w", err)
 	}
 
 	var billsDue []BillDue
 
 	for _, billType := range billTypes {
-		// Check if this bill type has a payment for the target month
-		var existingPayment expenses.BillPayment
-		result := s.db.Where("bill_type_id = ? AND year = ? AND month = ? AND user_id = ?",
-			billType.ID, targetYear, int(targetMonth), userID).First(&existingPayment)
+		// Skip if bill cycle is 0 (on-demand bills)
+		if billType.BillCycle == 0 {
+			continue
+		}
 
-		// If no payment exists, this bill is due
+		// Get the most recent payment for this bill type
+		var lastPayment expenses.BillPayment
+		result := s.db.Where("bill_type_id = ? AND user_id = ?", billType.ID, userID).
+			Order("year DESC, month DESC").First(&lastPayment)
+
+		// Calculate next due date based on bill cycle
+		var nextDueDate time.Time
 		if result.Error == gorm.ErrRecordNotFound {
-			billsDue = append(billsDue, BillDue{
-				BillType: billType,
-				DueDate:  time.Date(targetYear, targetMonth, billType.BillDay, 0, 0, 0, 0, time.Local),
-				Amount:   billType.FixedAmount,
-			})
+			// No payment exists, bill is due in current month/cycle
+			if billType.BillDay > 0 {
+				nextDueDate = time.Date(now.Year(), now.Month(), billType.BillDay, 0, 0, 0, 0, time.Local)
+				// If the bill day has already passed this month, move to next cycle
+				if nextDueDate.AddDate(0, 0, 1).Before(now) {
+					nextDueDate = s.calculateNextDueDateFromDate(nextDueDate, billType.BillCycle)
+				}
+			} else {
+				// No specific day, use end of current month
+				nextDueDate = time.Date(now.Year(), now.Month()+1, 0, 23, 59, 59, 0, time.Local)
+			}
+		} else if result.Error != nil {
+			log.Printf("Error fetching last payment for bill type %d: %v", billType.ID, result.Error)
+			continue
+		} else {
+			// Calculate next due date based on last payment + bill cycle
+			nextDueDate = s.calculateNextDueDateFromPayment(lastPayment, billType)
+		}
+
+		// Check if the bill is due within the reminder window
+		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+		if daysUntilDue <= daysBefore && daysUntilDue >= 0 {
+			// Check if there's already a payment for the next due period
+			targetYear := nextDueDate.Year()
+			targetMonth := int(nextDueDate.Month())
+
+			var existingPayment expenses.BillPayment
+			paymentResult := s.db.Where("bill_type_id = ? AND year = ? AND month = ? AND user_id = ?",
+				billType.ID, targetYear, targetMonth, userID).First(&existingPayment)
+
+			// If no payment exists for this due period, add to bills due
+			if paymentResult.Error == gorm.ErrRecordNotFound {
+				billsDue = append(billsDue, BillDue{
+					BillType: billType,
+					DueDate:  nextDueDate,
+					Amount:   billType.FixedAmount,
+				})
+			}
 		}
 	}
 
 	response := map[string]interface{}{
 		"bills_due_count": len(billsDue),
 		"days_before":     daysBefore,
-		"target_date":     fmt.Sprintf("%d-%02d", targetYear, int(targetMonth)),
 		"sent":            false,
 	}
 
@@ -162,25 +195,14 @@ func (s *UserSettingService) sendManualReminderNotification(setting UserNotifica
 	var body string
 	if len(billsDue) == 1 {
 		bill := billsDue[0]
-		body = fmt.Sprintf("You have 1 bill due on %s:\n\n• %s",
-			bill.DueDate.Format("Jan 2, 2006"),
-			bill.BillType.Name)
+		body = fmt.Sprintf("You have 1 %s bill due on %s",
+			bill.BillType.Name,
+			bill.DueDate.Format("2 Jan"))
 		if bill.Amount != "" && bill.Amount != "0" {
 			body += fmt.Sprintf(" - $%s", bill.Amount)
 		}
 	} else {
-		body = fmt.Sprintf("You have %d bills due in %d days:\n\n", len(billsDue), daysBefore)
-		for i, bill := range billsDue {
-			body += fmt.Sprintf("• %s - %s",
-				bill.BillType.Name,
-				bill.DueDate.Format("Jan 2"))
-			if bill.Amount != "" && bill.Amount != "0" {
-				body += fmt.Sprintf(" ($%s)", bill.Amount)
-			}
-			if i < len(billsDue)-1 {
-				body += "\n"
-			}
-		}
+		body = fmt.Sprintf("You have %d bills due within %d days:\n\n", len(billsDue), daysBefore)
 	}
 
 	log.Printf("Sending manual notification to user %d: %d bills due", setting.UserID, len(billsDue))
@@ -191,4 +213,45 @@ func (s *UserSettingService) sendManualReminderNotification(setting UserNotifica
 
 	log.Printf("Successfully sent manual reminder notification to user %d", setting.UserID)
 	return nil
+}
+
+// calculateNextDueDateFromPayment calculates the next due date based on the last payment and bill cycle
+func (s *UserSettingService) calculateNextDueDateFromPayment(lastPayment expenses.BillPayment, billType expenses.BillType) time.Time {
+	// Start from the last payment's month/year
+	nextYear := lastPayment.Year
+	nextMonth := lastPayment.Month + billType.BillCycle
+
+	// Handle year overflow
+	for nextMonth > 12 {
+		nextYear++
+		nextMonth -= 12
+	}
+
+	// Set the due date
+	if billType.BillDay > 0 {
+		// Get the last day of the target month to handle cases where bill_day > days in month
+		lastDayOfMonth := time.Date(nextYear, time.Month(nextMonth+1), 0, 0, 0, 0, 0, time.Local).Day()
+		billDay := billType.BillDay
+		if billDay > lastDayOfMonth {
+			billDay = lastDayOfMonth
+		}
+		return time.Date(nextYear, time.Month(nextMonth), billDay, 0, 0, 0, 0, time.Local)
+	} else {
+		// No specific day, use end of month
+		return time.Date(nextYear, time.Month(nextMonth+1), 0, 23, 59, 59, 0, time.Local)
+	}
+}
+
+// calculateNextDueDateFromDate adds the bill cycle (in months) to the given date
+func (s *UserSettingService) calculateNextDueDateFromDate(date time.Time, billCycle int) time.Time {
+	nextYear := date.Year()
+	nextMonth := int(date.Month()) + billCycle
+
+	// Handle year overflow
+	for nextMonth > 12 {
+		nextYear++
+		nextMonth -= 12
+	}
+
+	return time.Date(nextYear, time.Month(nextMonth), date.Day(), date.Hour(), date.Minute(), date.Second(), date.Nanosecond(), date.Location())
 }

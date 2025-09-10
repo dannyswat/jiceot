@@ -72,6 +72,7 @@ func main() {
 		<-sigChan
 		log.Println("Shutting down reminder service...")
 		remindService.StopBackgroundReminders()
+		os.Exit(0)
 	}()
 
 	// Initialize handlers

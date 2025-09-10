@@ -83,36 +83,71 @@ func (s *RemindService) checkAndSendReminders() {
 
 // processUserReminders processes reminders for a single user
 func (s *RemindService) processUserReminders(setting UserNotificationSetting) error {
-	// Calculate the target date range for reminders
 	now := time.Now()
-	reminderDate := now.AddDate(0, 0, setting.RemindDaysBefore)
-	targetMonth := reminderDate.Month()
-	targetYear := reminderDate.Year()
 
-	log.Printf("Processing reminders for user %d: checking bills due in %d days (target: %d-%02d)",
-		setting.UserID, setting.RemindDaysBefore, targetYear, int(targetMonth))
+	log.Printf("Processing reminders for user %d: checking bills due in %d days",
+		setting.UserID, setting.RemindDaysBefore)
 
-	// Find all active bill types for this user
+	// Find all active bill types for this user (including those with bill_day = 0)
 	var billTypes []expenses.BillType
-	if err := s.db.Where("user_id = ? AND stopped = ? AND bill_day > 0", setting.UserID, false).Find(&billTypes).Error; err != nil {
+	if err := s.db.Where("user_id = ? AND stopped = ? AND bill_cycle > 0", setting.UserID, false).Find(&billTypes).Error; err != nil {
 		return fmt.Errorf("failed to fetch bill types: %w", err)
 	}
 
 	var billsDue []BillDue
 
 	for _, billType := range billTypes {
-		// Check if this bill type has a payment for the target month
-		var existingPayment expenses.BillPayment
-		result := s.db.Where("bill_type_id = ? AND year = ? AND month = ? AND user_id = ?",
-			billType.ID, targetYear, int(targetMonth), setting.UserID).First(&existingPayment)
+		// Skip if bill cycle is 0 (on-demand bills)
+		if billType.BillCycle == 0 {
+			continue
+		}
 
-		// If no payment exists, this bill is due
+		// Get the most recent payment for this bill type
+		var lastPayment expenses.BillPayment
+		result := s.db.Where("bill_type_id = ? AND user_id = ?", billType.ID, setting.UserID).
+			Order("year DESC, month DESC").First(&lastPayment)
+
+		// Calculate next due date based on bill cycle
+		var nextDueDate time.Time
 		if result.Error == gorm.ErrRecordNotFound {
-			billsDue = append(billsDue, BillDue{
-				BillType: billType,
-				DueDate:  time.Date(targetYear, targetMonth, billType.BillDay, 0, 0, 0, 0, time.Local),
-				Amount:   billType.FixedAmount,
-			})
+			// No payment exists, bill is due in current month/cycle
+			if billType.BillDay > 0 {
+				nextDueDate = time.Date(now.Year(), now.Month(), billType.BillDay, 0, 0, 0, 0, time.Local)
+				// If the bill day has already passed this month, move to next cycle
+				if nextDueDate.Before(now) {
+					nextDueDate = s.calculateNextDueDateFromDate(nextDueDate, billType.BillCycle)
+				}
+			} else {
+				// No specific day, use end of current month
+				nextDueDate = time.Date(now.Year(), now.Month()+1, 0, 23, 59, 59, 0, time.Local)
+			}
+		} else if result.Error != nil {
+			log.Printf("Error fetching last payment for bill type %d: %v", billType.ID, result.Error)
+			continue
+		} else {
+			// Calculate next due date based on last payment + bill cycle
+			nextDueDate = s.calculateNextDueDateFromPayment(lastPayment, billType)
+		}
+
+		// Check if the bill is due within the reminder window
+		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+		if daysUntilDue <= setting.RemindDaysBefore && daysUntilDue >= 0 {
+			// Check if there's already a payment for the next due period
+			targetYear := nextDueDate.Year()
+			targetMonth := int(nextDueDate.Month())
+
+			var existingPayment expenses.BillPayment
+			paymentResult := s.db.Where("bill_type_id = ? AND year = ? AND month = ? AND user_id = ?",
+				billType.ID, targetYear, targetMonth, setting.UserID).First(&existingPayment)
+
+			// If no payment exists for this due period, add to bills due
+			if paymentResult.Error == gorm.ErrRecordNotFound {
+				billsDue = append(billsDue, BillDue{
+					BillType: billType,
+					DueDate:  nextDueDate,
+					Amount:   billType.FixedAmount,
+				})
+			}
 		}
 	}
 
@@ -123,6 +158,47 @@ func (s *RemindService) processUserReminders(setting UserNotificationSetting) er
 
 	log.Printf("No bills due for user %d", setting.UserID)
 	return nil
+}
+
+// calculateNextDueDateFromPayment calculates the next due date based on the last payment and bill cycle
+func (s *RemindService) calculateNextDueDateFromPayment(lastPayment expenses.BillPayment, billType expenses.BillType) time.Time {
+	// Start from the last payment's month/year
+	nextYear := lastPayment.Year
+	nextMonth := lastPayment.Month + billType.BillCycle
+
+	// Handle year overflow
+	for nextMonth > 12 {
+		nextYear++
+		nextMonth -= 12
+	}
+
+	// Set the due date
+	if billType.BillDay > 0 {
+		// Get the last day of the target month to handle cases where bill_day > days in month
+		lastDayOfMonth := time.Date(nextYear, time.Month(nextMonth+1), 0, 0, 0, 0, 0, time.Local).Day()
+		billDay := billType.BillDay
+		if billDay > lastDayOfMonth {
+			billDay = lastDayOfMonth
+		}
+		return time.Date(nextYear, time.Month(nextMonth), billDay, 0, 0, 0, 0, time.Local)
+	} else {
+		// No specific day, use end of month
+		return time.Date(nextYear, time.Month(nextMonth+1), 0, 23, 59, 59, 0, time.Local)
+	}
+}
+
+// calculateNextDueDateFromDate adds the bill cycle (in months) to the given date
+func (s *RemindService) calculateNextDueDateFromDate(date time.Time, billCycle int) time.Time {
+	nextYear := date.Year()
+	nextMonth := int(date.Month()) + billCycle
+
+	// Handle year overflow
+	for nextMonth > 12 {
+		nextYear++
+		nextMonth -= 12
+	}
+
+	return time.Date(nextYear, time.Month(nextMonth), date.Day(), date.Hour(), date.Minute(), date.Second(), date.Nanosecond(), date.Location())
 }
 
 // BillDue represents a bill that is due soon
@@ -139,14 +215,32 @@ func (s *RemindService) sendReminderNotification(setting UserNotificationSetting
 	var body string
 	if len(billsDue) == 1 {
 		bill := billsDue[0]
-		body = fmt.Sprintf("You have 1 bill due on %s:\n\n• %s",
-			bill.DueDate.Format("2 Jan"),
+		cycleDesc := s.getCycleDescription(bill.BillType.BillCycle)
+		body = fmt.Sprintf("You have 1 %s bill due on %s:\n\n• %s",
+			cycleDesc,
+			bill.DueDate.Format("Jan 2, 2006"),
 			bill.BillType.Name)
 		if bill.Amount != "" && bill.Amount != "0" {
 			body += fmt.Sprintf(" - $%s", bill.Amount)
 		}
 	} else {
-		body = fmt.Sprintf("You have %d bills due soon:", len(billsDue))
+		body = fmt.Sprintf("You have %d bills due soon:\n\n", len(billsDue))
+		for i, bill := range billsDue {
+			if i < 5 { // Limit to first 5 bills to keep notification readable
+				cycleDesc := s.getCycleDescription(bill.BillType.BillCycle)
+				body += fmt.Sprintf("• %s (%s) - %s",
+					bill.BillType.Name,
+					cycleDesc,
+					bill.DueDate.Format("Jan 2"))
+				if bill.Amount != "" && bill.Amount != "0" {
+					body += fmt.Sprintf(" - $%s", bill.Amount)
+				}
+				body += "\n"
+			} else if i == 5 {
+				body += fmt.Sprintf("• ...and %d more bills", len(billsDue)-5)
+				break
+			}
+		}
 	}
 
 	log.Printf("Sending notification to user %d: %d bills due", setting.UserID, len(billsDue))
@@ -157,4 +251,27 @@ func (s *RemindService) sendReminderNotification(setting UserNotificationSetting
 
 	log.Printf("Successfully sent reminder notification to user %d", setting.UserID)
 	return nil
+}
+
+// getCycleDescription returns a human-readable description of the bill cycle
+func (s *RemindService) getCycleDescription(billCycle int) string {
+	switch billCycle {
+	case 1:
+		return "monthly"
+	case 2:
+		return "bi-monthly"
+	case 3:
+		return "quarterly"
+	case 4:
+		return "every 4 months"
+	case 6:
+		return "semi-annual"
+	case 12:
+		return "annual"
+	default:
+		if billCycle > 12 {
+			return fmt.Sprintf("every %d years", billCycle/12)
+		}
+		return fmt.Sprintf("every %d months", billCycle)
+	}
 }
