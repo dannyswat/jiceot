@@ -39,7 +39,7 @@ export default function SettingsPage() {
           description: 'Manage bill reminders and alerts',
           icon: BellIcon,
           href: '/settings/notifications',
-          disabled: true, // TODO: Implement later
+          disabled: false,
         },
         {
           name: 'General Settings',

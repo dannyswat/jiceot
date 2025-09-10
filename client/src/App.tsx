@@ -5,6 +5,7 @@ import RegisterPage from './pages/RegisterPage'
 import Dashboard from './pages/Dashboard'
 import SettingsPage from './pages/SettingsPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
+import NotificationSettingsPage from './pages/NotificationSettingsPage'
 import BillTypesPage from './pages/BillTypesPage'
 import BillTypeFormPage from './pages/BillTypeFormPage'
 import BillPaymentsPage from './pages/BillPaymentsPage'
@@ -44,6 +45,7 @@ function App() {
                 <Route path="/expense-items/:id/edit" element={<ExpenseItemFormPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
                 <Route path="/change-password" element={<ChangePasswordPage />} />
               </Routes>
             </Layout>

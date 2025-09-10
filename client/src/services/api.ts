@@ -439,4 +439,58 @@ export const expenseItemAPI = {
   },
 };
 
+// Notification Settings API
+export interface UserNotificationSetting {
+  id: number;
+  user_id: number;
+  bark_api_url: string;
+  bark_enabled: boolean;
+  remind_hour: number;
+  remind_days_before: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOrUpdateNotificationSettingRequest {
+  bark_api_url: string;
+  bark_enabled: boolean;
+  remind_hour: number;
+  remind_days_before: number;
+}
+
+export interface ManualReminderResponse {
+  bills_due_count: number;
+  days_before: number;
+  target_date: string;
+  sent: boolean;
+  message: string;
+}
+
+export const notificationSettingsApi = {
+  // Get user notification settings
+  get: async (): Promise<UserNotificationSetting> => {
+    const response = await api.get<UserNotificationSetting>('/notifications/settings');
+    return response.data;
+  },
+
+  // Create or update notification settings
+  createOrUpdate: async (data: CreateOrUpdateNotificationSettingRequest): Promise<UserNotificationSetting> => {
+    const response = await api.put<UserNotificationSetting>('/notifications/settings', data);
+    return response.data;
+  },
+
+  // Send test notification
+  test: async (): Promise<{ message: string }> => {
+    const response = await api.post<{ message: string }>('/notifications/test');
+    return response.data;
+  },
+
+  // Trigger manual reminder
+  triggerManualReminder: async (days?: number): Promise<ManualReminderResponse> => {
+    const url = days !== undefined ? `/notifications/manual-reminder?days=${days}` : '/notifications/manual-reminder';
+    const response = await api.post<ManualReminderResponse>(url);
+    return response.data;
+  },
+};
+
 export default api;
