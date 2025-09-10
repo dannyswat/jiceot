@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"strconv"
 
+	"dannyswat/jiceot/internal/auth"
+
 	"github.com/labstack/echo/v4"
 )
 
@@ -19,7 +21,12 @@ func NewUserSettingHandler(service *UserSettingService) *UserSettingHandler {
 
 // GetUserSetting gets the notification setting for the current user
 func (h *UserSettingHandler) GetUserSetting(c echo.Context) error {
-	userID := c.Get("user_id").(uint)
+	userID := auth.GetUserIDFromContext(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Unauthorized",
+		})
+	}
 
 	setting, err := h.service.GetUserSetting(userID)
 	if err != nil {
@@ -33,7 +40,12 @@ func (h *UserSettingHandler) GetUserSetting(c echo.Context) error {
 
 // CreateOrUpdateUserSetting creates or updates notification setting for the current user
 func (h *UserSettingHandler) CreateOrUpdateUserSetting(c echo.Context) error {
-	userID := c.Get("user_id").(uint)
+	userID := auth.GetUserIDFromContext(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Unauthorized",
+		})
+	}
 
 	var req struct {
 		BarkApiUrl       string `json:"bark_api_url"`
@@ -81,7 +93,12 @@ func (h *UserSettingHandler) CreateOrUpdateUserSetting(c echo.Context) error {
 
 // TestNotification sends a test notification to verify the Bark configuration
 func (h *UserSettingHandler) TestNotification(c echo.Context) error {
-	userID := c.Get("user_id").(uint)
+	userID := auth.GetUserIDFromContext(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Unauthorized",
+		})
+	}
 
 	setting, err := h.service.GetUserSetting(userID)
 	if err != nil {
@@ -112,7 +129,12 @@ func (h *UserSettingHandler) TestNotification(c echo.Context) error {
 
 // TriggerManualReminder manually triggers the reminder check for the current user
 func (h *UserSettingHandler) TriggerManualReminder(c echo.Context) error {
-	userID := c.Get("user_id").(uint)
+	userID := auth.GetUserIDFromContext(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Unauthorized",
+		})
+	}
 
 	// Get days parameter from query (optional, defaults to user's setting)
 	daysStr := c.QueryParam("days")

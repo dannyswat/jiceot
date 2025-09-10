@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"dannyswat/jiceot/internal"
@@ -97,8 +98,11 @@ func main() {
 	})
 
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-		Root:       "client",
-		Skipper:    nil,
+		Root: "client",
+		Skipper: func(c echo.Context) bool {
+			// Skip static serving for API routes
+			return strings.HasPrefix(c.Request().URL.Path, "/api")
+		},
 		Index:      "index.html",
 		Browse:     false,
 		HTML5:      true,
@@ -156,7 +160,7 @@ func main() {
 
 	// Notification Settings routes
 	protected.GET("/notifications/settings", userSettingHandler.GetUserSetting)
-	protected.POST("/notifications/settings", userSettingHandler.CreateOrUpdateUserSetting)
+	protected.PUT("/notifications/settings", userSettingHandler.CreateOrUpdateUserSetting)
 	protected.POST("/notifications/test", userSettingHandler.TestNotification)
 	protected.POST("/notifications/manual-reminder", userSettingHandler.TriggerManualReminder)
 
