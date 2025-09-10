@@ -4,11 +4,14 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"dannyswat/jiceot/internal"
 	"dannyswat/jiceot/internal/auth"
 	"dannyswat/jiceot/internal/expenses"
+	"dannyswat/jiceot/internal/notifications"
 	"dannyswat/jiceot/internal/users"
 
 	"github.com/joho/godotenv"
@@ -41,6 +44,7 @@ func main() {
 		&expenses.BillPayment{},
 		&expenses.ExpenseType{},
 		&expenses.ExpenseItem{},
+		&notifications.UserNotificationSetting{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
@@ -54,6 +58,20 @@ func main() {
 	billPaymentService := expenses.NewBillPaymentService(db)
 	expenseTypeService := expenses.NewExpenseTypeService(db)
 	expenseItemService := expenses.NewExpenseItemService(db)
+	remindService := notifications.NewRemindService(db)
+	userSettingService := notifications.NewUserSettingService(db)
+
+	// Start background reminder service
+	remindService.StartBackgroundReminders()
+
+	// Setup graceful shutdown for reminder service
+	go func() {
+		sigChan := make(chan os.Signal, 1)
+		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+		<-sigChan
+		log.Println("Shutting down reminder service...")
+		remindService.StopBackgroundReminders()
+	}()
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, config)
@@ -61,6 +79,7 @@ func main() {
 	billPaymentHandler := expenses.NewBillPaymentHandler(billPaymentService, expenseItemService)
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
 	expenseItemHandler := expenses.NewExpenseItemHandler(expenseItemService)
+	userSettingHandler := notifications.NewUserSettingHandler(userSettingService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -134,6 +153,12 @@ func main() {
 	protected.PUT("/expense-items/:id", expenseItemHandler.UpdateExpenseItem)
 	protected.DELETE("/expense-items/:id", expenseItemHandler.DeleteExpenseItem)
 	protected.GET("/expense-items/monthly/:year/:month", expenseItemHandler.GetExpenseItemsByMonth)
+
+	// Notification Settings routes
+	protected.GET("/notifications/settings", userSettingHandler.GetUserSetting)
+	protected.POST("/notifications/settings", userSettingHandler.CreateOrUpdateUserSetting)
+	protected.POST("/notifications/test", userSettingHandler.TestNotification)
+	protected.POST("/notifications/manual-reminder", userSettingHandler.TriggerManualReminder)
 
 	// Start server
 	e.GET("*", func(c echo.Context) error {
