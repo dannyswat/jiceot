@@ -289,64 +289,66 @@ export default function NotificationSettingsPage() {
         </div>
 
         {/* Form Actions */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg flex justify-between">
-          <div className="flex space-x-3">
-            {/* Test Notification Button */}
-            <button
-              type="button"
-              onClick={handleTestNotification}
-              disabled={testing || !formData.bark_enabled || !formData.bark_api_url.trim()}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {testing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <PlayIcon className="w-4 h-4 mr-2" />
-                  Test Notification
-                </>
-              )}
-            </button>
+        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+          <div className="flex flex-col sm:flex-row sm:justify-between gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Test Notification Button */}
+              <button
+                type="button"
+                onClick={handleTestNotification}
+                disabled={testing || !formData.bark_enabled || !formData.bark_api_url.trim()}
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {testing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <PlayIcon className="w-4 h-4 mr-2" />
+                    Test Notification
+                  </>
+                )}
+              </button>
 
-            {/* Manual Reminder Button */}
+              {/* Manual Reminder Button */}
+              <button
+                type="button"
+                onClick={handleTriggerManualReminder}
+                disabled={triggeringReminder || !formData.bark_enabled || !formData.bark_api_url.trim()}
+                className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {triggeringReminder ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <ClockIcon className="w-4 h-4 mr-2" />
+                    Check Now
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Save Button */}
             <button
-              type="button"
-              onClick={handleTriggerManualReminder}
-              disabled={triggeringReminder || !formData.bark_enabled || !formData.bark_api_url.trim()}
-              className="inline-flex items-center px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              type="submit"
+              disabled={saving}
+              className="inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors sm:w-auto"
             >
-              {triggeringReminder ? (
+              {saving ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-orange-600 mr-2"></div>
-                  Checking...
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Saving...
                 </>
               ) : (
-                <>
-                  <ClockIcon className="w-4 h-4 mr-2" />
-                  Check Now
-                </>
+                'Save Settings'
               )}
             </button>
           </div>
-
-          {/* Save Button */}
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {saving ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Saving...
-              </>
-            ) : (
-              'Save Settings'
-            )}
-          </button>
         </div>
       </form>
 
