@@ -14,6 +14,8 @@ import {
   type UpdateExpenseItemRequest
 } from '../services/api';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { formatCurrency } from '../common/currency';
+import { getMonthName } from '../common/date';
 
 export default function BillPaymentFormPage() {
   const navigate = useNavigate();
@@ -72,19 +74,6 @@ export default function BillPaymentFormPage() {
     void loadData();
   }, [isEdit, formData.bill_type_id]);
 
-  // Pre-fill amount when bill type changes and has fixed amount
-  useEffect(() => {
-    if (!isEdit && formData.bill_type_id > 0 && billTypes.length > 0) {
-      const selectedBillType = billTypes.find(bt => bt.id === formData.bill_type_id);
-      if (selectedBillType?.fixed_amount && !formData.amount) {
-        setFormData(prev => ({
-          ...prev,
-          amount: selectedBillType.fixed_amount
-        }));
-      }
-    }
-  }, [formData.bill_type_id, billTypes, isEdit, formData.amount]);
-
   // Load existing bill payment and linked expense items for editing
   useEffect(() => {
     if (isEdit && id) {
@@ -116,6 +105,8 @@ export default function BillPaymentFormPage() {
       void loadBillPayment();
     }
   }, [id, isEdit]);
+
+  const selectedBillType = billTypes.find(bt => bt.id === formData.bill_type_id);
 
   const handleSubmit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -180,6 +171,24 @@ export default function BillPaymentFormPage() {
         }
       }
 
+      if (!isEdit && selectedBillType?.expense_type_id 
+        && !linkedExpenseItems.some(item => item.expense_type_id === selectedBillType.expense_type_id)) {
+        const totalAmount = parseFloat(processedAmount);
+        const netAmount = totalAmount - getTotalExpenseAmount();
+
+        if (netAmount > 0) {
+          const autoExpenseData: CreateExpenseItemRequest = {
+            bill_payment_id: billPayment.id,
+            expense_type_id: selectedBillType.expense_type_id,
+            year: formData.year,
+            month: formData.month,
+            amount: netAmount.toFixed(0),
+            note: 'Auto-generated from payment',
+          };
+          await expenseItemAPI.create(autoExpenseData);
+        }
+      }
+
       navigate(returnUrl);
     } catch (err: unknown) {
       console.error('Failed to save bill payment:', err);
@@ -203,11 +212,14 @@ export default function BillPaymentFormPage() {
         [name]: parseInt(value) || 0,
       };
 
-      // If bill type changed and has fixed amount, pre-fill amount unless user already entered one
+      // If bill type changed and has fixed amount, pre-fill amount
       if (name === 'bill_type_id' && !isEdit) {
         const selectedBillType = billTypes.find(bt => bt.id === parseInt(value));
-        if (selectedBillType?.fixed_amount && (!formData.amount || formData.amount === '0' || formData.amount === '')) {
+        if (selectedBillType?.fixed_amount) {
           newFormData.amount = selectedBillType.fixed_amount;
+        }
+        else {
+          newFormData.amount = '';
         }
       }
 
@@ -278,30 +290,9 @@ export default function BillPaymentFormPage() {
     return billAmount === 0 || expenseTotal <= billAmount;
   };
 
-  const getMonthName = (month: number): string => {
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return monthNames[month - 1] ?? '';
-  };
-
-  const formatCurrency = (amount: string): string => {
-    if (!amount) return '$0';
-    const num = parseFloat(amount);
-    if (isNaN(num)) return '$0';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(num);
-  };
-
   // Generate year options (current year ± 5 years)
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
-
-  const selectedBillType = billTypes.find(bt => bt.id === formData.bill_type_id);
 
   if (initialLoading) {
     return (
@@ -443,7 +434,7 @@ export default function BillPaymentFormPage() {
                   name="amount"
                   value={formData.amount}
                   onChange={handleInputChange}
-                  step="0.01"
+                  step="1"
                   min="0"
                   placeholder="0"
                   className="block w-full pl-7 pr-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"

@@ -37,13 +37,6 @@ func (h *BillPaymentHandler) CreateBillPayment(c echo.Context) error {
 		})
 	}
 
-	paymentAmount, err := strconv.ParseFloat(req.Amount, 64)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid payment amount",
-		})
-	}
-
 	billPayment, err := h.billPaymentService.CreateBillPayment(userID, req)
 	if err != nil {
 		switch err {
@@ -63,25 +56,6 @@ func (h *BillPaymentHandler) CreateBillPayment(c echo.Context) error {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to create bill payment",
 			})
-		}
-	}
-
-	// Auto-create expense item if bill type has a default expense type
-	if billPayment.BillType.ExpenseTypeID != nil && paymentAmount > 0 {
-		expenseItemReq := CreateExpenseItemRequest{
-			ExpenseTypeID: *billPayment.BillType.ExpenseTypeID,
-			Year:          billPayment.Year,
-			Month:         billPayment.Month,
-			Amount:        billPayment.Amount,
-			Note:          "Auto-created from bill payment: " + billPayment.BillType.Name,
-			BillPaymentID: &billPayment.ID,
-		}
-
-		_, err := h.expenseItemService.CreateExpenseItem(expenseItemReq, userID)
-		if err != nil {
-			// Log the error but don't fail the bill payment creation
-			// The bill payment was successful, expense item creation is a bonus feature
-			c.Logger().Error("Failed to auto-create expense item for bill payment", err)
 		}
 	}
 

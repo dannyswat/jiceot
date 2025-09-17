@@ -65,15 +65,17 @@ func (s *BillPaymentService) CreateBillPayment(userID uint, req CreateBillPaymen
 		return nil, err
 	}
 
-	// Check if payment already exists for this bill type and month
-	var existingPayment BillPayment
-	err := s.db.Where("bill_type_id = ? AND year = ? AND month = ? AND user_id = ?",
-		req.BillTypeID, req.Year, req.Month, userID).First(&existingPayment).Error
-	if err == nil {
-		return nil, ErrBillPaymentExists
-	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, err
+	if billType.BillCycle == 0 {
+		// Check if payment already exists for this bill type and month
+		var existingPayment BillPayment
+		err := s.db.Where("bill_type_id = ? AND year = ? AND month = ? AND user_id = ?",
+			req.BillTypeID, req.Year, req.Month, userID).First(&existingPayment).Error
+		if err == nil {
+			return nil, ErrBillPaymentExists
+		}
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
+		}
 	}
 
 	// Validate amount
