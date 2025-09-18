@@ -7,6 +7,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
@@ -105,6 +106,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const deleteAccount = async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      await authAPI.deleteAccount();
+      // After successful deletion, log the user out
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      setUser(null);
+    } catch (error) {
+      console.error('Delete account failed:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = (): void => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -119,6 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     changePassword,
+    deleteAccount,
     isAuthenticated: !!user,
     isLoading,
   };

@@ -248,6 +248,12 @@ export const authAPI = {
     const response = await api.put<{ message: string }>('/auth/password', passwordData);
     return response.data;
   },
+
+  // Delete user account
+  deleteAccount: async (): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>('/user/account');
+    return response.data;
+  },
 };
 
 export const billTypeAPI = {
