@@ -228,3 +228,69 @@ func (s *UserService) validateChangePasswordRequest(req ChangePasswordRequest) e
 	}
 	return nil
 }
+
+// DeleteUserAccount hard deletes a user and all their associated data
+func (s *UserService) DeleteUserAccount(userID uint) error {
+	// Verify user exists
+	_, err := s.GetUser(userID)
+	if err != nil {
+		return err
+	}
+
+	// Start a transaction to ensure data consistency
+	tx := s.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	if tx.Error != nil {
+		return fmt.Errorf("failed to start transaction: %w", tx.Error)
+	}
+
+	// Delete in the correct order to respect foreign key constraints
+
+	// 1. Delete expense items (they reference bill_payments and expense_types)
+	if err := tx.Unscoped().Exec("DELETE FROM expense_items WHERE user_id = ?", userID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete expense items: %w", err)
+	}
+
+	// 2. Delete bill payments (they reference bill_types)
+	if err := tx.Unscoped().Exec("DELETE FROM bill_payments WHERE user_id = ?", userID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete bill payments: %w", err)
+	}
+
+	// 3. Delete bill types
+	if err := tx.Unscoped().Exec("DELETE FROM bill_types WHERE user_id = ?", userID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete bill types: %w", err)
+	}
+
+	// 4. Delete expense types
+	if err := tx.Unscoped().Exec("DELETE FROM expense_types WHERE user_id = ?", userID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete expense types: %w", err)
+	}
+
+	// 5. Delete notification settings
+	if err := tx.Unscoped().Exec("DELETE FROM user_notification_settings WHERE user_id = ?", userID).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete notification settings: %w", err)
+	}
+
+	// 6. Finally, delete the user account
+	if err := tx.Unscoped().Where("id = ?", userID).Delete(&User{}).Error; err != nil {
+		tx.Rollback()
+		return fmt.Errorf("failed to delete user: %w", err)
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}

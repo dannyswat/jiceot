@@ -77,6 +77,7 @@ func main() {
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, config, auth.NewRateLimiter(5, 1))
+	userHandler := users.NewUserHandler(userService)
 	billTypeHandler := expenses.NewBillTypeHandler(billTypeService)
 	billPaymentHandler := expenses.NewBillPaymentHandler(billPaymentService, expenseItemService)
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
@@ -126,6 +127,9 @@ func main() {
 	protected.GET("/auth/me", authHandler.Me)
 	protected.POST("/auth/logout", authHandler.Logout)
 	protected.PUT("/auth/password", authHandler.ChangePassword)
+
+	// User routes
+	protected.DELETE("/user/account", userHandler.DeleteUserAccount)
 
 	// Bill Type routes
 	protected.GET("/bill-types", billTypeHandler.ListBillTypes)
