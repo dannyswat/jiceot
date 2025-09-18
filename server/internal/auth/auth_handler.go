@@ -14,6 +14,7 @@ import (
 type AuthHandler struct {
 	userService *users.UserService
 	config      *internal.Config
+	rateLimiter *RateLimiter
 }
 
 type LoginRequest struct {
@@ -33,10 +34,15 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func NewAuthHandler(userService *users.UserService, config *internal.Config) *AuthHandler {
+func NewAuthHandler(
+	userService *users.UserService,
+	config *internal.Config,
+	rateLimiter *RateLimiter) *AuthHandler {
+
 	return &AuthHandler{
 		userService: userService,
 		config:      config,
+		rateLimiter: rateLimiter,
 	}
 }
 
@@ -46,6 +52,13 @@ func (h *AuthHandler) Login(c echo.Context) error {
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Invalid request format",
+		})
+	}
+
+	// Check rate limit
+	if !h.rateLimiter.AllowRequest(req.Email) {
+		return c.JSON(http.StatusTooManyRequests, map[string]string{
+			"error": "Rate limit exceeded",
 		})
 	}
 

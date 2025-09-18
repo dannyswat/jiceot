@@ -76,7 +76,7 @@ func main() {
 	}()
 
 	// Initialize handlers
-	authHandler := auth.NewAuthHandler(userService, config)
+	authHandler := auth.NewAuthHandler(userService, config, auth.NewRateLimiter(5, 1))
 	billTypeHandler := expenses.NewBillTypeHandler(billTypeService)
 	billPaymentHandler := expenses.NewBillPaymentHandler(billPaymentService, expenseItemService)
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
