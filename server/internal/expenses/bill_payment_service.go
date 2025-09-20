@@ -65,7 +65,7 @@ func (s *BillPaymentService) CreateBillPayment(userID uint, req CreateBillPaymen
 		return nil, err
 	}
 
-	if billType.BillCycle == 0 {
+	if billType.BillCycle != 0 {
 		// Check if payment already exists for this bill type and month
 		var existingPayment BillPayment
 		err := s.db.Where("bill_type_id = ? AND year = ? AND month = ? AND user_id = ?",
