@@ -16,6 +16,7 @@ import ExpenseTypeFormPage from './pages/ExpenseTypeFormPage'
 import ExpenseItemsPage from './pages/ExpenseItemsPage'
 import ExpenseItemFormPage from './pages/ExpenseItemFormPage'
 import ReportsPage from './pages/ReportsPage'
+import BatchCreateTypesPage from './pages/BatchCreateTypesPage'
 import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/batch-create-types" element={<BatchCreateTypesPage />} />
                 <Route path="/bill-types" element={<BillTypesPage />} />
                 <Route path="/bill-types/new" element={<BillTypeFormPage />} />
                 <Route path="/bill-types/:id/edit" element={<BillTypeFormPage />} />

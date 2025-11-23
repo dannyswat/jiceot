@@ -294,6 +294,29 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Quick Setup Card */}
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
+                  <PlusIcon className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Quick Setup</h3>
+                  <p className="text-blue-100 text-sm">
+                    Create multiple bill types or expense types at once
+                  </p>
+                </div>
+              </div>
+              <Link
+                to="/batch-create-types"
+                className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
+              >
+                Batch Create Types
+              </Link>
+            </div>
+          </div>
+
           {/* On-demand bills and upcoming bills */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg shadow">
