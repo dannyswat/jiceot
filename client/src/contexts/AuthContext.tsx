@@ -42,6 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           const currentUser = await authAPI.me();
           setUser(currentUser);
         } catch (error) {
+          console.error('Auth check failed:', error);
           // Token is invalid, clear storage
           localStorage.removeItem('token');
           localStorage.removeItem('user');

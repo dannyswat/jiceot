@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { expenseItemAPI, expenseTypeAPI, type ExpenseItem, type ExpenseType } from '../services/api';
+import MonthSelect from '../components/MonthSelect';
+import YearSelect from '../components/YearSelect';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -20,7 +22,7 @@ export default function ExpenseItemsPage() {
   // Filter states
   const [selectedExpenseType, setSelectedExpenseType] = useState<number | undefined>();
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number | undefined>();
+  const [selectedMonth, setSelectedMonth] = useState<number | ''>(new Date().getMonth() + 1);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,7 +52,7 @@ export default function ExpenseItemsPage() {
       const response = await expenseItemAPI.list({
         expense_type_id: selectedExpenseType,
         year: selectedYear,
-        month: selectedMonth,
+        month: selectedMonth === '' ? undefined : selectedMonth,
         limit: itemsPerPage,
         offset,
       });
@@ -111,21 +113,6 @@ export default function ExpenseItemsPage() {
 
   const totalPages = Math.ceil(total / itemsPerPage);
 
-  const months = [
-    { value: 1, label: 'January' },
-    { value: 2, label: 'February' },
-    { value: 3, label: 'March' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'May' },
-    { value: 6, label: 'June' },
-    { value: 7, label: 'July' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'October' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'December' },
-  ];
-
   if (loading && expenseItems.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -172,46 +159,25 @@ export default function ExpenseItemsPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Year
-            </label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+          <YearSelect
+            value={selectedYear}
+            onChange={(year) => setSelectedYear(year as number)}
+            label="Year"
+            yearRange={5}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Month
-            </label>
-            <select
-              value={selectedMonth || ''}
-              onChange={(e) => setSelectedMonth(e.target.value ? Number(e.target.value) : undefined)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Months</option>
-              {months.map((month) => (
-                <option key={month.value} value={month.value}>
-                  {month.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <MonthSelect
+            value={selectedMonth}
+            onChange={(month) => setSelectedMonth(month)}
+            label="Month"
+            includeAllOption={true}
+          />
 
           <div className="flex items-end">
             <button
               onClick={() => {
                 setSelectedExpenseType(undefined);
-                setSelectedMonth(undefined);
+                setSelectedMonth('');
                 setSelectedYear(new Date().getFullYear());
                 setCurrentPage(1);
               }}

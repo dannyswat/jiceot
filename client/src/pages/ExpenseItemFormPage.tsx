@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { expenseItemAPI, expenseTypeAPI, billPaymentAPI, type ExpenseType, type BillPayment, type CreateExpenseItemRequest, type UpdateExpenseItemRequest } from '../services/api';
+import MonthSelect from '../components/MonthSelect';
+import YearSelect from '../components/YearSelect';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function ExpenseItemFormPage() {
@@ -106,21 +108,6 @@ export default function ExpenseItemFormPage() {
     }));
   };
 
-  const months = [
-    { value: 1, label: 'January' },
-    { value: 2, label: 'February' },
-    { value: 3, label: 'March' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'May' },
-    { value: 6, label: 'June' },
-    { value: 7, label: 'July' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'October' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'December' },
-  ];
-
   const formatPreviewAmount = () => {
     if (!formData.amount) return '$0';
     const amount = parseFloat(formData.amount);
@@ -214,45 +201,18 @@ export default function ExpenseItemFormPage() {
 
             {/* Date - Year and Month */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="year" className="block text-sm font-medium text-gray-700 mb-1">
-                  Year *
-                </label>
-                <select
-                  id="year"
-                  name="year"
-                  value={formData.year}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i + 5).map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <YearSelect
+                value={formData.year}
+                onChange={(year) => setFormData(prev => ({ ...prev, year: year as number }))}
+                label="Year *"
+                yearRange={7}
+              />
 
-              <div>
-                <label htmlFor="month" className="block text-sm font-medium text-gray-700 mb-1">
-                  Month *
-                </label>
-                <select
-                  id="month"
-                  name="month"
-                  value={formData.month}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {months.map((month) => (
-                    <option key={month.value} value={month.value}>
-                      {month.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <MonthSelect
+                value={formData.month}
+                onChange={(month) => setFormData(prev => ({ ...prev, month: month as number }))}
+                label="Month *"
+              />
             </div>
 
             {/* Amount */}

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { billPaymentAPI, billTypeAPI, type BillPayment, type BillPaymentParams, type BillType } from '../services/api';
+import MonthSelect from '../components/MonthSelect';
+import YearSelect from '../components/YearSelect';
+import { getMonthName } from '../common/date';
 import { 
   PlusIcon, 
   PencilIcon, 
@@ -19,7 +22,7 @@ export default function BillPaymentsPage() {
   // Filters
   const [filterBillType, setFilterBillType] = useState<number | ''>('');
   const [filterYear, setFilterYear] = useState<number | ''>(new Date().getFullYear());
-  const [filterMonth, setFilterMonth] = useState<number | ''>('');
+  const [filterMonth, setFilterMonth] = useState<number | ''>(new Date().getMonth() + 1);
 
   const loadBillPayments = async (): Promise<void> => {
     try {
@@ -79,19 +82,7 @@ export default function BillPaymentsPage() {
     }).format(num);
   };
 
-  const getMonthName = (month: number): string => {
-    const monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return monthNames[month - 1] ?? '';
-  };
-
   const totalAmount = billPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-
-  // Generate year options (current year ± 5 years)
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
   if (loading) {
     return (
@@ -147,31 +138,22 @@ export default function BillPaymentsPage() {
               ))}
             </select>
 
-            <select
-              value={filterYear}
-              onChange={(e) => setFilterYear(e.target.value ? parseInt(e.target.value) : '')}
-              className="w-full rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
-            >
-              <option value="">All Years</option>
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+            <YearSelect
+              value={filterYear || ''}
+              onChange={(year) => setFilterYear(year === '' ? '' : year)}
+              className="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+              showLabel={false}
+              includeAllOption={true}
+              yearRange={5}
+            />
 
-            <select
-              value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value ? parseInt(e.target.value) : '')}
-              className="w-full rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
-            >
-              <option value="">All Months</option>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                <option key={month} value={month}>
-                  {getMonthName(month)}
-                </option>
-              ))}
-            </select>
+            <MonthSelect
+              value={filterMonth || ''}
+              onChange={(month) => setFilterMonth(month === '' ? '' : month)}
+              className="rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+              showLabel={false}
+              includeAllOption={true}
+            />
           </div>
         </div>
       </div>

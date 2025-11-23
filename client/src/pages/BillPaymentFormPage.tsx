@@ -13,6 +13,8 @@ import {
   type CreateExpenseItemRequest,
   type UpdateExpenseItemRequest
 } from '../services/api';
+import MonthSelect from '../components/MonthSelect';
+import YearSelect from '../components/YearSelect';
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { formatCurrency } from '../common/currency';
 import { getMonthName } from '../common/date';
@@ -244,7 +246,7 @@ export default function BillPaymentFormPage() {
       note: '',
       year: formData.year,
       month: formData.month,
-      bill_payment_id: isEdit ? parseInt(id!) : undefined,
+      bill_payment_id: isEdit ? parseInt(id) : undefined,
     };
     
     setLinkedExpenseItems(prev => [...prev, newExpenseItem as ExpenseItem]);
@@ -289,10 +291,6 @@ export default function BillPaymentFormPage() {
     const expenseTotal = getTotalExpenseAmount();
     return billAmount === 0 || expenseTotal <= billAmount;
   };
-
-  // Generate year options (current year ± 5 years)
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 11 }, (_, i) => currentYear - 5 + i);
 
   if (initialLoading) {
     return (
@@ -370,47 +368,20 @@ export default function BillPaymentFormPage() {
 
             {/* Year and Month */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="year" className="block text-sm font-medium text-gray-700">
-                  Year *
-                </label>
-                <select
-                  id="year"
-                  name="year"
-                  value={formData.year}
-                  onChange={handleInputChange}
-                  disabled={isEdit} // Don't allow changing year when editing
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
-                  required
-                >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <YearSelect
+                value={formData.year}
+                onChange={(year) => setFormData(prev => ({ ...prev, year: year as number }))}
+                label="Year *"
+                disabled={isEdit}
+                yearRange={5}
+              />
 
-              <div>
-                <label htmlFor="month" className="block text-sm font-medium text-gray-700">
-                  Month *
-                </label>
-                <select
-                  id="month"
-                  name="month"
-                  value={formData.month}
-                  onChange={handleInputChange}
-                  disabled={isEdit} // Don't allow changing month when editing
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:bg-gray-100"
-                  required
-                >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                    <option key={month} value={month}>
-                      {getMonthName(month)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <MonthSelect
+                value={formData.month}
+                onChange={(month) => setFormData(prev => ({ ...prev, month: month as number }))}
+                label="Month *"
+                disabled={isEdit}
+              />
             </div>
 
             {isEdit && (

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { expenseItemAPI, billPaymentAPI, expenseTypeAPI, billTypeAPI, type ExpenseItem, type BillPayment, type ExpenseType, type BillType } from '../services/api';
+import MonthSelect from '../components/MonthSelect';
+import YearSelect from '../components/YearSelect';
 import { 
   CalendarIcon,
   CurrencyDollarIcon,
@@ -209,21 +211,6 @@ export default function ReportsPage() {
     };
   };
 
-  const months = [
-    { value: 1, label: 'January' },
-    { value: 2, label: 'February' },
-    { value: 3, label: 'March' },
-    { value: 4, label: 'April' },
-    { value: 5, label: 'May' },
-    { value: 6, label: 'June' },
-    { value: 7, label: 'July' },
-    { value: 8, label: 'August' },
-    { value: 9, label: 'September' },
-    { value: 10, label: 'October' },
-    { value: 11, label: 'November' },
-    { value: 12, label: 'December' },
-  ];
-
   const comparison = getPreviousMonthComparison();
 
   if (loading) {
@@ -269,40 +256,19 @@ export default function ReportsPage() {
       {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Year
-            </label>
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+          <YearSelect
+            value={selectedYear}
+            onChange={(year) => setSelectedYear(year as number)}
+            label="Year"
+            yearRange={5}
+          />
 
           {viewMode === 'monthly' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Month
-              </label>
-              <select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {months.map((month) => (
-                  <option key={month.value} value={month.value}>
-                    {month.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <MonthSelect
+              value={selectedMonth}
+              onChange={(month) => setSelectedMonth(month as number)}
+              label="Month"
+            />
           )}
         </div>
       </div>

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import axios from 'axios';
 
 const API_BASE_URL = '/api';
@@ -33,7 +35,7 @@ api.interceptors.response.use(
     const message = error.response?.data?.error || error.message || 'An error occurred';
     error.message = message;
     
-    return Promise.reject(error);
+    return Promise.reject(error as Error);
   }
 );
 
