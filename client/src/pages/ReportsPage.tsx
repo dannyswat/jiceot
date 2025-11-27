@@ -306,14 +306,17 @@ export default function ReportsPage() {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                  <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
                     <DocumentTextIcon className="h-5 w-5 text-white" />
                   </div>
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-900">Total Transactions</h3>
+                  <h3 className="text-sm font-medium text-gray-900">Unexplained Payment</h3>
                   <p className="text-2xl font-bold text-gray-700">
-                    {monthlyData.expenseItems.length}
+                    {formatAmount(
+                      monthlyData.billPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0) -
+                      monthlyData.expenseItems.filter(item => item.bill_payment_id).reduce((sum, item) => sum + parseFloat(item.amount), 0)
+                    )}
                   </p>
                 </div>
               </div>

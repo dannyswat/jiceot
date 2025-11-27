@@ -210,7 +210,7 @@ export default function BillPaymentsPage() {
                           {payment.bill_type?.name || 'Unknown Bill Type'}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {getMonthName(payment.month)} {payment.year}
+                          {getMonthName(payment.month)} {payment.year} created on {payment.created_at.slice(0, 10)}
                           {payment.note && ` • ${payment.note}`}
                         </p>
                       </div>
