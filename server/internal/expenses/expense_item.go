@@ -10,6 +10,7 @@ import (
 type ExpenseItem struct {
 	ID            uint           `json:"id" gorm:"primaryKey"`
 	BillPaymentID *uint          `json:"bill_payment_id" gorm:"index"` // optional, can be null
+	BillTypeID    *uint          `json:"bill_type_id" gorm:"index"`    // optional, for unbilled expenses associated with a bill type
 	ExpenseTypeID uint           `json:"expense_type_id" gorm:"not null;index"`
 	Year          int            `json:"year" gorm:"not null"`                      // format: YYYY
 	Month         int            `json:"month" gorm:"not null"`                     // format: MM
@@ -23,6 +24,7 @@ type ExpenseItem struct {
 	// Associations
 	ExpenseType ExpenseType `json:"expense_type,omitempty" gorm:"foreignKey:ExpenseTypeID"`
 	BillPayment BillPayment `json:"bill_payment,omitempty" gorm:"foreignKey:BillPaymentID"`
+	BillType    BillType    `json:"bill_type,omitempty" gorm:"foreignKey:BillTypeID"`
 }
 
 // GetAmountAsBigFloat converts the stored string amount to big.Float

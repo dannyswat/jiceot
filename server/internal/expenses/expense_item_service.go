@@ -18,6 +18,7 @@ func NewExpenseItemService(db *gorm.DB) *ExpenseItemService {
 
 type CreateExpenseItemRequest struct {
 	BillPaymentID *uint  `json:"bill_payment_id,omitempty"`
+	BillTypeID    *uint  `json:"bill_type_id,omitempty"`
 	ExpenseTypeID uint   `json:"expense_type_id"`
 	Year          int    `json:"year"`
 	Month         int    `json:"month"`
@@ -27,6 +28,7 @@ type CreateExpenseItemRequest struct {
 
 type UpdateExpenseItemRequest struct {
 	BillPaymentID *uint  `json:"bill_payment_id,omitempty"`
+	BillTypeID    *uint  `json:"bill_type_id,omitempty"`
 	ExpenseTypeID uint   `json:"expense_type_id"`
 	Year          int    `json:"year"`
 	Month         int    `json:"month"`
@@ -89,8 +91,20 @@ func (s *ExpenseItemService) CreateExpenseItem(req CreateExpenseItemRequest, use
 		}
 	}
 
+	// If bill type ID is provided, verify it exists and belongs to user
+	if req.BillTypeID != nil {
+		var billType BillType
+		if err := s.db.Where("id = ? AND user_id = ?", *req.BillTypeID, userID).First(&billType).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("bill type not found")
+			}
+			return nil, fmt.Errorf("failed to verify bill type: %w", err)
+		}
+	}
+
 	expenseItem := &ExpenseItem{
 		BillPaymentID: req.BillPaymentID,
+		BillTypeID:    req.BillTypeID,
 		ExpenseTypeID: req.ExpenseTypeID,
 		Year:          req.Year,
 		Month:         req.Month,
@@ -104,7 +118,7 @@ func (s *ExpenseItemService) CreateExpenseItem(req CreateExpenseItemRequest, use
 	}
 
 	// Load associations
-	if err := s.db.Preload("ExpenseType").Preload("BillPayment").First(expenseItem, expenseItem.ID).Error; err != nil {
+	if err := s.db.Preload("ExpenseType").Preload("BillPayment").Preload("BillType").First(expenseItem, expenseItem.ID).Error; err != nil {
 		return nil, fmt.Errorf("failed to load expense item with associations: %w", err)
 	}
 
@@ -113,7 +127,7 @@ func (s *ExpenseItemService) CreateExpenseItem(req CreateExpenseItemRequest, use
 
 func (s *ExpenseItemService) GetExpenseItem(id uint, userID uint) (*ExpenseItem, error) {
 	var expenseItem ExpenseItem
-	if err := s.db.Preload("ExpenseType").Preload("BillPayment").Where("id = ? AND user_id = ?", id, userID).First(&expenseItem).Error; err != nil {
+	if err := s.db.Preload("ExpenseType").Preload("BillPayment").Preload("BillType").Where("id = ? AND user_id = ?", id, userID).First(&expenseItem).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("expense item not found")
 		}
@@ -181,8 +195,20 @@ func (s *ExpenseItemService) UpdateExpenseItem(id uint, req UpdateExpenseItemReq
 		}
 	}
 
+	// If bill type ID is provided, verify it exists and belongs to user
+	if req.BillTypeID != nil {
+		var billType BillType
+		if err := s.db.Where("id = ? AND user_id = ?", *req.BillTypeID, userID).First(&billType).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errors.New("bill type not found")
+			}
+			return nil, fmt.Errorf("failed to verify bill type: %w", err)
+		}
+	}
+
 	// Update fields
 	expenseItem.BillPaymentID = req.BillPaymentID
+	expenseItem.BillTypeID = req.BillTypeID
 	expenseItem.ExpenseTypeID = req.ExpenseTypeID
 	expenseItem.Year = req.Year
 	expenseItem.Month = req.Month
@@ -194,7 +220,7 @@ func (s *ExpenseItemService) UpdateExpenseItem(id uint, req UpdateExpenseItemReq
 	}
 
 	// Load associations
-	if err := s.db.Preload("ExpenseType").Preload("BillPayment").First(&expenseItem, expenseItem.ID).Error; err != nil {
+	if err := s.db.Preload("ExpenseType").Preload("BillPayment").Preload("BillType").First(&expenseItem, expenseItem.ID).Error; err != nil {
 		return nil, fmt.Errorf("failed to load expense item with associations: %w", err)
 	}
 
@@ -217,7 +243,7 @@ func (s *ExpenseItemService) DeleteExpenseItem(id uint, userID uint) error {
 	return nil
 }
 
-func (s *ExpenseItemService) ListExpenseItems(userID uint, expenseTypeID *uint, billPaymentID *uint, year *int, month *int, limit, offset int) (*ExpenseItemListResponse, error) {
+func (s *ExpenseItemService) ListExpenseItems(userID uint, expenseTypeID *uint, billPaymentID *uint, billTypeID *uint, unbilledOnly bool, year *int, month *int, limit, offset int) (*ExpenseItemListResponse, error) {
 	query := s.db.Where("user_id = ?", userID)
 
 	// Apply filters
@@ -226,6 +252,12 @@ func (s *ExpenseItemService) ListExpenseItems(userID uint, expenseTypeID *uint, 
 	}
 	if billPaymentID != nil {
 		query = query.Where("bill_payment_id = ?", *billPaymentID)
+	}
+	if billTypeID != nil {
+		query = query.Where("bill_type_id = ?", *billTypeID)
+	}
+	if unbilledOnly {
+		query = query.Where("bill_payment_id IS NULL AND bill_type_id IS NOT NULL")
 	}
 	if year != nil {
 		query = query.Where("year = ?", *year)
@@ -242,7 +274,7 @@ func (s *ExpenseItemService) ListExpenseItems(userID uint, expenseTypeID *uint, 
 
 	// Get expense items with pagination and associations
 	var expenseItems []ExpenseItem
-	if err := query.Preload("ExpenseType").Preload("BillPayment").
+	if err := query.Preload("ExpenseType").Preload("BillPayment").Preload("BillType").
 		Order("created_at DESC").
 		Limit(limit).Offset(offset).
 		Find(&expenseItems).Error; err != nil {
@@ -258,7 +290,7 @@ func (s *ExpenseItemService) ListExpenseItems(userID uint, expenseTypeID *uint, 
 // GetExpenseItemsByMonth returns expense items for a specific month with summary data
 func (s *ExpenseItemService) GetExpenseItemsByMonth(userID uint, year int, month int) ([]ExpenseItem, *big.Float, error) {
 	var expenseItems []ExpenseItem
-	if err := s.db.Preload("ExpenseType").Preload("BillPayment").
+	if err := s.db.Preload("ExpenseType").Preload("BillPayment").Preload("BillType").
 		Where("user_id = ? AND year = ? AND month = ?", userID, year, month).
 		Order("created_at DESC").
 		Find(&expenseItems).Error; err != nil {

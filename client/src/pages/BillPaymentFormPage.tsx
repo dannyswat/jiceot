@@ -47,6 +47,7 @@ export default function BillPaymentFormPage() {
   const [billTypes, setBillTypes] = useState<BillType[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [linkedExpenseItems, setLinkedExpenseItems] = useState<ExpenseItem[]>([]);
+  const [unbilledExpenseItems, setUnbilledExpenseItems] = useState<ExpenseItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [initialLoading, setInitialLoading] = useState(isEdit);
@@ -75,6 +76,30 @@ export default function BillPaymentFormPage() {
 
     void loadData();
   }, [isEdit, formData.bill_type_id]);
+
+  // Load unbilled expenses when bill type changes
+  useEffect(() => {
+    if (formData.bill_type_id > 0) {
+      const loadUnbilledExpenses = async (): Promise<void> => {
+        try {
+          const response = await expenseItemAPI.list({ 
+            bill_type_id: formData.bill_type_id,
+            unbilled_only: true 
+          });
+          // Filter out any already linked items
+          const linkedIds = new Set(linkedExpenseItems.map(item => item.id));
+          setUnbilledExpenseItems(
+            (response.expense_items || []).filter(item => !linkedIds.has(item.id))
+          );
+        } catch (err) {
+          console.error('Failed to load unbilled expenses:', err);
+        }
+      };
+      void loadUnbilledExpenses();
+    } else {
+      setUnbilledExpenseItems([]);
+    }
+  }, [formData.bill_type_id, linkedExpenseItems]);
 
   // Load existing bill payment and linked expense items for editing
   useEffect(() => {
@@ -250,6 +275,12 @@ export default function BillPaymentFormPage() {
     };
     
     setLinkedExpenseItems(prev => [...prev, newExpenseItem as ExpenseItem]);
+  };
+
+  const linkUnbilledExpense = (expenseItem: ExpenseItem) => {
+    // Move the unbilled expense to the linked list
+    setLinkedExpenseItems(prev => [...prev, expenseItem]);
+    // Remove from unbilled list (will be updated by the useEffect)
   };
 
   const updateExpenseItem = (index: number, field: keyof ExpenseItem, value: string | number) => {
@@ -550,6 +581,46 @@ export default function BillPaymentFormPage() {
                   </div>
                 )}
               </div>
+
+              {/* Unbilled Expenses Section */}
+              {unbilledExpenseItems.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <label className="block text-sm font-medium text-orange-700">
+                        Unbilled Expenses for This Bill Type
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Link these existing expenses to this payment
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {unbilledExpenseItems.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-lg">{item.expense_type?.icon}</span>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {item.expense_type?.name} - {formatCurrency(item.amount)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {item.year}/{item.month} {item.note && `• ${item.note}`}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => linkUnbilledExpense(item)}
+                          className="px-3 py-1.5 text-xs font-medium text-orange-700 bg-orange-100 hover:bg-orange-200 rounded-md"
+                        >
+                          Link to Payment
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Submit Button */}

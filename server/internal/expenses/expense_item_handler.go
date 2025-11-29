@@ -163,6 +163,16 @@ func (h *ExpenseItemHandler) ListExpenseItems(c echo.Context) error {
 		}
 	}
 
+	var billTypeID *uint
+	if btID := c.QueryParam("bill_type_id"); btID != "" {
+		if id, err := strconv.ParseUint(btID, 10, 32); err == nil {
+			uid := uint(id)
+			billTypeID = &uid
+		}
+	}
+
+	unbilledOnly := c.QueryParam("unbilled_only") == "true"
+
 	var year *int
 	if y := c.QueryParam("year"); y != "" {
 		if yr, err := strconv.Atoi(y); err == nil {
@@ -192,7 +202,7 @@ func (h *ExpenseItemHandler) ListExpenseItems(c echo.Context) error {
 		}
 	}
 
-	response, err := h.service.ListExpenseItems(userID, expenseTypeID, billPaymentID, year, month, limit, offset)
+	response, err := h.service.ListExpenseItems(userID, expenseTypeID, billPaymentID, billTypeID, unbilledOnly, year, month, limit, offset)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),

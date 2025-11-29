@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { expenseItemAPI, expenseTypeAPI, billPaymentAPI, type ExpenseType, type BillPayment, type CreateExpenseItemRequest, type UpdateExpenseItemRequest } from '../services/api';
+import { expenseItemAPI, expenseTypeAPI, billPaymentAPI, billTypeAPI, type ExpenseType, type BillPayment, type BillType, type CreateExpenseItemRequest, type UpdateExpenseItemRequest } from '../services/api';
 import MonthSelect from '../components/MonthSelect';
 import YearSelect from '../components/YearSelect';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -19,12 +19,14 @@ export default function ExpenseItemFormPage() {
   });
 
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
+  const [billTypes, setBillTypes] = useState<BillType[]>([]);
   const [billPayments, setBillPayments] = useState<BillPayment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadExpenseTypes();
+    loadBillTypes();
     loadBillPayments();
     if (isEditing && id) {
       loadExpenseItem(Number(id));
@@ -37,6 +39,15 @@ export default function ExpenseItemFormPage() {
       setExpenseTypes(response.expense_types);
     } catch (err) {
       console.error('Failed to load expense types:', err);
+    }
+  };
+
+  const loadBillTypes = async () => {
+    try {
+      const response = await billTypeAPI.list();
+      setBillTypes(response.bill_types.filter(bt => !bt.stopped));
+    } catch (err) {
+      console.error('Failed to load bill types:', err);
     }
   };
 
@@ -54,6 +65,7 @@ export default function ExpenseItemFormPage() {
       const item = await expenseItemAPI.get(expenseItemId);
       setFormData({
         bill_payment_id: item.bill_payment_id ?? 0,
+        bill_type_id: item.bill_type_id,
         expense_type_id: item.expense_type_id,
         year: item.year,
         month: item.month,
@@ -90,8 +102,12 @@ export default function ExpenseItemFormPage() {
       }
 
       navigate('/expense-items');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to save expense item');
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message || 'Failed to save expense item');
+      } else {
+        setError('Failed to save expense item');
+      }
       console.error('Failed to save expense item:', err);
     } finally {
       setLoading(false);
@@ -102,7 +118,7 @@ export default function ExpenseItemFormPage() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'expense_type_id' || name === 'bill_payment_id' || name === 'year' || name === 'month' 
+      [name]: name === 'expense_type_id' || name === 'bill_payment_id' || name === 'bill_type_id' || name === 'year' || name === 'month' 
         ? (value ? Number(value) : undefined) 
         : value
     }));
@@ -120,6 +136,10 @@ export default function ExpenseItemFormPage() {
 
   const getSelectedExpenseType = () => {
     return expenseTypes.find(type => type.id === formData.expense_type_id);
+  };
+
+  const getSelectedBillType = () => {
+    return billTypes.find(type => type.id === formData.bill_type_id);
   };
 
   const getSelectedBillPayment = () => {
@@ -178,6 +198,31 @@ export default function ExpenseItemFormPage() {
               </select>
             </div>
 
+            {/* Bill Type (Optional - for unbilled expenses) */}
+            <div>
+              <label htmlFor="bill_type_id" className="block text-sm font-medium text-gray-700 mb-1">
+                Related Bill Type (Optional)
+              </label>
+              <select
+                id="bill_type_id"
+                name="bill_type_id"
+                value={formData.bill_type_id || ''}
+                onChange={handleInputChange}
+                disabled={!!formData.bill_payment_id}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">No related bill type</option>
+                {billTypes.map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.icon} {type.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Mark this as an unbilled expense for a specific bill type. Can be linked to a payment later.
+              </p>
+            </div>
+
             {/* Bill Payment (Optional) */}
             <div>
               <label htmlFor="bill_payment_id" className="block text-sm font-medium text-gray-700 mb-1">
@@ -187,7 +232,15 @@ export default function ExpenseItemFormPage() {
                 id="bill_payment_id"
                 name="bill_payment_id"
                 value={formData.bill_payment_id || ''}
-                onChange={handleInputChange}
+                onChange={(e) => {
+                  const value = e.target.value ? Number(e.target.value) : undefined;
+                  setFormData(prev => ({
+                    ...prev,
+                    bill_payment_id: value,
+                    // Clear bill_type_id if a bill payment is selected
+                    bill_type_id: value ? undefined : prev.bill_type_id
+                  }));
+                }}
                 className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">No related bill payment</option>
@@ -319,10 +372,23 @@ export default function ExpenseItemFormPage() {
             {/* Bill Payment Preview */}
             {formData.bill_payment_id && getSelectedBillPayment() && (
               <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span className="text-sm font-medium text-gray-700">Related Bill:</span>
+                <span className="text-sm font-medium text-gray-700">Related Bill Payment:</span>
                 <span className="text-sm text-gray-900">
                   {getSelectedBillPayment()?.bill_type?.name}
                 </span>
+              </div>
+            )}
+
+            {/* Bill Type Preview (for unbilled) */}
+            {!formData.bill_payment_id && formData.bill_type_id && getSelectedBillType() && (
+              <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg">
+                <span className="text-sm font-medium text-gray-700">Unbilled for:</span>
+                <div className="flex items-center">
+                  <span className="text-lg mr-2">{getSelectedBillType()?.icon}</span>
+                  <span className="text-sm font-medium text-orange-600">
+                    {getSelectedBillType()?.name}
+                  </span>
+                </div>
               </div>
             )}
 

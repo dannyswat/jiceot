@@ -178,6 +178,7 @@ export interface ExpenseTypeListResponse {
 export interface ExpenseItem {
   id: number;
   bill_payment_id?: number;
+  bill_type_id?: number;
   expense_type_id: number;
   year: number;
   month: number;
@@ -188,10 +189,12 @@ export interface ExpenseItem {
   updated_at: string;
   expense_type?: ExpenseType;
   bill_payment?: BillPayment;
+  bill_type?: BillType;
 }
 
 export interface CreateExpenseItemRequest {
   bill_payment_id?: number;
+  bill_type_id?: number;
   expense_type_id: number;
   year: number;
   month: number;
@@ -201,6 +204,7 @@ export interface CreateExpenseItemRequest {
 
 export interface UpdateExpenseItemRequest {
   bill_payment_id?: number;
+  bill_type_id?: number;
   expense_type_id: number;
   year: number;
   month: number;
@@ -395,6 +399,8 @@ export const expenseTypeAPI = {
 export interface ExpenseItemParams {
   expense_type_id?: number;
   bill_payment_id?: number;
+  bill_type_id?: number;
+  unbilled_only?: boolean;
   year?: number;
   month?: number;
   limit?: number;
@@ -407,6 +413,8 @@ export const expenseItemAPI = {
     const searchParams = new URLSearchParams();
     if (params?.expense_type_id) searchParams.append('expense_type_id', params.expense_type_id.toString());
     if (params?.bill_payment_id) searchParams.append('bill_payment_id', params.bill_payment_id.toString());
+    if (params?.bill_type_id) searchParams.append('bill_type_id', params.bill_type_id.toString());
+    if (params?.unbilled_only) searchParams.append('unbilled_only', 'true');
     if (params?.year) searchParams.append('year', params.year.toString());
     if (params?.month) searchParams.append('month', params.month.toString());
     if (params?.limit) searchParams.append('limit', params.limit.toString());
