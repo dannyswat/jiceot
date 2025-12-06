@@ -16,7 +16,7 @@ export default function NotificationSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [triggeringReminder, setTriggeringReminder] = useState(false);
-  const [_, setSettings] = useState<UserNotificationSetting | null>(null);
+  const [, setSettings] = useState<UserNotificationSetting | null>(null);
   const [formData, setFormData] = useState<CreateOrUpdateNotificationSettingRequest>({
     bark_api_url: '',
     bark_enabled: false,
@@ -40,11 +40,11 @@ export default function NotificationSettingsPage() {
         remind_hour: data.remind_hour,
         remind_days_before: data.remind_days_before
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to load notification settings:', error);
       setMessage({
         type: 'error',
-        text: error.message || 'Failed to load notification settings'
+        text: error instanceof Error ? error.message : 'Failed to load notification settings'
       });
     } finally {
       setLoading(false);
@@ -63,11 +63,11 @@ export default function NotificationSettingsPage() {
         type: 'success',
         text: 'Notification settings saved successfully!'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to save notification settings:', error);
       setMessage({
         type: 'error',
-        text: error.message || 'Failed to save notification settings'
+        text: error instanceof Error ? error.message : 'Failed to save notification settings'
       });
     } finally {
       setSaving(false);
@@ -92,11 +92,11 @@ export default function NotificationSettingsPage() {
         type: 'success',
         text: 'Test notification sent successfully! Check your Bark app.'
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to send test notification:', error);
       setMessage({
         type: 'error',
-        text: error.message || 'Failed to send test notification'
+        text: error instanceof Error ? error.message : 'Failed to send test notification'
       });
     } finally {
       setTesting(false);
@@ -121,11 +121,11 @@ export default function NotificationSettingsPage() {
         type: result.sent ? 'success' : 'info',
         text: result.message
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to trigger manual reminder:', error);
       setMessage({
         type: 'error',
-        text: error.message || 'Failed to trigger manual reminder'
+        text: error instanceof Error ? error.message : 'Failed to trigger manual reminder'
       });
     } finally {
       setTriggeringReminder(false);

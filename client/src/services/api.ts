@@ -509,4 +509,118 @@ export const notificationSettingsApi = {
   },
 };
 
+// Dashboard API types
+export interface UpcomingBill {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  fixed_amount: string;
+  next_due_date: string;
+  days_until_due: number;
+}
+
+export interface BillTypeInfo {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  fixed_amount: string;
+}
+
+export interface DashboardStats {
+  total_expenses: number;
+  bills_paid: number;
+  pending_bills: number;
+  categories: number;
+  upcoming_bills: UpcomingBill[];
+  on_demand_bills: BillTypeInfo[];
+}
+
+export interface DueBill {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  fixed_amount: string;
+  bill_day: number;
+  bill_cycle: number;
+  next_due_date: string;
+  days_until_due: number;
+  status: 'overdue' | 'due_soon' | 'upcoming';
+  has_current_payment: boolean;
+  last_payment_year?: number;
+  last_payment_month?: number;
+  last_payment_amount?: string;
+}
+
+export interface DueBillsResponse {
+  due_bills: DueBill[];
+  year: number;
+  month: number;
+}
+
+export const dashboardAPI = {
+  // Get dashboard stats
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await api.get<DashboardStats>('/dashboard/stats');
+    return response.data;
+  },
+
+  // Get due bills for a specific month
+  getDueBills: async (year?: number, month?: number): Promise<DueBillsResponse> => {
+    const searchParams = new URLSearchParams();
+    if (year) searchParams.append('year', year.toString());
+    if (month) searchParams.append('month', month.toString());
+    const response = await api.get<DueBillsResponse>(`/dashboard/due-bills?${searchParams.toString()}`);
+    return response.data;
+  },
+};
+
+// Reports API types
+export interface TypeBreakdownItem {
+  amount: number;
+  count: number;
+  color: string;
+  icon: string;
+}
+
+export interface MonthlyReport {
+  year: number;
+  month: number;
+  total_amount: number;
+  expense_amount: number;
+  bill_amount: number;
+  unexplained_payment: number;
+  expense_type_breakdown: Record<string, TypeBreakdownItem>;
+  bill_type_breakdown: Record<string, TypeBreakdownItem>;
+}
+
+export interface YearlySummary {
+  total_amount: number;
+  total_expense_amount: number;
+  total_bill_amount: number;
+  average_monthly: number;
+}
+
+export interface YearlyReport {
+  year: number;
+  months: MonthlyReport[];
+  summary: YearlySummary;
+}
+
+export const reportsAPI = {
+  // Get monthly report
+  getMonthly: async (year: number, month: number): Promise<MonthlyReport> => {
+    const response = await api.get<MonthlyReport>(`/reports/monthly?year=${year}&month=${month}`);
+    return response.data;
+  },
+
+  // Get yearly report
+  getYearly: async (year: number): Promise<YearlyReport> => {
+    const response = await api.get<YearlyReport>(`/reports/yearly?year=${year}`);
+    return response.data;
+  },
+};
+
 export default api;

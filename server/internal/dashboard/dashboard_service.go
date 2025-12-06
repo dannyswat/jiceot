@@ -1,0 +1,390 @@
+package dashboard
+
+import (
+	"fmt"
+	"time"
+
+	"dannyswat/jiceot/internal/expenses"
+
+	"gorm.io/gorm"
+)
+
+type DashboardService struct {
+	db *gorm.DB
+}
+
+type DashboardStats struct {
+	TotalExpenses float64        `json:"total_expenses"`
+	BillsPaid     int            `json:"bills_paid"`
+	PendingBills  int            `json:"pending_bills"`
+	Categories    int            `json:"categories"`
+	UpcomingBills []UpcomingBill `json:"upcoming_bills"`
+	OnDemandBills []BillTypeInfo `json:"on_demand_bills"`
+}
+
+type UpcomingBill struct {
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	Icon         string `json:"icon"`
+	Color        string `json:"color"`
+	FixedAmount  string `json:"fixed_amount"`
+	NextDueDate  string `json:"next_due_date"`
+	DaysUntilDue int    `json:"days_until_due"`
+}
+
+type BillTypeInfo struct {
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Icon        string `json:"icon"`
+	Color       string `json:"color"`
+	FixedAmount string `json:"fixed_amount"`
+}
+
+type DueBill struct {
+	ID                uint    `json:"id"`
+	Name              string  `json:"name"`
+	Icon              string  `json:"icon"`
+	Color             string  `json:"color"`
+	FixedAmount       string  `json:"fixed_amount"`
+	BillDay           int     `json:"bill_day"`
+	BillCycle         int     `json:"bill_cycle"`
+	NextDueDate       string  `json:"next_due_date"`
+	DaysUntilDue      int     `json:"days_until_due"`
+	Status            string  `json:"status"` // "overdue", "due_soon", "upcoming"
+	HasCurrentPayment bool    `json:"has_current_payment"`
+	LastPaymentYear   *int    `json:"last_payment_year,omitempty"`
+	LastPaymentMonth  *int    `json:"last_payment_month,omitempty"`
+	LastPaymentAmount *string `json:"last_payment_amount,omitempty"`
+}
+
+type DueBillsResponse struct {
+	DueBills []DueBill `json:"due_bills"`
+	Year     int       `json:"year"`
+	Month    int       `json:"month"`
+}
+
+func NewDashboardService(db *gorm.DB) *DashboardService {
+	return &DashboardService{db: db}
+}
+
+// GetDashboardStats returns dashboard statistics for the current month
+func (s *DashboardService) GetDashboardStats(userID uint) (*DashboardStats, error) {
+	now := time.Now()
+	currentYear := now.Year()
+	currentMonth := int(now.Month())
+
+	// Get current month bill payments
+	var billPayments []expenses.BillPayment
+	if err := s.db.Where("user_id = ? AND year = ? AND month = ?", userID, currentYear, currentMonth).
+		Find(&billPayments).Error; err != nil {
+		return nil, err
+	}
+
+	// Get current month expense items (excluding those linked to bill payments)
+	var expenseItems []expenses.ExpenseItem
+	if err := s.db.Where("user_id = ? AND year = ? AND month = ? AND bill_payment_id IS NULL", userID, currentYear, currentMonth).
+		Find(&expenseItems).Error; err != nil {
+		return nil, err
+	}
+
+	// Get all bill types for upcoming bills calculation
+	var billTypes []expenses.BillType
+	if err := s.db.Where("user_id = ?", userID).Find(&billTypes).Error; err != nil {
+		return nil, err
+	}
+
+	// Get all bill payments for due date calculation
+	var allPayments []expenses.BillPayment
+	if err := s.db.Where("user_id = ?", userID).Find(&allPayments).Error; err != nil {
+		return nil, err
+	}
+
+	// Get expense types count
+	var categoryCount int64
+	if err := s.db.Model(&expenses.ExpenseType{}).Where("user_id = ?", userID).Count(&categoryCount).Error; err != nil {
+		return nil, err
+	}
+
+	// Calculate totals
+	var totalExpenseAmount float64
+	for _, item := range expenseItems {
+		amount, _ := parseAmount(item.Amount)
+		totalExpenseAmount += amount
+	}
+
+	var totalBillAmount float64
+	for _, payment := range billPayments {
+		amount, _ := parseAmount(payment.Amount)
+		totalBillAmount += amount
+	}
+
+	// Get upcoming bills
+	upcomingBills := s.calculateUpcomingBills(billTypes, allPayments, currentYear, currentMonth)
+
+	// Get on-demand bills
+	var onDemandBills []BillTypeInfo
+	for _, bt := range billTypes {
+		if bt.BillCycle == 0 && !bt.Stopped {
+			onDemandBills = append(onDemandBills, BillTypeInfo{
+				ID:          bt.ID,
+				Name:        bt.Name,
+				Icon:        bt.Icon,
+				Color:       bt.Color,
+				FixedAmount: bt.FixedAmount,
+			})
+		}
+	}
+
+	return &DashboardStats{
+		TotalExpenses: totalExpenseAmount + totalBillAmount,
+		BillsPaid:     len(billPayments),
+		PendingBills:  len(upcomingBills),
+		Categories:    int(categoryCount),
+		UpcomingBills: upcomingBills,
+		OnDemandBills: onDemandBills,
+	}, nil
+}
+
+func (s *DashboardService) calculateUpcomingBills(billTypes []expenses.BillType, allPayments []expenses.BillPayment, currentYear int, currentMonth int) []UpcomingBill {
+	now := time.Now()
+	var upcomingBills []UpcomingBill
+
+	for _, bt := range billTypes {
+		if bt.Stopped || bt.BillCycle <= 0 {
+			continue
+		}
+
+		// Find last payment for this bill type
+		var lastPayment *expenses.BillPayment
+		for i := range allPayments {
+			if allPayments[i].BillTypeID == bt.ID {
+				if lastPayment == nil || (allPayments[i].Year*12+allPayments[i].Month > lastPayment.Year*12+lastPayment.Month) {
+					lastPayment = &allPayments[i]
+				}
+			}
+		}
+
+		// Calculate next due date
+		nextDueDate := CalculateNextDueDateFromLastPayment(bt, lastPayment, currentYear, currentMonth)
+		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+
+		// Check for current month payment
+		hasCurrentPayment := false
+		for _, p := range allPayments {
+			if p.BillTypeID == bt.ID && p.Year == currentYear && p.Month == currentMonth {
+				hasCurrentPayment = true
+				break
+			}
+		}
+
+		// Determine if bill is due in or before the current month
+		nextDueDateMonth := int(nextDueDate.Month())
+		nextDueDateYear := nextDueDate.Year()
+
+		// Convert to comparable format (year*12 + month)
+		currentPeriod := currentYear*12 + currentMonth
+		nextDuePeriod := nextDueDateYear*12 + nextDueDateMonth
+
+		// Bill is due if the next due date is in or before the current month
+		isDueInOrBeforeCurrentMonth := nextDuePeriod <= currentPeriod
+
+		// isPaid means either:
+		// 1. There's already a payment for the current month, OR
+		// 2. The next due date is after the current month (not due yet)
+		isPaid := hasCurrentPayment || !isDueInOrBeforeCurrentMonth
+
+		// Show bills that are not paid and have upcoming due dates (not overdue)
+		if !isPaid && daysUntilDue >= 0 {
+			upcomingBills = append(upcomingBills, UpcomingBill{
+				ID:           bt.ID,
+				Name:         bt.Name,
+				Icon:         bt.Icon,
+				Color:        bt.Color,
+				FixedAmount:  bt.FixedAmount,
+				NextDueDate:  nextDueDate.Format("2006-01-02"),
+				DaysUntilDue: daysUntilDue,
+			})
+		}
+	}
+
+	// Sort by days until due and limit to 5
+	sortUpcomingBills(upcomingBills)
+	if len(upcomingBills) > 5 {
+		upcomingBills = upcomingBills[:5]
+	}
+
+	return upcomingBills
+}
+
+// CalculateNextDueDateFromLastPayment calculates the next due date based on last payment and bill cycle
+// This is exported so it can be reused by other services
+func CalculateNextDueDateFromLastPayment(billType expenses.BillType, lastPayment *expenses.BillPayment, currentYear int, currentMonth int) time.Time {
+	if lastPayment == nil {
+		if billType.BillDay == 0 {
+			// No specific day, use end of month
+			return time.Date(currentYear, time.Month(currentMonth+1), 0, 0, 0, 0, 0, time.Local)
+		}
+		return time.Date(currentYear, time.Month(currentMonth), billType.BillDay, 0, 0, 0, 0, time.Local)
+	}
+
+	// Calculate next due date based on last payment + bill cycle
+	nextDueYear := lastPayment.Year
+	nextDueMonth := lastPayment.Month + billType.BillCycle
+
+	// Handle year overflow
+	for nextDueMonth > 12 {
+		nextDueYear++
+		nextDueMonth -= 12
+	}
+
+	if billType.BillDay == 0 {
+		// No specific day, use end of month
+		return time.Date(nextDueYear, time.Month(nextDueMonth+1), 0, 0, 0, 0, 0, time.Local)
+	}
+
+	return time.Date(nextDueYear, time.Month(nextDueMonth), billType.BillDay, 0, 0, 0, 0, time.Local)
+}
+
+func sortUpcomingBills(bills []UpcomingBill) {
+	// Simple bubble sort for small arrays
+	for i := 0; i < len(bills)-1; i++ {
+		for j := 0; j < len(bills)-i-1; j++ {
+			if bills[j].DaysUntilDue > bills[j+1].DaysUntilDue {
+				bills[j], bills[j+1] = bills[j+1], bills[j]
+			}
+		}
+	}
+}
+
+func parseAmount(amount string) (float64, error) {
+	if amount == "" {
+		return 0, nil
+	}
+	var result float64
+	_, err := fmt.Sscanf(amount, "%f", &result)
+	return result, err
+}
+
+// GetDueBills returns all due bills for a specific month
+func (s *DashboardService) GetDueBills(userID uint, year, month int) (*DueBillsResponse, error) {
+	now := time.Now()
+
+	// Get all bill types
+	var billTypes []expenses.BillType
+	if err := s.db.Where("user_id = ?", userID).Find(&billTypes).Error; err != nil {
+		return nil, err
+	}
+
+	// Get all bill payments
+	var allPayments []expenses.BillPayment
+	if err := s.db.Where("user_id = ?", userID).Find(&allPayments).Error; err != nil {
+		return nil, err
+	}
+
+	var dueBills []DueBill
+
+	for _, bt := range billTypes {
+		if bt.Stopped || bt.BillCycle <= 0 {
+			continue
+		}
+
+		// Find last payment for this bill type
+		var lastPayment *expenses.BillPayment
+		for i := range allPayments {
+			if allPayments[i].BillTypeID == bt.ID {
+				if lastPayment == nil || (allPayments[i].Year*12+allPayments[i].Month > lastPayment.Year*12+lastPayment.Month) {
+					lastPayment = &allPayments[i]
+				}
+			}
+		}
+
+		// Calculate next due date
+		nextDueDate := CalculateNextDueDateFromLastPayment(bt, lastPayment, year, month)
+		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+
+		// Check for current month payment
+		hasCurrentPayment := false
+		for _, p := range allPayments {
+			if p.BillTypeID == bt.ID && p.Year == year && p.Month == month {
+				hasCurrentPayment = true
+				break
+			}
+		}
+
+		// Determine if bill is due in or before the selected month
+		nextDueDateMonth := int(nextDueDate.Month())
+		nextDueDateYear := nextDueDate.Year()
+
+		// Convert to comparable format (year*12 + month)
+		selectedPeriod := year*12 + month
+		nextDuePeriod := nextDueDateYear*12 + nextDueDateMonth
+
+		// Bill is due if the next due date is in or before the selected month
+		isDueInOrBeforeSelectedMonth := nextDuePeriod <= selectedPeriod
+
+		// isPaid means either:
+		// 1. There's already a payment for the selected month, OR
+		// 2. The next due date is after the selected month (not due yet)
+		isPaid := hasCurrentPayment || !isDueInOrBeforeSelectedMonth
+
+		// Determine status
+		var status string
+		if hasCurrentPayment {
+			// Actually paid for this month
+			status = "upcoming"
+		} else if !isDueInOrBeforeSelectedMonth {
+			// Not due yet in this month
+			status = "upcoming"
+		} else if daysUntilDue < 0 {
+			status = "overdue"
+		} else if daysUntilDue <= 7 {
+			status = "due_soon"
+		} else {
+			status = "upcoming"
+		}
+
+		dueBill := DueBill{
+			ID:                bt.ID,
+			Name:              bt.Name,
+			Icon:              bt.Icon,
+			Color:             bt.Color,
+			FixedAmount:       bt.FixedAmount,
+			BillDay:           bt.BillDay,
+			BillCycle:         bt.BillCycle,
+			NextDueDate:       nextDueDate.Format("2006-01-02"),
+			DaysUntilDue:      daysUntilDue,
+			Status:            status,
+			HasCurrentPayment: isPaid,
+		}
+
+		if lastPayment != nil {
+			dueBill.LastPaymentYear = &lastPayment.Year
+			dueBill.LastPaymentMonth = &lastPayment.Month
+			dueBill.LastPaymentAmount = &lastPayment.Amount
+		}
+
+		dueBills = append(dueBills, dueBill)
+	}
+
+	// Sort by priority: overdue first, then due soon, then by due date
+	sortDueBills(dueBills)
+
+	return &DueBillsResponse{
+		DueBills: dueBills,
+		Year:     year,
+		Month:    month,
+	}, nil
+}
+
+func sortDueBills(bills []DueBill) {
+	statusPriority := map[string]int{"overdue": 0, "due_soon": 1, "upcoming": 2}
+	for i := 0; i < len(bills)-1; i++ {
+		for j := 0; j < len(bills)-i-1; j++ {
+			if statusPriority[bills[j].Status] > statusPriority[bills[j+1].Status] ||
+				(statusPriority[bills[j].Status] == statusPriority[bills[j+1].Status] &&
+					bills[j].DaysUntilDue > bills[j+1].DaysUntilDue) {
+				bills[j], bills[j+1] = bills[j+1], bills[j]
+			}
+		}
+	}
+}

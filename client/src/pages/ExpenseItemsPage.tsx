@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { expenseItemAPI, expenseTypeAPI, type ExpenseItem, type ExpenseType } from '../services/api';
 import MonthSelect from '../components/MonthSelect';
@@ -28,14 +28,6 @@ export default function ExpenseItemsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
 
-  useEffect(() => {
-    loadExpenseTypes();
-  }, []);
-
-  useEffect(() => {
-    loadExpenseItems();
-  }, [selectedExpenseType, selectedYear, selectedMonth, currentPage]);
-
   const loadExpenseTypes = async () => {
     try {
       const response = await expenseTypeAPI.list();
@@ -45,7 +37,7 @@ export default function ExpenseItemsPage() {
     }
   };
 
-  const loadExpenseItems = async () => {
+  const loadExpenseItems = useCallback(async () => {
     try {
       setLoading(true);
       const offset = (currentPage - 1) * itemsPerPage;
@@ -66,7 +58,15 @@ export default function ExpenseItemsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedExpenseType, selectedYear, selectedMonth, currentPage]);
+
+  useEffect(() => {
+    loadExpenseTypes();
+  }, []);
+
+  useEffect(() => {
+    loadExpenseItems();
+  }, [loadExpenseItems]);
 
   const handleDelete = async (id: number) => {
     if (!confirm('Are you sure you want to delete this expense item?')) {

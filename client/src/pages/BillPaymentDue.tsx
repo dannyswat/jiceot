@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { billTypeAPI, billPaymentAPI, type BillType, type BillPayment } from '../services/api';
+import { dashboardAPI, type DueBill } from '../services/api';
 import MonthSelect from '../components/MonthSelect';
 import YearSelect from '../components/YearSelect';
 import { 
@@ -12,155 +12,50 @@ import {
   PlusIcon
 } from '@heroicons/react/24/outline';
 
-interface DueBillType extends BillType {
-  next_due_date: Date;
-  days_until_due: number;
-  status: 'overdue' | 'due_soon' | 'upcoming';
-  last_payment?: BillPayment;
-  has_current_payment: boolean;
-}
-
 export default function BillPaymentDue() {
   const navigate = useNavigate();
-  const [dueBills, setDueBills] = useState<DueBillType[]>([]);
+  const [dueBills, setDueBills] = useState<DueBill[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  useEffect(() => {
-    loadDueBills();
-  }, [selectedMonth, selectedYear]);
-
-  const loadDueBills = async () => {
+  const loadDueBills = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
 
-      // Get all bill payments to check for recent payments across multiple months
-      const [billTypesResponse, allPaymentsResponse] = await Promise.all([
-        billTypeAPI.list(),
-        billPaymentAPI.list({}) // Get all payments to check payment history
-      ]);
-
-      const activeBillTypes = billTypesResponse.bill_types.filter(bt => !bt.stopped && bt.bill_cycle);
-      const allPayments = allPaymentsResponse.bill_payments;
-
-      const dueBillsWithStatus: DueBillType[] = activeBillTypes.map(billType => {
-        const lastPayment = allPayments
-          .filter(payment => payment.bill_type_id === billType.id)
-          .sort((a, b) => (b.year * 12 + b.month) - (a.year * 12 + a.month))[0];
-
-        // Calculate next due date based on last payment + bill cycle
-        const nextDueDate = calculateNextDueDateFromLastPayment(billType, lastPayment, selectedYear, selectedMonth);
-        const daysUntilDue = Math.ceil((nextDueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-        
-        // Check for current month payment
-        const hasCurrentPayment = allPayments.some(payment => 
-          payment.bill_type_id === billType.id && 
-          payment.year === selectedYear && 
-          payment.month === selectedMonth
-        );
-
-        // Determine if bill should be shown as paid:
-        // - If there's a payment for current month, OR
-        // - If the next due date is not in the current month
-        const nextDueDateMonth = nextDueDate.getMonth() + 1;
-        const nextDueDateYear = nextDueDate.getFullYear();
-        const isNextDueDateInCurrentMonth = nextDueDateMonth === selectedMonth && nextDueDateYear === selectedYear;
-        
-        const isPaid = hasCurrentPayment || !isNextDueDateInCurrentMonth;
-
-        let status: 'overdue' | 'due_soon' | 'upcoming';
-        if (isPaid) {
-          status = 'upcoming'; // Paid bills are less urgent
-        } else if (daysUntilDue < 0) {
-          status = 'overdue';
-        } else if (daysUntilDue <= 7) {
-          status = 'due_soon';
-        } else {
-          status = 'upcoming';
-        }
-
-        return {
-          ...billType,
-          next_due_date: nextDueDate,
-          days_until_due: daysUntilDue,
-          status,
-          last_payment: lastPayment,
-          has_current_payment: isPaid
-        };
-      });
-
-      // Sort by priority: overdue first, then due soon, then by due date
-      dueBillsWithStatus.sort((a, b) => {
-        const statusPriority = { overdue: 0, due_soon: 1, upcoming: 2 };
-        if (statusPriority[a.status] !== statusPriority[b.status]) {
-          return statusPriority[a.status] - statusPriority[b.status];
-        }
-        return a.next_due_date.getTime() - b.next_due_date.getTime();
-      });
-
-      setDueBills(dueBillsWithStatus);
+      const response = await dashboardAPI.getDueBills(selectedYear, selectedMonth);
+      setDueBills(response.due_bills);
     } catch (err) {
       console.error('Failed to load due bills:', err);
       setError('Failed to load due bills');
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedMonth, selectedYear]);
 
-  // Calculate next due date based on last payment and bill cycle
-  const calculateNextDueDateFromLastPayment = (
-    billType: BillType,
-    lastPayment: BillPayment | undefined,
-    currentYear: number,
-    currentMonth: number
-  ): Date => {
-    // If no last payment, bill is due in current month
-    if (!lastPayment) {
-      if (billType.bill_day === 0) {
-        // No specific day, use end of month
-        return new Date(currentYear, currentMonth, 0);
-      }
-      return new Date(currentYear, currentMonth - 1, billType.bill_day);
-    }
+  useEffect(() => {
+    loadDueBills();
+  }, [loadDueBills]);
 
-    // Calculate next due date based on last payment + bill cycle
-    let nextDueYear = lastPayment.year;
-    let nextDueMonth = lastPayment.month + billType.bill_cycle;
-
-    // Handle year overflow
-    while (nextDueMonth > 12) {
-      nextDueYear++;
-      nextDueMonth -= 12;
-    }
-
-    if (billType.bill_day === 0) {
-      // No specific day, use end of month
-      return new Date(nextDueYear, nextDueMonth, 0);
-    }
-
-    return new Date(nextDueYear, nextDueMonth - 1, billType.bill_day);
-  };
-
-  const handleCreatePayment = (billType: BillType) => {
+  const handleCreatePayment = (dueBill: DueBill) => {
     // Navigate to bill payment form with pre-selected data and returnUrl
     const queryParams = new URLSearchParams({
-      bill_type_id: billType.id.toString(),
+      bill_type_id: dueBill.id.toString(),
       year: selectedYear.toString(),
       month: selectedMonth.toString(),
-      amount: billType.fixed_amount || '',
+      amount: dueBill.fixed_amount || '',
       returnUrl: '/bill-payments/due'
     });
     
     navigate(`/bill-payments/new?${queryParams.toString()}`);
   };
 
-  const handleMarkAsSettled = (billType: BillType) => {
+  const handleMarkAsSettled = (dueBill: DueBill) => {
     // Navigate to bill payment form with zero amount (settled without payment) and returnUrl
     const queryParams = new URLSearchParams({
-      bill_type_id: billType.id.toString(),
+      bill_type_id: dueBill.id.toString(),
       year: selectedYear.toString(),
       month: selectedMonth.toString(),
       amount: '0',
@@ -185,15 +80,15 @@ export default function BillPaymentDue() {
     }
   };
 
-  const getStatusText = (dueBill: DueBillType) => {
+  const getStatusText = (dueBill: DueBill) => {
     if (dueBill.has_current_payment) {
-      // Check if it's paid for current month or due later
-      const nextDueDateMonth = dueBill.next_due_date.getMonth() + 1;
-      const nextDueDateYear = dueBill.next_due_date.getFullYear();
+      const nextDueDate = new Date(dueBill.next_due_date);
+      const nextDueDateMonth = nextDueDate.getMonth() + 1;
+      const nextDueDateYear = nextDueDate.getFullYear();
       const isNextDueDateInCurrentMonth = nextDueDateMonth === selectedMonth && nextDueDateYear === selectedYear;
       
       if (!isNextDueDateInCurrentMonth) {
-        return `Next due: ${formatDate(dueBill.next_due_date)}`;
+        return `Next due: ${formatDate(nextDueDate)}`;
       } else {
         return 'Paid';
       }
@@ -231,8 +126,9 @@ export default function BillPaymentDue() {
     }).format(parseFloat(amount));
   };
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-GB', {
+  const formatDate = (date: Date | string) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('en-GB', {
       month: 'short',
       day: 'numeric'
     });
@@ -390,8 +286,9 @@ export default function BillPaymentDue() {
                         <CheckCircleIcon className="h-5 w-5" />
                         <span className="text-sm font-medium">
                           {(() => {
-                            const nextDueDateMonth = dueBill.next_due_date.getMonth() + 1;
-                            const nextDueDateYear = dueBill.next_due_date.getFullYear();
+                            const nextDueDate = new Date(dueBill.next_due_date);
+                            const nextDueDateMonth = nextDueDate.getMonth() + 1;
+                            const nextDueDateYear = nextDueDate.getFullYear();
                             const isNextDueDateInCurrentMonth = nextDueDateMonth === selectedMonth && nextDueDateYear === selectedYear;
                             return isNextDueDateInCurrentMonth ? 'Paid' : 'Not Due';
                           })()}
@@ -427,10 +324,9 @@ export default function BillPaymentDue() {
                 </div>
 
                 {/* Last Payment Info */}
-                {dueBill.last_payment && (
+                {dueBill.last_payment_year && dueBill.last_payment_amount && (
                   <div className="mt-4 text-sm text-gray-500">
-                    Last payment: ${dueBill.last_payment.amount} on{' '}
-                    {new Date(dueBill.last_payment.created_at).toLocaleDateString()}
+                    Last payment: ${dueBill.last_payment_amount} ({dueBill.last_payment_month}/{dueBill.last_payment_year})
                   </div>
                 )}
               </div>

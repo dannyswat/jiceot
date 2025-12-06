@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { billPaymentAPI, billTypeAPI, type BillPayment, type BillPaymentParams, type BillType } from '../services/api';
 import MonthSelect from '../components/MonthSelect';
@@ -24,7 +24,7 @@ export default function BillPaymentsPage() {
   const [filterYear, setFilterYear] = useState<number | ''>(new Date().getFullYear());
   const [filterMonth, setFilterMonth] = useState<number | ''>(new Date().getMonth() + 1);
 
-  const loadBillPayments = async (): Promise<void> => {
+  const loadBillPayments = useCallback(async (): Promise<void> => {
     try {
       setLoading(true);
       const params: BillPaymentParams = {};
@@ -40,7 +40,7 @@ export default function BillPaymentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterBillType, filterYear, filterMonth]);
 
   const loadBillTypes = async (): Promise<void> => {
     try {
@@ -57,7 +57,7 @@ export default function BillPaymentsPage() {
 
   useEffect(() => {
     void loadBillPayments();
-  }, [filterBillType, filterYear, filterMonth]);
+  }, [loadBillPayments]);
 
   const handleDeleteBillPayment = async (id: number, note: string): Promise<void> => {
     if (!window.confirm(`Are you sure you want to delete this payment${note ? ` "${note}"` : ''}? This action cannot be undone.`)) {

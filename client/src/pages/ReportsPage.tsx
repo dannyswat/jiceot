@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { expenseItemAPI, billPaymentAPI, expenseTypeAPI, billTypeAPI, type ExpenseItem, type BillPayment, type ExpenseType, type BillType } from '../services/api';
+import { useState, useEffect, useCallback } from 'react';
+import { reportsAPI, type MonthlyReport, type YearlyReport } from '../services/api';
 import MonthSelect from '../components/MonthSelect';
 import YearSelect from '../components/YearSelect';
 import { 
@@ -11,30 +11,37 @@ import {
   ArrowTrendingDownIcon
 } from '@heroicons/react/24/outline';
 
-interface MonthlyExpense {
-  year: number;
-  month: number;
-  totalAmount: number;
-  expenseItems: ExpenseItem[];
-  billPayments: BillPayment[];
-  expenseTypeBreakdown: { [key: string]: { amount: number; count: number; color: string; icon: string } };
-  billTypeBreakdown: { [key: string]: { amount: number; count: number; color: string; icon: string } };
-}
-
 export default function ReportsPage() {
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
-  const [monthlyData, setMonthlyData] = useState<MonthlyExpense | null>(null);
-  const [yearlyData, setYearlyData] = useState<MonthlyExpense[]>([]);
-  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
-  const [billTypes, setBillTypes] = useState<BillType[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyReport | null>(null);
+  const [yearlyData, setYearlyData] = useState<YearlyReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'monthly' | 'yearly'>('monthly');
 
-  useEffect(() => {
-    loadExpenseTypes();
-    loadBillTypes();
-  }, []);
+  const loadMonthlyData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const report = await reportsAPI.getMonthly(selectedYear, selectedMonth);
+      setMonthlyData(report);
+    } catch (err) {
+      console.error('Failed to load monthly data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedYear, selectedMonth]);
+
+  const loadYearlyData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const report = await reportsAPI.getYearly(selectedYear);
+      setYearlyData(report);
+    } catch (err) {
+      console.error('Failed to load yearly data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedYear]);
 
   useEffect(() => {
     if (viewMode === 'monthly') {
@@ -42,142 +49,7 @@ export default function ReportsPage() {
     } else {
       loadYearlyData();
     }
-  }, [selectedYear, selectedMonth, viewMode, expenseTypes, billTypes]);
-
-  const loadExpenseTypes = async () => {
-    try {
-      const response = await expenseTypeAPI.list();
-      setExpenseTypes(response.expense_types);
-    } catch (err) {
-      console.error('Failed to load expense types:', err);
-    }
-  };
-
-  const loadBillTypes = async () => {
-    try {
-      const response = await billTypeAPI.list();
-      setBillTypes(response.bill_types);
-    } catch (err) {
-      console.error('Failed to load bill types:', err);
-    }
-  };
-
-  const loadMonthlyData = async () => {
-    if (expenseTypes.length === 0 || billTypes.length === 0) return;
-
-    try {
-      setLoading(true);
-      
-      const [expenseItemsResponse, billPaymentsResponse] = await Promise.all([
-        expenseItemAPI.list({ year: selectedYear, month: selectedMonth }),
-        billPaymentAPI.list({ year: selectedYear, month: selectedMonth }),
-      ]);
-
-      const monthlyExpense = processMonthlyData(
-        selectedYear,
-        selectedMonth,
-        expenseItemsResponse.expense_items,
-        billPaymentsResponse.bill_payments
-      );
-
-      setMonthlyData(monthlyExpense);
-    } catch (err) {
-      console.error('Failed to load monthly data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadYearlyData = async () => {
-    if (expenseTypes.length === 0 || billTypes.length === 0) return;
-
-    try {
-      setLoading(true);
-      
-      const yearlyPromises = Array.from({ length: 12 }, async (_, index) => {
-        const month = index + 1;
-        const [expenseItemsResponse, billPaymentsResponse] = await Promise.all([
-          expenseItemAPI.list({ year: selectedYear, month }),
-          billPaymentAPI.list({ year: selectedYear, month }),
-        ]);
-
-        return processMonthlyData(
-          selectedYear,
-          month,
-          expenseItemsResponse.expense_items,
-          billPaymentsResponse.bill_payments
-        );
-      });
-
-      const yearlyResults = await Promise.all(yearlyPromises);
-      setYearlyData(yearlyResults);
-    } catch (err) {
-      console.error('Failed to load yearly data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const processMonthlyData = (
-    year: number,
-    month: number,
-    expenseItems: ExpenseItem[],
-    billPayments: BillPayment[]
-  ): MonthlyExpense => {
-    const expenseTypeBreakdown: { [key: string]: { amount: number; count: number; color: string; icon: string } } = {};
-    const billTypeBreakdown: { [key: string]: { amount: number; count: number; color: string; icon: string } } = {};
-
-    // Process expense items
-    expenseItems.forEach(item => {
-      const expenseType = expenseTypes.find(et => et.id === item.expense_type_id);
-      const typeName = expenseType?.name || 'Unknown';
-      const amount = parseFloat(item.amount);
-
-      if (!expenseTypeBreakdown[typeName]) {
-        expenseTypeBreakdown[typeName] = {
-          amount: 0,
-          count: 0,
-          color: expenseType?.color || '#6B7280',
-          icon: expenseType?.icon || '💰'
-        };
-      }
-
-      expenseTypeBreakdown[typeName].amount += amount;
-      expenseTypeBreakdown[typeName].count += 1;
-    });
-
-    // Process bill payments
-    billPayments.forEach(payment => {
-      const billType = billTypes.find(bt => bt.id === payment.bill_type_id);
-      const typeName = billType?.name || 'Unknown';
-      const amount = parseFloat(payment.amount);
-
-      if (!billTypeBreakdown[typeName]) {
-        billTypeBreakdown[typeName] = {
-          amount: 0,
-          count: 0,
-          color: billType?.color || '#6B7280',
-          icon: billType?.icon || '💳'
-        };
-      }
-
-      billTypeBreakdown[typeName].amount += amount;
-      billTypeBreakdown[typeName].count += 1;
-    });
-
-    const totalExpenseAmount = expenseItems.reduce((sum, item) => sum + (item.bill_payment_id ? 0 : parseFloat(item.amount)), 0);
-    const totalBillAmount = billPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0);
-
-    return {
-      year,
-      month,
-      totalAmount: totalExpenseAmount + totalBillAmount,
-      expenseItems,
-      billPayments,
-      expenseTypeBreakdown,
-      billTypeBreakdown,
-    };
-  };
+  }, [viewMode, loadMonthlyData, loadYearlyData]);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -192,15 +64,15 @@ export default function ReportsPage() {
   };
 
   const getPreviousMonthComparison = () => {
-    if (viewMode !== 'monthly' || !monthlyData) return null;
+    if (viewMode !== 'monthly' || !monthlyData || !yearlyData) return null;
 
-    const currentIndex = yearlyData.findIndex(data => data.month === selectedMonth);
+    const currentIndex = yearlyData.months.findIndex(data => data.month === selectedMonth);
     const previousIndex = currentIndex - 1;
 
-    if (previousIndex < 0 || !yearlyData[previousIndex]) return null;
+    if (previousIndex < 0 || !yearlyData.months[previousIndex]) return null;
 
-    const currentAmount = monthlyData.totalAmount;
-    const previousAmount = yearlyData[previousIndex].totalAmount;
+    const currentAmount = monthlyData.total_amount;
+    const previousAmount = yearlyData.months[previousIndex].total_amount;
     const difference = currentAmount - previousAmount;
     const percentageChange = previousAmount > 0 ? (difference / previousAmount) * 100 : 0;
 
@@ -286,7 +158,7 @@ export default function ReportsPage() {
                 </div>
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-900">Total Expenses</h3>
-                  <p className="text-2xl font-bold text-gray-700">{formatAmount(monthlyData.totalAmount)}</p>
+                  <p className="text-2xl font-bold text-gray-700">{formatAmount(monthlyData.total_amount)}</p>
                   {comparison && (
                     <div className={`flex items-center mt-1 ${comparison.isIncrease ? 'text-red-600' : 'text-green-600'}`}>
                       {comparison.isIncrease ? (
@@ -313,10 +185,7 @@ export default function ReportsPage() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-900">Unexplained Payment</h3>
                   <p className="text-2xl font-bold text-gray-700">
-                    {formatAmount(
-                      monthlyData.billPayments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0) -
-                      monthlyData.expenseItems.filter(item => item.bill_payment_id).reduce((sum, item) => sum + parseFloat(item.amount), 0)
-                    )}
+                    {formatAmount(monthlyData.unexplained_payment)}
                   </p>
                 </div>
               </div>
@@ -332,7 +201,7 @@ export default function ReportsPage() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-900">Average per Day</h3>
                   <p className="text-2xl font-bold text-gray-700">
-                    {formatAmount(monthlyData.totalAmount / new Date(selectedYear, selectedMonth, 0).getDate())}
+                    {formatAmount(monthlyData.total_amount / new Date(selectedYear, selectedMonth, 0).getDate())}
                   </p>
                 </div>
               </div>
@@ -347,42 +216,42 @@ export default function ReportsPage() {
                 <h3 className="text-lg font-medium text-gray-900">Expense Types</h3>
               </div>
               <div className="p-6">
-                {Object.keys(monthlyData.expenseTypeBreakdown).length === 0 ? (
+                {Object.keys(monthlyData.expense_type_breakdown).length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-gray-500">No expense items this month</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {Object.entries(monthlyData.expenseTypeBreakdown)
+                    {Object.entries(monthlyData.expense_type_breakdown)
                       .sort(([,a], [,b]) => b.amount - a.amount)
-                      .map(([typeName, data]) => {
-                        const percentage = (data.amount / monthlyData.totalAmount) * 100;
+                      .map(([typeName, item]) => {
+                        const percentage = monthlyData.total_amount > 0 ? (item.amount / monthlyData.total_amount) * 100 : 0;
                         return (
                           <div key={typeName} className="flex items-center justify-between">
                             <div className="flex items-center flex-1">
                               <div 
                                 className="w-6 h-6 rounded flex items-center justify-center text-white text-xs mr-3"
-                                style={{ backgroundColor: data.color }}
+                                style={{ backgroundColor: item.color }}
                               >
-                                {data.icon}
+                                {item.icon}
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-sm font-medium text-gray-900">{typeName}</span>
-                                  <span className="text-sm text-gray-600">{data.count} items</span>
+                                  <span className="text-sm text-gray-600">{item.count} items</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div 
                                     className="h-2 rounded-full"
                                     style={{ 
-                                      backgroundColor: data.color,
+                                      backgroundColor: item.color,
                                       width: `${percentage}%`
                                     }}
                                   />
                                 </div>
                               </div>
                               <div className="ml-4 text-right">
-                                <div className="text-sm font-medium text-gray-900">{formatAmount(data.amount)}</div>
+                                <div className="text-sm font-medium text-gray-900">{formatAmount(item.amount)}</div>
                                 <div className="text-xs text-gray-500">{percentage.toFixed(1)}%</div>
                               </div>
                             </div>
@@ -400,42 +269,42 @@ export default function ReportsPage() {
                 <h3 className="text-lg font-medium text-gray-900">Bill Types</h3>
               </div>
               <div className="p-6">
-                {Object.keys(monthlyData.billTypeBreakdown).length === 0 ? (
+                {Object.keys(monthlyData.bill_type_breakdown).length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-gray-500">No bill payments this month</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {Object.entries(monthlyData.billTypeBreakdown)
+                    {Object.entries(monthlyData.bill_type_breakdown)
                       .sort(([,a], [,b]) => b.amount - a.amount)
-                      .map(([typeName, data]) => {
-                        const percentage = (data.amount / monthlyData.totalAmount) * 100;
+                      .map(([typeName, item]) => {
+                        const percentage = monthlyData.total_amount > 0 ? (item.amount / monthlyData.total_amount) * 100 : 0;
                         return (
                           <div key={typeName} className="flex items-center justify-between">
                             <div className="flex items-center flex-1">
                               <div 
                                 className="w-6 h-6 rounded flex items-center justify-center text-white text-xs mr-3"
-                                style={{ backgroundColor: data.color }}
+                                style={{ backgroundColor: item.color }}
                               >
-                                {data.icon}
+                                {item.icon}
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center justify-between mb-1">
                                   <span className="text-sm font-medium text-gray-900">{typeName}</span>
-                                  <span className="text-sm text-gray-600">{data.count} bills</span>
+                                  <span className="text-sm text-gray-600">{item.count} bills</span>
                                 </div>
                                 <div className="w-full bg-gray-200 rounded-full h-2">
                                   <div 
                                     className="h-2 rounded-full"
                                     style={{ 
-                                      backgroundColor: data.color,
+                                      backgroundColor: item.color,
                                       width: `${percentage}%`
                                     }}
                                   />
                                 </div>
                               </div>
                               <div className="ml-4 text-right">
-                                <div className="text-sm font-medium text-gray-900">{formatAmount(data.amount)}</div>
+                                <div className="text-sm font-medium text-gray-900">{formatAmount(item.amount)}</div>
                                 <div className="text-xs text-gray-500">{percentage.toFixed(1)}%</div>
                               </div>
                             </div>
@@ -448,7 +317,7 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
-      ) : viewMode === 'yearly' && yearlyData.length > 0 ? (
+      ) : viewMode === 'yearly' && yearlyData && yearlyData.months.length > 0 ? (
         <div className="space-y-6">
           {/* Yearly Summary */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -462,7 +331,7 @@ export default function ReportsPage() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-900">Total Year</h3>
                   <p className="text-2xl font-bold text-gray-700">
-                    {formatAmount(yearlyData.reduce((sum, month) => sum + month.totalAmount, 0))}
+                    {formatAmount(yearlyData.summary.total_amount)}
                   </p>
                 </div>
               </div>
@@ -478,7 +347,7 @@ export default function ReportsPage() {
                 <div className="ml-4">
                   <h3 className="text-sm font-medium text-gray-900">Monthly Average</h3>
                   <p className="text-2xl font-bold text-gray-700">
-                    {formatAmount(yearlyData.reduce((sum, month) => sum + month.totalAmount, 0) / 12)}
+                    {formatAmount(yearlyData.summary.average_monthly)}
                   </p>
                 </div>
               </div>
@@ -495,10 +364,10 @@ export default function ReportsPage() {
                   <h3 className="text-sm font-medium text-gray-900">Highest Month</h3>
                   <p className="text-lg font-bold text-gray-700">
                     {(() => {
-                      const highest = yearlyData.reduce((max, month) => 
-                        month.totalAmount > max.totalAmount ? month : max
+                      const highest = yearlyData.months.reduce((max, month) => 
+                        month.total_amount > max.total_amount ? month : max
                       );
-                      return `${getMonthAbbr(highest.month)} - ${formatAmount(highest.totalAmount)}`;
+                      return `${getMonthAbbr(highest.month)} - ${formatAmount(highest.total_amount)}`;
                     })()}
                   </p>
                 </div>
@@ -516,10 +385,10 @@ export default function ReportsPage() {
                   <h3 className="text-sm font-medium text-gray-900">Lowest Month</h3>
                   <p className="text-lg font-bold text-gray-700">
                     {(() => {
-                      const lowest = yearlyData.reduce((min, month) => 
-                        month.totalAmount < min.totalAmount ? month : min
+                      const lowest = yearlyData.months.reduce((min, month) => 
+                        month.total_amount < min.total_amount ? month : min
                       );
-                      return `${getMonthAbbr(lowest.month)} - ${formatAmount(lowest.totalAmount)}`;
+                      return `${getMonthAbbr(lowest.month)} - ${formatAmount(lowest.total_amount)}`;
                     })()}
                   </p>
                 </div>
@@ -534,9 +403,9 @@ export default function ReportsPage() {
             </div>
             <div className="p-6">
               <div className="space-y-4">
-                {yearlyData.map((monthData) => {
-                  const maxAmount = Math.max(...yearlyData.map(d => d.totalAmount));
-                  const widthPercentage = maxAmount > 0 ? (monthData.totalAmount / maxAmount) * 100 : 0;
+                {yearlyData.months.map((monthData) => {
+                  const maxAmount = Math.max(...yearlyData.months.map(d => d.total_amount));
+                  const widthPercentage = maxAmount > 0 ? (monthData.total_amount / maxAmount) * 100 : 0;
                   
                   return (
                     <div key={monthData.month} className="flex items-center">
@@ -549,9 +418,9 @@ export default function ReportsPage() {
                             className="h-8 bg-blue-600 rounded-full transition-all duration-500 flex items-center justify-end pr-3"
                             style={{ width: `${widthPercentage}%` }}
                           >
-                            {monthData.totalAmount > 0 && (
+                            {monthData.total_amount > 0 && (
                               <span className="text-white text-xs font-medium">
-                                {formatAmount(monthData.totalAmount)}
+                                {formatAmount(monthData.total_amount)}
                               </span>
                             )}
                           </div>

@@ -11,8 +11,10 @@ import (
 
 	"dannyswat/jiceot/internal"
 	"dannyswat/jiceot/internal/auth"
+	"dannyswat/jiceot/internal/dashboard"
 	"dannyswat/jiceot/internal/expenses"
 	"dannyswat/jiceot/internal/notifications"
+	"dannyswat/jiceot/internal/reports"
 	"dannyswat/jiceot/internal/users"
 
 	"github.com/joho/godotenv"
@@ -61,6 +63,8 @@ func main() {
 	expenseItemService := expenses.NewExpenseItemService(db)
 	remindService := notifications.NewRemindService(db)
 	userSettingService := notifications.NewUserSettingService(db)
+	dashboardService := dashboard.NewDashboardService(db)
+	reportsService := reports.NewReportsService(db)
 
 	// Start background reminder service
 	remindService.StartBackgroundReminders()
@@ -83,6 +87,8 @@ func main() {
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
 	expenseItemHandler := expenses.NewExpenseItemHandler(expenseItemService)
 	userSettingHandler := notifications.NewUserSettingHandler(userSettingService)
+	dashboardHandler := dashboard.NewDashboardHandler(dashboardService)
+	reportsHandler := reports.NewReportsHandler(reportsService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -130,6 +136,14 @@ func main() {
 
 	// User routes
 	protected.DELETE("/user/account", userHandler.DeleteUserAccount)
+
+	// Dashboard routes
+	protected.GET("/dashboard/stats", dashboardHandler.GetDashboardStats)
+	protected.GET("/dashboard/due-bills", dashboardHandler.GetDueBills)
+
+	// Reports routes
+	protected.GET("/reports/monthly", reportsHandler.GetMonthlyReport)
+	protected.GET("/reports/yearly", reportsHandler.GetYearlyReport)
 
 	// Bill Type routes
 	protected.GET("/bill-types", billTypeHandler.ListBillTypes)
