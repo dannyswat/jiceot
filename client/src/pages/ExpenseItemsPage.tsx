@@ -21,8 +21,9 @@ export default function ExpenseItemsPage() {
   
   // Filter states
   const [selectedExpenseType, setSelectedExpenseType] = useState<number | undefined>();
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedYear, setSelectedYear] = useState<number | ''>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number | ''>(new Date().getMonth() + 1);
+  const [unbilledOnly, setUnbilledOnly] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -43,8 +44,9 @@ export default function ExpenseItemsPage() {
       const offset = (currentPage - 1) * itemsPerPage;
       const response = await expenseItemAPI.list({
         expense_type_id: selectedExpenseType,
-        year: selectedYear,
+        year: selectedYear === '' ? undefined : selectedYear,
         month: selectedMonth === '' ? undefined : selectedMonth,
+        unbilled_only: unbilledOnly || undefined,
         limit: itemsPerPage,
         offset,
       });
@@ -58,7 +60,7 @@ export default function ExpenseItemsPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedExpenseType, selectedYear, selectedMonth, currentPage]);
+  }, [selectedExpenseType, selectedYear, selectedMonth, unbilledOnly, currentPage]);
 
   useEffect(() => {
     loadExpenseTypes();
@@ -161,9 +163,10 @@ export default function ExpenseItemsPage() {
 
           <YearSelect
             value={selectedYear}
-            onChange={(year) => setSelectedYear(year as number)}
+            onChange={(year) => setSelectedYear(year)}
             label="Year"
             yearRange={5}
+            includeAllOption={true}
           />
 
           <MonthSelect
@@ -179,6 +182,7 @@ export default function ExpenseItemsPage() {
                 setSelectedExpenseType(undefined);
                 setSelectedMonth('');
                 setSelectedYear(new Date().getFullYear());
+                setUnbilledOnly(false);
                 setCurrentPage(1);
               }}
               className="w-full bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 transition-colors"
@@ -186,6 +190,34 @@ export default function ExpenseItemsPage() {
               Clear Filters
             </button>
           </div>
+        </div>
+
+        {/* Unbilled Only Checkbox */}
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <label className="inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={unbilledOnly}
+              onChange={(e) => {
+                const checked = e.target.checked;
+                setUnbilledOnly(checked);
+                if (checked) {
+                  // When checking, show all years and months
+                  setSelectedYear('');
+                  setSelectedMonth('');
+                } else {
+                  // When unchecking, reset to current year and month
+                  setSelectedYear(new Date().getFullYear());
+                  setSelectedMonth(new Date().getMonth() + 1);
+                }
+                setCurrentPage(1);
+              }}
+              className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            />
+            <span className="ml-2 text-sm font-medium text-gray-700">
+              Show unbilled expenses only
+            </span>
+          </label>
         </div>
       </div>
 
