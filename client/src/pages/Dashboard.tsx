@@ -181,7 +181,7 @@ const Dashboard: React.FC = () => {
                 </Link>
               </div>
               <div className="p-6">
-                {!stats || stats.on_demand_bills.length === 0 ? (
+                {!stats?.on_demand_bills || stats.on_demand_bills.length === 0 ? (
                   <div className="text-center py-8">
                     <CurrencyDollarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500 mb-4">No on-demand bill types</p>
@@ -235,7 +235,7 @@ const Dashboard: React.FC = () => {
                 </Link>
               </div>
               <div className="p-6">
-                {!stats || stats.upcoming_bills.length === 0 ? (
+                {!stats?.upcoming_bills || stats.upcoming_bills.length === 0 ? (
                   <div className="text-center py-8">
                     <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-gray-500 mb-4">No upcoming bills</p>
