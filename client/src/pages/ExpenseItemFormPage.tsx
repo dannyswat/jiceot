@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { expenseItemAPI, expenseTypeAPI, billPaymentAPI, billTypeAPI, type ExpenseType, type BillPayment, type BillType, type CreateExpenseItemRequest, type UpdateExpenseItemRequest } from '../services/api';
 import MonthSelect from '../components/MonthSelect';
 import YearSelect from '../components/YearSelect';
@@ -8,14 +8,22 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 export default function ExpenseItemFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const isEditing = Boolean(id);
 
-  const [formData, setFormData] = useState<CreateExpenseItemRequest>({
-    expense_type_id: 0,
-    year: new Date().getFullYear(),
-    month: new Date().getMonth() + 1,
-    amount: '',
-    note: '',
+  const [formData, setFormData] = useState<CreateExpenseItemRequest>(() => {
+    // Initialize with query parameters if present
+    const expenseTypeId = searchParams.get('expense_type_id');
+    const year = searchParams.get('year');
+    const month = searchParams.get('month');
+    
+    return {
+      expense_type_id: expenseTypeId ? parseInt(expenseTypeId) : 0,
+      year: year ? parseInt(year) : new Date().getFullYear(),
+      month: month ? parseInt(month) : new Date().getMonth() + 1,
+      amount: '',
+      note: '',
+    };
   });
 
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);

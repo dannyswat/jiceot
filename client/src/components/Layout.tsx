@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import QuickAddButton from './QuickAddButton';
 import {
   HomeIcon,
   BanknotesIcon,
@@ -159,6 +160,9 @@ export default function Layout({ children }: LayoutProps) {
           {children}
         </main>
       </div>
+
+      {/* Quick Add Floating Button */}
+      <QuickAddButton />
     </div>
   );
 };

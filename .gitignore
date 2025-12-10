@@ -165,3 +165,5 @@ settings.local.*
 
 # Build executables
 server/main
+
+BPLAN.md
