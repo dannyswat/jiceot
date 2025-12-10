@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import QuickAddButton from './QuickAddButton';
 import {
@@ -25,7 +25,11 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const { user, logout, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Check if current path is a form page (new or edit)
+  const isFormPage = location.pathname.includes('/new') || /\/\d+$/.test(location.pathname);
 
   // Redirect to login if not authenticated (but only after loading is complete)
   useEffect(() => {
@@ -161,8 +165,8 @@ export default function Layout({ children }: LayoutProps) {
         </main>
       </div>
 
-      {/* Quick Add Floating Button */}
-      <QuickAddButton />
+      {/* Quick Add Floating Button - Hide on form pages */}
+      {!isFormPage && <QuickAddButton />}
     </div>
   );
 };
