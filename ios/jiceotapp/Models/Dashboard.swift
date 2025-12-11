@@ -8,18 +8,36 @@
 import Foundation
 
 struct DashboardStats: Codable {
-    let totalBills: Int
-    let totalExpenses: Int
-    let monthlyTotal: String
-    let onDemandBills: [BillType]
+    let totalExpenses: Double
+    let billsPaid: Int
+    let pendingBills: Int
+    let categories: Int
+    let onDemandBills: [BillTypeInfo]
     let upcomingBills: [UpcomingBill]
     
     enum CodingKeys: String, CodingKey {
-        case totalBills = "total_bills"
         case totalExpenses = "total_expenses"
-        case monthlyTotal = "monthly_total"
+        case billsPaid = "bills_paid"
+        case pendingBills = "pending_bills"
+        case categories
         case onDemandBills = "on_demand_bills"
         case upcomingBills = "upcoming_bills"
+    }
+}
+
+struct BillTypeInfo: Codable, Identifiable {
+    let id: Int
+    let name: String
+    let icon: String
+    let color: String
+    let fixedAmount: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case icon
+        case color
+        case fixedAmount = "fixed_amount"
     }
 }
 
@@ -29,7 +47,8 @@ struct UpcomingBill: Codable, Identifiable {
     let icon: String
     let color: String
     let nextDueDate: String
-    let fixedAmount: String?
+    let fixedAmount: String
+    let daysUntilDue: Int
     
     enum CodingKeys: String, CodingKey {
         case id
@@ -38,6 +57,7 @@ struct UpcomingBill: Codable, Identifiable {
         case color
         case nextDueDate = "next_due_date"
         case fixedAmount = "fixed_amount"
+        case daysUntilDue = "days_until_due"
     }
 }
 

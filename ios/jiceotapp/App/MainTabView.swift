@@ -18,13 +18,13 @@ struct MainTabView: View {
                 }
                 .tag(0)
             
-            BillTypesListView()
+            BillsMainView()
                 .tabItem {
                     Label("Bills", systemImage: "creditcard.fill")
                 }
                 .tag(1)
             
-            ExpenseItemsListView()
+            ExpensesMainView()
                 .tabItem {
                     Label("Expenses", systemImage: "receipt.fill")
                 }
