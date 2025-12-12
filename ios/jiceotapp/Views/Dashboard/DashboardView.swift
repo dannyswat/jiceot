@@ -9,10 +9,10 @@ import SwiftUI
 
 struct DashboardView: View {
     @StateObject private var viewModel = DashboardViewModel()
-    @State private var showingDueBills = false
     @State private var showingAddPayment = false
     @State private var selectedBillTypeId: Int?
     @State private var selectedAmount: String?
+    @State private var showingSettings = false
     
     var body: some View {
         NavigationView {
@@ -33,14 +33,6 @@ struct DashboardView: View {
                                 }
                                 
                                 Spacer()
-                                
-                                Button(action: {
-                                    showingDueBills = true
-                                }) {
-                                    Image(systemName: "clock.fill")
-                                        .font(.title2)
-                                        .foregroundColor(Color("AccentColor"))
-                                }
                             }
                             .padding(.horizontal)
                             .padding(.top, 8)
@@ -89,9 +81,19 @@ struct DashboardView: View {
                     }
                 }
             }
-            .navigationBarHidden(true)
-            .sheet(isPresented: $showingDueBills) {
-                DueBillsView()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: SettingsView(), isActive: $showingSettings) {
+                        Button(action: {
+                            showingSettings = true
+                        }) {
+                            Image(systemName: "gearshape.fill")
+                                .font(.title3)
+                                .foregroundColor(Color("AccentColor"))
+                        }
+                    }
+                }
             }
             .sheet(isPresented: $showingAddPayment) {
                 BillPaymentFormView(

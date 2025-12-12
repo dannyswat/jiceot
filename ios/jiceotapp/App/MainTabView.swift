@@ -11,38 +11,51 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            DashboardView()
-                .tabItem {
-                    Label("Dashboard", systemImage: "house.fill")
-                }
-                .tag(0)
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selectedTab) {
+                DashboardView()
+                    .tabItem {
+                        Label("Dashboard", systemImage: "house.fill")
+                    }
+                    .tag(0)
+                
+                BillsMainView()
+                    .tabItem {
+                        Label("Bills", systemImage: "creditcard.fill")
+                    }
+                    .tag(1)
+                
+                // Empty placeholder for center quick add button
+                Color.clear
+                    .tabItem {
+                        Label("", systemImage: "")
+                    }
+                    .tag(2)
+                
+                ExpensesMainView()
+                    .tabItem {
+                        Label("Expenses", systemImage: "receipt.fill")
+                    }
+                    .tag(3)
+                
+                ReportsView()
+                    .tabItem {
+                        Label("Reports", systemImage: "chart.bar.fill")
+                    }
+                    .tag(4)
+            }
+            .accentColor(Color("AccentColor"))
             
-            BillsMainView()
-                .tabItem {
-                    Label("Bills", systemImage: "creditcard.fill")
-                }
-                .tag(1)
-            
-            ExpensesMainView()
-                .tabItem {
-                    Label("Expenses", systemImage: "receipt.fill")
-                }
-                .tag(2)
-            
-            ReportsView()
-                .tabItem {
-                    Label("Reports", systemImage: "chart.bar.fill")
-                }
-                .tag(3)
-            
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gear")
-                }
-                .tag(4)
+            // Quick Add Button overlay
+            QuickAddButton()
+                .padding(.bottom, 0)
         }
-        .accentColor(Color("AccentColor"))
+        .onChange(of: selectedTab) { newValue in
+            // Prevent selecting the middle tab (quick add placeholder)
+            if newValue == 2 {
+                selectedTab = 0
+            }
+        }
     }
 }
 
