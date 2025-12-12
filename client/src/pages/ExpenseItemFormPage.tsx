@@ -72,7 +72,7 @@ export default function ExpenseItemFormPage() {
     try {
       const item = await expenseItemAPI.get(expenseItemId);
       setFormData({
-        bill_payment_id: item.bill_payment_id ?? 0,
+        bill_payment_id: item.bill_payment_id ?? undefined,
         bill_type_id: item.bill_type_id,
         expense_type_id: item.expense_type_id,
         year: item.year,
