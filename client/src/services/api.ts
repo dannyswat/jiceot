@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import axios from 'axios';
 
 const API_BASE_URL = '/api';
@@ -10,6 +11,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Important for cookies
 });
 
 // Add token to requests if available
@@ -21,14 +23,79 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle token expiration
+// Track if we're currently refreshing to avoid multiple refresh calls
+let isRefreshing = false;
+let failedQueue: { resolve: (token: string) => void; reject: (error: Error) => void }[] = [];
+
+const processQueue = (error: Error | null, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else if (token) {
+      prom.resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
+
+// Handle token expiration with automatic refresh
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // If error is 401 and we haven't tried to refresh yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        // If already refreshing, queue this request
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(token => {
+          originalRequest.headers.Authorization = `Bearer ${String(token)}`;
+          return api.request(originalRequest);
+        }).catch((err: Error) => {
+          return Promise.reject(err);
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Try to refresh the token
+        const response = await axios.post<AuthResponse>('/api/auth/refresh', {}, {
+          withCredentials: true,
+        });
+        
+        const { token, user } = response.data;
+        
+        // Update stored token and user
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        // Update the authorization header
+        api.defaults.headers.common.Authorization = `Bearer ${token}`;
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        
+        // Process queued requests
+        processQueue(null, token);
+        
+        isRefreshing = false;
+        
+        // Retry the original request
+        return api.request(originalRequest);
+      } catch (refreshError) {
+        // Refresh failed, clear auth and redirect to login
+        processQueue(refreshError as Error, null);
+        isRefreshing = false;
+        
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        
+        return Promise.reject(refreshError as Error);
+      }
     }
     
     // Extract error message from response
@@ -50,6 +117,8 @@ export interface User {
 export interface LoginRequest {
   email: string;
   password: string;
+  device_name?: string;
+  device_type?: string;
 }
 
 export interface RegisterRequest {
@@ -246,6 +315,12 @@ export const authAPI = {
   // Logout user
   logout: async (): Promise<{ message: string }> => {
     const response = await api.post<{ message: string }>('/auth/logout');
+    return response.data;
+  },
+
+  // Refresh access token
+  refresh: async (): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>('/auth/refresh');
     return response.data;
   },
 
@@ -609,6 +684,21 @@ export interface YearlyReport {
   summary: YearlySummary;
 }
 
+export interface UserDevice {
+  id: number;
+  device_name: string;
+  device_type: string;
+  ip_address: string;
+  last_used_at: string;
+  created_at: string;
+  is_current: boolean;
+}
+
+export interface UserDevicesResponse {
+  devices: UserDevice[];
+  total: number;
+}
+
 export const reportsAPI = {
   // Get monthly report
   getMonthly: async (year: number, month: number): Promise<MonthlyReport> => {
@@ -619,6 +709,26 @@ export const reportsAPI = {
   // Get yearly report
   getYearly: async (year: number): Promise<YearlyReport> => {
     const response = await api.get<YearlyReport>(`/reports/yearly?year=${year}`);
+    return response.data;
+  },
+};
+
+export const deviceAPI = {
+  // Get all user devices
+  list: async (): Promise<UserDevicesResponse> => {
+    const response = await api.get<UserDevicesResponse>('/devices');
+    return response.data;
+  },
+
+  // Delete a specific device
+  delete: async (deviceId: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/devices/${deviceId}`);
+    return response.data;
+  },
+
+  // Delete all other devices
+  deleteAll: async (): Promise<{ message: string; count: number }> => {
+    const response = await api.delete<{ message: string; count: number }>('/devices');
     return response.data;
   },
 };

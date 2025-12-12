@@ -43,6 +43,7 @@ func main() {
 	// Auto migrate the schema
 	if err := db.AutoMigrate(
 		&users.User{},
+		&users.UserDevice{},
 		&expenses.BillType{},
 		&expenses.BillPayment{},
 		&expenses.ExpenseType{},
@@ -57,6 +58,7 @@ func main() {
 	// Initialize services
 	passwordHasher := &users.BcryptPasswordHasher{}
 	userService := users.NewUserService(db, passwordHasher)
+	userDeviceService := users.NewUserDeviceService(db)
 	billTypeService := expenses.NewBillTypeService(db)
 	billPaymentService := expenses.NewBillPaymentService(db)
 	expenseTypeService := expenses.NewExpenseTypeService(db)
@@ -80,8 +82,9 @@ func main() {
 	}()
 
 	// Initialize handlers
-	authHandler := auth.NewAuthHandler(userService, config, auth.NewRateLimiter(5, 1))
+	authHandler := auth.NewAuthHandler(userService, userDeviceService, config, auth.NewRateLimiter(5, 1))
 	userHandler := users.NewUserHandler(userService)
+	userDeviceHandler := users.NewUserDeviceHandler(userDeviceService)
 	billTypeHandler := expenses.NewBillTypeHandler(billTypeService)
 	billPaymentHandler := expenses.NewBillPaymentHandler(billPaymentService, expenseItemService)
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
@@ -124,6 +127,7 @@ func main() {
 	// Public routes (no authentication required)
 	api.POST("/auth/login", authHandler.Login)
 	api.POST("/auth/register", authHandler.Register)
+	api.POST("/auth/refresh", authHandler.RefreshToken)
 
 	// Protected routes (authentication required)
 	protected := api.Group("")
@@ -136,6 +140,11 @@ func main() {
 
 	// User routes
 	protected.DELETE("/user/account", userHandler.DeleteUserAccount)
+
+	// Device management routes
+	protected.GET("/devices", userDeviceHandler.ListUserDevices)
+	protected.DELETE("/devices/:id", userDeviceHandler.DeleteDevice)
+	protected.DELETE("/devices", userDeviceHandler.DeleteAllDevices)
 
 	// Dashboard routes
 	protected.GET("/dashboard/stats", dashboardHandler.GetDashboardStats)

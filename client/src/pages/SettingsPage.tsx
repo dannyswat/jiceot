@@ -7,7 +7,8 @@ import {
   BellIcon, 
   CogIcon,
   ChevronRightIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  ComputerDesktopIcon
 } from '@heroicons/react/24/outline';
 
 export default function SettingsPage() {
@@ -48,6 +49,18 @@ export default function SettingsPage() {
           description: 'Update your account password',
           icon: KeyIcon,
           href: '/change-password',
+          disabled: false,
+        },
+      ],
+    },
+    {
+      title: 'Security',
+      items: [
+        {
+          name: 'Devices',
+          description: 'Manage logged in devices',
+          icon: ComputerDesktopIcon,
+          href: '/settings/devices',
           disabled: false,
         },
       ],

@@ -58,7 +58,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const credentials: LoginRequest = { email, password };
+      // Detect device info
+      const deviceName = getBrowserName();
+      const deviceType = 'web';
+      
+      const credentials: LoginRequest = { 
+        email, 
+        password,
+        device_name: deviceName,
+        device_type: deviceType,
+      };
       const response = await authAPI.login(credentials);
       
       // Store token and user
@@ -71,6 +80,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to get browser name
+  const getBrowserName = (): string => {
+    const userAgent = navigator.userAgent;
+    if (userAgent.includes('Firefox')) return 'Firefox';
+    if (userAgent.includes('Chrome')) return 'Chrome';
+    if (userAgent.includes('Safari')) return 'Safari';
+    if (userAgent.includes('Edge')) return 'Edge';
+    return 'Web Browser';
   };
 
   const register = async (email: string, password: string, name: string): Promise<void> => {

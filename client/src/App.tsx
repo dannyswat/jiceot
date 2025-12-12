@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import SettingsPage from './pages/SettingsPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import NotificationSettingsPage from './pages/NotificationSettingsPage'
+import DevicesPage from './pages/DevicesPage'
 import BillTypesPage from './pages/BillTypesPage'
 import BillTypeFormPage from './pages/BillTypeFormPage'
 import BillPaymentsPage from './pages/BillPaymentsPage'
@@ -48,6 +49,7 @@ function App() {
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
+                <Route path="/settings/devices" element={<DevicesPage />} />
                 <Route path="/change-password" element={<ChangePasswordPage />} />
               </Routes>
             </Layout>

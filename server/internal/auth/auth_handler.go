@@ -12,20 +12,24 @@ import (
 )
 
 type AuthHandler struct {
-	userService *users.UserService
-	config      *internal.Config
-	rateLimiter *RateLimiter
+	userService   *users.UserService
+	deviceService *users.UserDeviceService
+	config        *internal.Config
+	rateLimiter   *RateLimiter
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
+	Email      string `json:"email" validate:"required,email"`
+	Password   string `json:"password" validate:"required"`
+	DeviceName string `json:"device_name"` // Optional device name
+	DeviceType string `json:"device_type"` // Optional: "web", "ios", "android"
 }
 
 type LoginResponse struct {
-	Token     string     `json:"token"`
-	ExpiresAt time.Time  `json:"expires_at"`
-	User      users.User `json:"user"`
+	Token        string     `json:"token"`
+	RefreshToken string     `json:"refresh_token"`
+	ExpiresAt    time.Time  `json:"expires_at"`
+	User         users.User `json:"user"`
 }
 
 type Claims struct {
@@ -36,13 +40,15 @@ type Claims struct {
 
 func NewAuthHandler(
 	userService *users.UserService,
+	deviceService *users.UserDeviceService,
 	config *internal.Config,
 	rateLimiter *RateLimiter) *AuthHandler {
 
 	return &AuthHandler{
-		userService: userService,
-		config:      config,
-		rateLimiter: rateLimiter,
+		userService:   userService,
+		deviceService: deviceService,
+		config:        config,
+		rateLimiter:   rateLimiter,
 	}
 }
 
@@ -96,10 +102,53 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		})
 	}
 
+	// Create device record with refresh token
+	deviceName := req.DeviceName
+	if deviceName == "" {
+		deviceName = "Unknown Device"
+	}
+	deviceType := req.DeviceType
+	if deviceType == "" {
+		deviceType = "web"
+	}
+
+	ipAddress := c.RealIP()
+	userAgent := c.Request().UserAgent()
+	refreshTokenExpiry := 30 * 24 * time.Hour // 30 days
+
+	device, err := h.deviceService.CreateDevice(
+		user.ID,
+		deviceName,
+		deviceType,
+		ipAddress,
+		userAgent,
+		refreshTokenExpiry,
+	)
+	if err != nil {
+		// Log error but don't fail the login
+		c.Logger().Error("Failed to create device record:", err)
+	}
+
+	refreshToken := ""
+	if device != nil {
+		refreshToken = device.RefreshToken
+		// Set refresh token as HTTP-only cookie
+		c.SetCookie(&http.Cookie{
+			Name:     "refresh_token",
+			Value:    refreshToken,
+			Expires:  time.Now().Add(30 * 24 * time.Hour),
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false, // Set to true in production with HTTPS
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+
 	return c.JSON(http.StatusOK, LoginResponse{
-		Token:     tokenString,
-		ExpiresAt: expiresAt,
-		User:      *user,
+		Token:        tokenString,
+		RefreshToken: "", // Don't send in response, use cookie instead
+		ExpiresAt:    expiresAt,
+		User:         *user,
 	})
 }
 
@@ -152,10 +201,46 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		})
 	}
 
+	// Create initial device record for new user
+	deviceName := "Initial Device"
+	deviceType := "web"
+	ipAddress := c.RealIP()
+	userAgent := c.Request().UserAgent()
+	refreshTokenExpiry := 30 * 24 * time.Hour // 30 days
+
+	device, err := h.deviceService.CreateDevice(
+		user.ID,
+		deviceName,
+		deviceType,
+		ipAddress,
+		userAgent,
+		refreshTokenExpiry,
+	)
+	if err != nil {
+		// Log error but don't fail the registration
+		c.Logger().Error("Failed to create device record:", err)
+	}
+
+	refreshToken := ""
+	if device != nil {
+		refreshToken = device.RefreshToken
+		// Set refresh token as HTTP-only cookie
+		c.SetCookie(&http.Cookie{
+			Name:     "refresh_token",
+			Value:    refreshToken,
+			Expires:  time.Now().Add(30 * 24 * time.Hour),
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false, // Set to true in production with HTTPS
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+
 	return c.JSON(http.StatusCreated, LoginResponse{
-		Token:     tokenString,
-		ExpiresAt: expiresAt,
-		User:      *user,
+		Token:        tokenString,
+		RefreshToken: "", // Don't send in response, use cookie instead
+		ExpiresAt:    expiresAt,
+		User:         *user,
 	})
 }
 
@@ -185,8 +270,126 @@ func (h *AuthHandler) Me(c echo.Context) error {
 
 // Logout handles user logout (client-side token invalidation)
 func (h *AuthHandler) Logout(c echo.Context) error {
+	// Get refresh token from cookie
+	refreshToken := ""
+	if cookie, err := c.Cookie("refresh_token"); err == nil {
+		refreshToken = cookie.Value
+	}
+
+	if refreshToken != "" {
+		// Delete the device associated with this refresh token
+		if err := h.deviceService.DeleteDeviceByRefreshToken(refreshToken); err != nil {
+			c.Logger().Error("Failed to delete device on logout:", err)
+		}
+	}
+
+	// Clear the refresh token cookie
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Expires:  time.Now().Add(-1 * time.Hour),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	return c.JSON(http.StatusOK, map[string]string{
 		"message": "Logged out successfully",
+	})
+}
+
+// RefreshToken handles refresh token requests to get a new access token
+func (h *AuthHandler) RefreshToken(c echo.Context) error {
+	// Get refresh token from cookie
+	refreshToken := ""
+	if cookie, err := c.Cookie("refresh_token"); err == nil {
+		refreshToken = cookie.Value
+	}
+
+	if refreshToken == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Refresh token not found",
+		})
+	}
+
+	// Verify refresh token and get device
+	device, err := h.deviceService.GetDeviceByRefreshToken(refreshToken)
+	if err != nil {
+		if err == users.ErrInvalidRefreshToken || err == users.ErrRefreshTokenExpired {
+			return c.JSON(http.StatusUnauthorized, map[string]string{
+				"error": "Invalid or expired refresh token",
+			})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to verify refresh token",
+		})
+	}
+
+	// Get user
+	user, err := h.userService.GetUser(device.UserID)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not found",
+		})
+	}
+
+	// Generate new JWT access token
+	expiresAt := time.Now().Add(h.config.JWTExpiry)
+	claims := &Claims{
+		UserID: user.ID,
+		Email:  user.Email,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			Issuer:    "jiceot",
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(h.config.JWTSecret))
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": "Failed to generate token",
+		})
+	}
+
+	// Update device last used timestamp
+	if err := h.deviceService.UpdateDeviceLastUsed(device.ID); err != nil {
+		c.Logger().Error("Failed to update device last used:", err)
+	}
+
+	// Optionally rotate refresh token (for enhanced security)
+	refreshTokenExpiry := 30 * 24 * time.Hour // 30 days
+	newDevice, err := h.deviceService.RefreshDeviceToken(device.ID, refreshTokenExpiry)
+	if err != nil {
+		c.Logger().Error("Failed to rotate refresh token:", err)
+		// Don't fail the request, just return the access token with old refresh token
+		return c.JSON(http.StatusOK, LoginResponse{
+			Token:        tokenString,
+			RefreshToken: "",
+			ExpiresAt:    expiresAt,
+			User:         *user,
+		})
+	}
+
+	// Set new refresh token cookie
+	c.SetCookie(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    newDevice.RefreshToken,
+		Expires:  time.Now().Add(30 * 24 * time.Hour),
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false, // Set to true in production with HTTPS
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	return c.JSON(http.StatusOK, LoginResponse{
+		Token:        tokenString,
+		RefreshToken: "", // Don't send in response, use cookie instead
+		ExpiresAt:    expiresAt,
+		User:         *user,
 	})
 }
 
