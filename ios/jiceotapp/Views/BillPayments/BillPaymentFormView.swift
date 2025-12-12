@@ -92,16 +92,10 @@ struct BillPaymentFormView: View {
                             .keyboardType(.decimalPad)
                     }
                     
-                    Picker("Year", selection: $year) {
-                        ForEach((2020...2030).reversed(), id: \.self) { y in
-                            Text(String(y)).tag(y)
-                        }
-                    }
-                    
-                    Picker("Month", selection: $month) {
-                        ForEach(1...12, id: \.self) { m in
-                            Text(monthName(m)).tag(m)
-                        }
+                    HStack {
+                        Text("Date")
+                        Spacer()
+                        MonthYearPicker(selectedMonth: $month, selectedYear: $year)
                     }
                     
                     TextField("Note (Optional)", text: $note)

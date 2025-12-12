@@ -10,6 +10,9 @@ import SwiftUI
 struct MonthYearPicker: View {
     @Binding var selectedMonth: Int
     @Binding var selectedYear: Int
+    @State private var showingPicker = false
+    @State private var tempMonth: Int
+    @State private var tempYear: Int
     
     private let months = [
         "January", "February", "March", "April", "May", "June",
@@ -21,63 +24,81 @@ struct MonthYearPicker: View {
         return Array((current - 5)...current).reversed()
     }()
     
+    init(selectedMonth: Binding<Int>, selectedYear: Binding<Int>) {
+        self._selectedMonth = selectedMonth
+        self._selectedYear = selectedYear
+        self._tempMonth = State(initialValue: selectedMonth.wrappedValue)
+        self._tempYear = State(initialValue: selectedYear.wrappedValue)
+    }
+    
     var body: some View {
-        HStack(spacing: 12) {
-            // Month Picker
-            Menu {
-                ForEach(0..<12, id: \.self) { index in
-                    Button(action: {
-                        selectedMonth = index + 1
-                    }) {
-                        HStack {
-                            Text(months[index])
-                            if selectedMonth == index + 1 {
-                                Image(systemName: "checkmark")
+        Button(action: {
+            tempMonth = selectedMonth
+            tempYear = selectedYear
+            showingPicker = true
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 16))
+                Text("\(months[selectedMonth - 1]) \(String(selectedYear))")
+                    .fontWeight(.medium)
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+            }
+            .foregroundColor(.primary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
+        .sheet(isPresented: $showingPicker) {
+            NavigationView {
+                VStack(spacing: 0) {
+                    // Picker Section
+                    HStack(spacing: 0) {
+                        // Month Picker
+                        Picker("Month", selection: $tempMonth) {
+                            ForEach(1...12, id: \.self) { month in
+                                Text(months[month - 1])
+                                    .tag(month)
                             }
                         }
-                    }
-                }
-            } label: {
-                HStack {
-                    Text(months[selectedMonth - 1])
-                        .foregroundColor(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
-            }
-            
-            // Year Picker
-            Menu {
-                ForEach(years, id: \.self) { year in
-                    Button(action: {
-                        selectedYear = year
-                    }) {
-                        HStack {
-                            Text(String(year))
-                            if selectedYear == year {
-                                Image(systemName: "checkmark")
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(maxWidth: .infinity)
+                        
+                        // Year Picker
+                        Picker("Year", selection: $tempYear) {
+                            ForEach(years, id: \.self) { year in
+                                Text(String(year))
+                                    .tag(year)
                             }
                         }
+                        .pickerStyle(WheelPickerStyle())
+                        .frame(maxWidth: .infinity)
+                    }
+                    .padding()
+                    
+                    Spacer()
+                }
+                .navigationTitle("Select Month & Year")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button("Cancel") {
+                            showingPicker = false
+                        }
+                    }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            selectedMonth = tempMonth
+                            selectedYear = tempYear
+                            showingPicker = false
+                        }
+                        .fontWeight(.semibold)
                     }
                 }
-            } label: {
-                HStack {
-                    Text(String(selectedYear))
-                        .foregroundColor(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
             }
+            .presentationDetents([.height(300)])
         }
     }
 }
