@@ -79,7 +79,7 @@ struct Constants {
     
     // MARK: - Colors (Hex)
     struct Colors {
-        static let primaryYellow = "EAB308"
+        static let primaryYellow = "007AFF"  // Changed to blue
         static let secondaryIndigo = "6366F1"
         static let successGreen = "10B981"
         static let warningAmber = "F59E0B"

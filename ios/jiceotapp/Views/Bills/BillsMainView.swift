@@ -49,65 +49,14 @@ struct BillDueContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Month/Year Picker
-            HStack(spacing: 12) {
-                // Month Picker
-                Menu {
-                    ForEach(1...12, id: \.self) { month in
-                        Button(action: {
-                            selectedMonth = month
-                            viewModel.loadDueBills(year: selectedYear, month: month)
-                        }) {
-                            HStack {
-                                Text(monthName(month))
-                                if month == selectedMonth {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
+            HStack {
+                MonthYearPicker(selectedMonth: $selectedMonth, selectedYear: $selectedYear)
+                    .onChange(of: selectedMonth) { month in
+                        viewModel.loadDueBills(year: selectedYear, month: month)
                     }
-                } label: {
-                    HStack {
-                        Text(monthName(selectedMonth))
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
+                    .onChange(of: selectedYear) { year in
+                        viewModel.loadDueBills(year: year, month: selectedMonth)
                     }
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                }
-                
-                // Year Picker
-                Menu {
-                    ForEach((2020...2030).reversed(), id: \.self) { year in
-                        Button(action: {
-                            selectedYear = year
-                            viewModel.loadDueBills(year: year, month: selectedMonth)
-                        }) {
-                            HStack {
-                                Text("\(year)")
-                                if year == selectedYear {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text("\(selectedYear)")
-                            .fontWeight(.medium)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
-                    }
-                    .foregroundColor(.primary)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                }
-                
                 Spacer()
             }
             .padding()

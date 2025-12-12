@@ -60,64 +60,15 @@ struct ReportsView: View {
     }
     
     private var monthlySelectors: some View {
-        HStack(spacing: 16) {
-            // Month Picker
-            Menu {
-                ForEach(0..<12, id: \.self) { index in
-                    Button(action: {
-                        selectedMonth = index + 1
-                        loadReport()
-                    }) {
-                        HStack {
-                            Text(months[index])
-                            if selectedMonth == index + 1 {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
+        HStack {
+            MonthYearPicker(selectedMonth: $selectedMonth, selectedYear: $selectedYear)
+                .onChange(of: selectedMonth) { _ in
+                    loadReport()
                 }
-            } label: {
-                HStack {
-                    Text(months[selectedMonth - 1])
-                        .foregroundColor(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                .onChange(of: selectedYear) { _ in
+                    loadReport()
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
-            }
-            
-            // Year Picker
-            Menu {
-                ForEach(years, id: \.self) { year in
-                    Button(action: {
-                        selectedYear = year
-                        loadReport()
-                    }) {
-                        HStack {
-                            Text(String(year))
-                            if selectedYear == year {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
-                HStack {
-                    Text(String(selectedYear))
-                        .foregroundColor(.primary)
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(Color(.systemGray6))
-                .cornerRadius(8)
-            }
+            Spacer()
         }
         .padding(.horizontal)
         .padding(.bottom)

@@ -15,15 +15,12 @@ struct LoginView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
+            VStack(spacing: 48) {
                 // Logo
-                Image(systemName: "dollarsign.circle.fill")
+                Image(uiImage: UIImage(named: "Logo") ?? UIImage())
                     .resizable()
-                    .frame(width: 80, height: 80)
-                    .foregroundColor(Color("AccentColor"))
-                
-                Text("Jiceot")
-                    .font(.system(size: 32, weight: .bold))
+                    .scaledToFit()
+                    .frame(height: 60)
                 
                 // Form
                 VStack(spacing: 16) {

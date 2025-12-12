@@ -89,19 +89,7 @@ struct ExpenseItemsContentView: View {
         VStack(spacing: 0) {
             // Month/Year Picker
             HStack {
-                Picker("Month", selection: $selectedMonth) {
-                    ForEach(1...12, id: \.self) { month in
-                        Text(monthName(month)).tag(month)
-                    }
-                }
-                .pickerStyle(MenuPickerStyle())
-                
-                Picker("Year", selection: $selectedYear) {
-                    ForEach((2020...2030).reversed(), id: \.self) { year in
-                        Text(String(year)).tag(year)
-                    }
-                }
-                .pickerStyle(MenuPickerStyle())
+                MonthYearPicker(selectedMonth: $selectedMonth, selectedYear: $selectedYear)
                 
                 Spacer()
                 
