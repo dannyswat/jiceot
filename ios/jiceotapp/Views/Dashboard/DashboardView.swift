@@ -215,7 +215,7 @@ struct OnDemandBillCard: View {
                     .foregroundColor(.primary)
                 
                 if !bill.fixedAmount.isEmpty {
-                    Text(bill.fixedAmount.toCurrency())
+                    Text(CurrencyFormatter.format(bill.fixedAmount))
                         .font(.title3)
                         .fontWeight(.bold)
                         .foregroundColor(Color("AccentColor"))
@@ -275,7 +275,7 @@ struct UpcomingBillRow: View {
                 
                 // Amount
                 if !bill.fixedAmount.isEmpty {
-                    Text(bill.fixedAmount.toCurrency())
+                    Text(CurrencyFormatter.format(bill.fixedAmount))
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)

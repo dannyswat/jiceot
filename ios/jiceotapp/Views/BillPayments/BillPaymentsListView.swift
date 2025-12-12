@@ -249,7 +249,7 @@ struct BillPaymentRow: View {
             Spacer()
             
             // Amount
-            Text(payment.amount.toCurrency())
+            Text(CurrencyFormatter.format(payment.amount))
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)

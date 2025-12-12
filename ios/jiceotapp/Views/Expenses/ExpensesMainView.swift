@@ -276,7 +276,7 @@ struct ExpenseItemRow: View {
             
             Spacer()
             
-            Text(item.amount.toCurrency())
+            Text(CurrencyFormatter.format(item.amount))
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundColor(.primary)

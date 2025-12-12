@@ -231,7 +231,7 @@ struct DueBillCard: View {
                         
                         Spacer()
                         
-                        Text(lastPaymentAmount.toCurrency())
+                        Text(CurrencyFormatter.format(lastPaymentAmount))
                             .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundColor(.primary)

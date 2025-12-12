@@ -208,21 +208,21 @@ struct MonthlyReportContentView: View {
         VStack(spacing: 12) {
             SummaryCard(
                 title: "Bill Payments",
-                amount: formatCurrency(report.billAmount),
+                amount: CurrencyFormatter.format(report.billAmount),
                 color: .blue,
                 icon: "creditcard.fill"
             )
             
             SummaryCard(
                 title: "Expenses",
-                amount: formatCurrency(report.expenseAmount),
+                amount: CurrencyFormatter.format(report.expenseAmount),
                 color: .orange,
                 icon: "cart.fill"
             )
             
             SummaryCard(
                 title: "Total",
-                amount: formatCurrency(report.totalAmount),
+                amount: CurrencyFormatter.format(report.totalAmount),
                 color: .purple,
                 icon: "chart.bar.fill"
             )
@@ -230,7 +230,7 @@ struct MonthlyReportContentView: View {
             if report.unexplainedPayment > 0 {
                 SummaryCard(
                     title: "Unexplained",
-                    amount: formatCurrency(report.unexplainedPayment),
+                    amount: CurrencyFormatter.format(report.unexplainedPayment),
                     color: .red,
                     icon: "exclamationmark.triangle.fill"
                 )
@@ -321,28 +321,28 @@ struct YearlyReportContentView: View {
         VStack(spacing: 12) {
             SummaryCard(
                 title: "Total Bill Payments",
-                amount: formatCurrency(report.summary.totalBillAmount),
+                amount: CurrencyFormatter.format(report.summary.totalBillAmount),
                 color: .blue,
                 icon: "creditcard.fill"
             )
             
             SummaryCard(
                 title: "Total Expenses",
-                amount: formatCurrency(report.summary.totalExpenseAmount),
+                amount: CurrencyFormatter.format(report.summary.totalExpenseAmount),
                 color: .orange,
                 icon: "cart.fill"
             )
             
             SummaryCard(
                 title: "Grand Total",
-                amount: formatCurrency(report.summary.totalAmount),
+                amount: CurrencyFormatter.format(report.summary.totalAmount),
                 color: .purple,
                 icon: "chart.bar.fill"
             )
             
             SummaryCard(
                 title: "Monthly Average",
-                amount: formatCurrency(report.summary.averageMonthly),
+                amount: CurrencyFormatter.format(report.summary.averageMonthly),
                 color: .green,
                 icon: "chart.line.uptrend.xyaxis"
             )
@@ -410,13 +410,6 @@ struct YearlyReportContentView: View {
             .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         }
     }
-    
-    private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "$"
-        return formatter.string(from: NSNumber(value: amount)) ?? "$0.00"
-    }
 }
 
 // MARK: - Supporting Views
@@ -479,18 +472,11 @@ struct TypeBreakdownRow: View {
             Spacer()
             
             // Amount
-            Text(formatCurrency(breakdown.amount))
+            Text(CurrencyFormatter.format(breakdown.amount))
                 .font(.body)
                 .fontWeight(.semibold)
         }
         .padding()
-    }
-    
-    private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "$"
-        return formatter.string(from: NSNumber(value: amount)) ?? "$0.00"
     }
 }
 
@@ -504,7 +490,7 @@ struct MonthlyBreakdownRow: View {
                 Text(monthNames[report.month - 1])
                     .font(.headline)
                 Spacer()
-                Text(formatCurrency(report.totalAmount))
+                Text(CurrencyFormatter.format(report.totalAmount))
                     .font(.headline)
                     .fontWeight(.bold)
             }
@@ -514,7 +500,7 @@ struct MonthlyBreakdownRow: View {
                     .font(.caption)
                     .foregroundColor(.blue)
                 Spacer()
-                Text(formatCurrency(report.billAmount))
+                Text(CurrencyFormatter.format(report.billAmount))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -524,19 +510,12 @@ struct MonthlyBreakdownRow: View {
                     .font(.caption)
                     .foregroundColor(.orange)
                 Spacer()
-                Text(formatCurrency(report.expenseAmount))
+                Text(CurrencyFormatter.format(report.expenseAmount))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
         .padding()
-    }
-    
-    private func formatCurrency(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencySymbol = "$"
-        return formatter.string(from: NSNumber(value: amount)) ?? "$0.00"
     }
 }
 

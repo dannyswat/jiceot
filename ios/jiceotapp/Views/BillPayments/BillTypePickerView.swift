@@ -32,7 +32,7 @@ struct BillTypePickerView: View {
                                 .foregroundColor(.primary)
                             
                             if let amount = billType.fixedAmount, !amount.isEmpty {
-                                Text(amount.toCurrency())
+                                Text(CurrencyFormatter.format(amount))
                                     .font(.caption)
                                     .foregroundColor(.gray)
                             }

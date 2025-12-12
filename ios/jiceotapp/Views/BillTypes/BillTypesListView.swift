@@ -203,7 +203,7 @@ struct BillTypeRow: View {
             
             // Amount
             if let amount = billType.fixedAmount, !amount.isEmpty {
-                Text(amount.toCurrency())
+                Text(CurrencyFormatter.format(amount))
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)

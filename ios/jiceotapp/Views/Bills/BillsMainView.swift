@@ -182,7 +182,7 @@ struct DueBillRow: View {
             
             // Amount
             if let amount = bill.lastPaymentAmount {
-                Text(amount.toCurrency())
+                Text(CurrencyFormatter.format(amount))
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
