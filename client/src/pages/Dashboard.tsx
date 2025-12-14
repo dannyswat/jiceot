@@ -124,8 +124,8 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="ml-4">
-                  <h3 className="text-sm font-medium text-gray-900">Pending Bills</h3>
-                  <p className="text-2xl font-bold text-gray-700">{stats.pending_bills}</p>
+                  <h3 className="text-sm font-medium text-gray-900">Pending Items</h3>
+                  <p className="text-2xl font-bold text-gray-700">{stats.pending_bills + stats.pending_expenses}</p>
                 </div>
               </div>
             </div>
@@ -226,55 +226,78 @@ const Dashboard: React.FC = () => {
 
             <div className="bg-white rounded-lg shadow">
               <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-                <h2 className="text-lg font-medium text-gray-900">Upcoming Bills</h2>
+                <h2 className="text-lg font-medium text-gray-900">Upcoming Items</h2>
                 <Link 
-                  to="/bill-payments/due" 
+                  to="/due-items" 
                   className="text-sm text-blue-600 hover:text-blue-500"
                 >
-                  Pay bills
+                  View all
                 </Link>
               </div>
               <div className="p-6">
-                {!stats?.upcoming_bills || stats.upcoming_bills.length === 0 ? (
+                {(!stats?.upcoming_bills || stats.upcoming_bills.length === 0) && 
+                 (!stats?.upcoming_expenses || stats.upcoming_expenses.length === 0) ? (
                   <div className="text-center py-8">
                     <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">No upcoming bills</p>
-                    <Link
-                      to="/bill-types/new"
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
-                    >
-                      <PlusIcon className="h-4 w-4 mr-2" />
-                      Add Bill Type
-                    </Link>
+                    <p className="text-gray-500 mb-4">No upcoming items</p>
+                    <div className="flex gap-2 justify-center">
+                      <Link
+                        to="/bill-types/new"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Add Bill Type
+                      </Link>
+                      <Link
+                        to="/expense-types/new"
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors inline-flex items-center"
+                      >
+                        <PlusIcon className="h-4 w-4 mr-2" />
+                        Add Expense Type
+                      </Link>
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {stats.upcoming_bills.map((upcomingBill) => {
-                      const dueDateText = getDueDateText(upcomingBill.days_until_due);
-                      const dueDateColor = getDueDateColor(upcomingBill.days_until_due);
+                    {[
+                      ...(stats.upcoming_bills || []).map(item => ({ ...item, itemType: 'bill' as const })),
+                      ...(stats.upcoming_expenses || []).map(item => ({ ...item, itemType: 'expense' as const }))
+                    ]
+                      .sort((a, b) => a.days_until_due - b.days_until_due)
+                      .slice(0, 5)
+                      .map((item) => {
+                        const dueDateText = getDueDateText(item.days_until_due);
+                        const dueDateColor = getDueDateColor(item.days_until_due);
 
-                      return (
-                        <div key={upcomingBill.id} className="flex items-center justify-between">
-                          <div className="flex items-center">
-                            <div 
-                              className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
-                              style={{ backgroundColor: upcomingBill.color }}
-                            >
-                              {upcomingBill.icon}
+                        return (
+                          <div key={`${item.itemType}-${item.id}`} className="flex items-center justify-between">
+                            <div className="flex items-center flex-1">
+                              <div 
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
+                                style={{ backgroundColor: item.color }}
+                              >
+                                {item.icon}
+                              </div>
+                              <div className="ml-3 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-medium text-gray-900">{item.name}</p>
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                                    item.itemType === 'bill' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                                  }`}>
+                                    {item.itemType === 'bill' ? 'Bill' : 'Expense'}
+                                  </span>
+                                </div>
+                                <p className={`text-xs ${dueDateColor}`}>
+                                  {dueDateText}
+                                </p>
+                              </div>
                             </div>
-                            <div className="ml-3">
-                              <p className="text-sm font-medium text-gray-900">{upcomingBill.name}</p>
-                              <p className={`text-xs ${dueDateColor}`}>
-                                {dueDateText}
-                              </p>
-                            </div>
+                            <span className="text-sm font-medium text-gray-900">
+                              {item.fixed_amount && item.fixed_amount !== '0.00' ? formatAmount(parseFloat(item.fixed_amount)) : 'Variable'}
+                            </span>
                           </div>
-                          <span className="text-sm font-medium text-gray-900">
-                            {upcomingBill.fixed_amount ? formatAmount(parseFloat(upcomingBill.fixed_amount)) : 'Variable'}
-                          </span>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
                   </div>
                 )}
               </div>

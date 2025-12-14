@@ -14,15 +14,27 @@ type DashboardService struct {
 }
 
 type DashboardStats struct {
-	TotalExpenses float64        `json:"total_expenses"`
-	BillsPaid     int            `json:"bills_paid"`
-	PendingBills  int            `json:"pending_bills"`
-	Categories    int            `json:"categories"`
-	UpcomingBills []UpcomingBill `json:"upcoming_bills"`
-	OnDemandBills []BillTypeInfo `json:"on_demand_bills"`
+	TotalExpenses    float64           `json:"total_expenses"`
+	BillsPaid        int               `json:"bills_paid"`
+	PendingBills     int               `json:"pending_bills"`
+	PendingExpenses  int               `json:"pending_expenses"`
+	Categories       int               `json:"categories"`
+	UpcomingBills    []UpcomingBill    `json:"upcoming_bills"`
+	UpcomingExpenses []UpcomingExpense `json:"upcoming_expenses"`
+	OnDemandBills    []BillTypeInfo    `json:"on_demand_bills"`
 }
 
 type UpcomingBill struct {
+	ID           uint   `json:"id"`
+	Name         string `json:"name"`
+	Icon         string `json:"icon"`
+	Color        string `json:"color"`
+	FixedAmount  string `json:"fixed_amount"`
+	NextDueDate  string `json:"next_due_date"`
+	DaysUntilDue int    `json:"days_until_due"`
+}
+
+type UpcomingExpense struct {
 	ID           uint   `json:"id"`
 	Name         string `json:"name"`
 	Icon         string `json:"icon"`
@@ -122,6 +134,18 @@ func (s *DashboardService) GetDashboardStats(userID uint) (*DashboardStats, erro
 		return nil, err
 	}
 
+	// Get all expense types for upcoming expenses calculation
+	var expenseTypes []expenses.ExpenseType
+	if err := s.db.Where("user_id = ?", userID).Find(&expenseTypes).Error; err != nil {
+		return nil, err
+	}
+
+	// Get all expense items for due date calculation
+	var allExpenseItems []expenses.ExpenseItem
+	if err := s.db.Where("user_id = ?", userID).Find(&allExpenseItems).Error; err != nil {
+		return nil, err
+	}
+
 	// Get expense types count
 	var categoryCount int64
 	if err := s.db.Model(&expenses.ExpenseType{}).Where("user_id = ?", userID).Count(&categoryCount).Error; err != nil {
@@ -144,6 +168,9 @@ func (s *DashboardService) GetDashboardStats(userID uint) (*DashboardStats, erro
 	// Get upcoming bills
 	upcomingBills := s.calculateUpcomingBills(billTypes, allPayments, currentYear, currentMonth)
 
+	// Get upcoming expenses
+	upcomingExpenses := s.calculateUpcomingExpenses(expenseTypes, allExpenseItems, currentYear, currentMonth)
+
 	// Get on-demand bills
 	var onDemandBills []BillTypeInfo
 	for _, bt := range billTypes {
@@ -159,18 +186,20 @@ func (s *DashboardService) GetDashboardStats(userID uint) (*DashboardStats, erro
 	}
 
 	return &DashboardStats{
-		TotalExpenses: totalExpenseAmount + totalBillAmount,
-		BillsPaid:     len(billPayments),
-		PendingBills:  len(upcomingBills),
-		Categories:    int(categoryCount),
-		UpcomingBills: upcomingBills,
-		OnDemandBills: onDemandBills,
+		TotalExpenses:    totalExpenseAmount + totalBillAmount,
+		BillsPaid:        len(billPayments),
+		PendingBills:     len(upcomingBills),
+		PendingExpenses:  len(upcomingExpenses),
+		Categories:       int(categoryCount),
+		UpcomingBills:    upcomingBills,
+		UpcomingExpenses: upcomingExpenses,
+		OnDemandBills:    onDemandBills,
 	}, nil
 }
 
 func (s *DashboardService) calculateUpcomingBills(billTypes []expenses.BillType, allPayments []expenses.BillPayment, currentYear int, currentMonth int) []UpcomingBill {
 	now := time.Now()
-	var upcomingBills []UpcomingBill
+	upcomingBills := make([]UpcomingBill, 0)
 
 	for _, bt := range billTypes {
 		if bt.Stopped || bt.BillCycle <= 0 {
@@ -279,6 +308,115 @@ func sortUpcomingBills(bills []UpcomingBill) {
 	}
 }
 
+func (s *DashboardService) calculateUpcomingExpenses(expenseTypes []expenses.ExpenseType, allExpenseItems []expenses.ExpenseItem, currentYear int, currentMonth int) []UpcomingExpense {
+	now := time.Now()
+	upcomingExpenses := make([]UpcomingExpense, 0)
+
+	for _, et := range expenseTypes {
+		if et.BillCycle <= 0 {
+			continue
+		}
+
+		// Find last expense for this expense type
+		var lastExpense *expenses.ExpenseItem
+		for i := range allExpenseItems {
+			if allExpenseItems[i].ExpenseTypeID == et.ID {
+				if lastExpense == nil || (allExpenseItems[i].Year*12+allExpenseItems[i].Month > lastExpense.Year*12+lastExpense.Month) {
+					lastExpense = &allExpenseItems[i]
+				}
+			}
+		}
+
+		// Calculate next due date
+		nextDueDate := calculateNextExpenseDueDateFromLastExpense(et, lastExpense, currentYear, currentMonth)
+		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+
+		// Check for current month expense
+		hasCurrentExpense := false
+		for _, e := range allExpenseItems {
+			if e.ExpenseTypeID == et.ID && e.Year == currentYear && e.Month == currentMonth {
+				hasCurrentExpense = true
+				break
+			}
+		}
+
+		// Determine if expense is due in or before the current month
+		nextDueDateMonth := int(nextDueDate.Month())
+		nextDueDateYear := nextDueDate.Year()
+
+		// Convert to comparable format (year*12 + month)
+		currentPeriod := currentYear*12 + currentMonth
+		nextDuePeriod := nextDueDateYear*12 + nextDueDateMonth
+
+		// Expense is due if the next due date is in or before the current month
+		isDueInOrBeforeCurrentMonth := nextDuePeriod <= currentPeriod
+
+		// isCreated means either:
+		// 1. There's already an expense for the current month, OR
+		// 2. The next due date is after the current month (not due yet)
+		isCreated := hasCurrentExpense || !isDueInOrBeforeCurrentMonth
+
+		// Show expenses that are not created and have upcoming due dates (not overdue)
+		if !isCreated && daysUntilDue >= 0 {
+			upcomingExpenses = append(upcomingExpenses, UpcomingExpense{
+				ID:           et.ID,
+				Name:         et.Name,
+				Icon:         et.Icon,
+				Color:        et.Color,
+				FixedAmount:  et.FixedAmount,
+				NextDueDate:  nextDueDate.Format("2006-01-02"),
+				DaysUntilDue: daysUntilDue,
+			})
+		}
+	}
+
+	// Sort by days until due and limit to 5
+	sortUpcomingExpenses(upcomingExpenses)
+	if len(upcomingExpenses) > 5 {
+		upcomingExpenses = upcomingExpenses[:5]
+	}
+
+	return upcomingExpenses
+}
+
+func calculateNextExpenseDueDateFromLastExpense(expenseType expenses.ExpenseType, lastExpense *expenses.ExpenseItem, currentYear int, currentMonth int) time.Time {
+	if lastExpense == nil {
+		if expenseType.BillDay == 0 {
+			// No specific day, use end of month
+			return time.Date(currentYear, time.Month(currentMonth+1), 0, 0, 0, 0, 0, time.Local)
+		}
+		return time.Date(currentYear, time.Month(currentMonth), expenseType.BillDay, 0, 0, 0, 0, time.Local)
+	}
+
+	// Add the cycle to the last expense date
+	nextDueYear := lastExpense.Year
+	nextDueMonth := lastExpense.Month + expenseType.BillCycle
+
+	// Handle month overflow
+	for nextDueMonth > 12 {
+		nextDueMonth -= 12
+		nextDueYear++
+	}
+
+	if expenseType.BillDay == 0 {
+		// No specific day, use end of month
+		return time.Date(nextDueYear, time.Month(nextDueMonth+1), 0, 0, 0, 0, 0, time.Local)
+	}
+
+	return time.Date(nextDueYear, time.Month(nextDueMonth), expenseType.BillDay, 0, 0, 0, 0, time.Local)
+}
+
+func sortUpcomingExpenses(expenses []UpcomingExpense) {
+	// Simple bubble sort for small arrays
+	for i := 0; i < len(expenses)-1; i++ {
+		for j := 0; j < len(expenses)-i-1; j++ {
+			if expenses[j].DaysUntilDue > expenses[j+1].DaysUntilDue {
+				expenses[j], expenses[j+1] = expenses[j+1], expenses[j]
+			}
+		}
+	}
+}
+
 func parseAmount(amount string) (float64, error) {
 	if amount == "" {
 		return 0, nil
@@ -304,7 +442,7 @@ func (s *DashboardService) GetDueBills(userID uint, year, month int) (*DueBillsR
 		return nil, err
 	}
 
-	var dueBills []DueBill
+	dueBills := make([]DueBill, 0)
 
 	for _, bt := range billTypes {
 		if bt.Stopped || bt.BillCycle <= 0 {
@@ -428,7 +566,7 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 		return nil, err
 	}
 
-	var dueExpenses []DueExpense
+	dueExpenses := make([]DueExpense, 0)
 
 	for _, et := range expenseTypes {
 		if et.BillCycle <= 0 {

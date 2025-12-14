@@ -607,6 +607,16 @@ export interface UpcomingBill {
   days_until_due: number;
 }
 
+export interface UpcomingExpense {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  fixed_amount: string;
+  next_due_date: string;
+  days_until_due: number;
+}
+
 export interface BillTypeInfo {
   id: number;
   name: string;
@@ -619,8 +629,10 @@ export interface DashboardStats {
   total_expenses: number;
   bills_paid: number;
   pending_bills: number;
+  pending_expenses: number;
   categories: number;
   upcoming_bills: UpcomingBill[];
+  upcoming_expenses: UpcomingExpense[];
   on_demand_bills: BillTypeInfo[];
 }
 

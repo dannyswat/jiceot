@@ -37,11 +37,11 @@ export default function DueItemsPage() {
         dashboardAPI.getDueExpenses(selectedYear, selectedMonth)
       ]);
 
-      const bills: DueItem[] = billsResponse.due_bills.map(bill => ({ 
+      const bills: DueItem[] = (billsResponse.due_bills || []).map(bill => ({ 
         ...bill, 
         itemType: 'bill' as const 
       }));
-      const expenses: DueItem[] = expensesResponse.due_expenses.map(expense => ({ 
+      const expenses: DueItem[] = (expensesResponse.due_expenses || []).map(expense => ({ 
         ...expense, 
         itemType: 'expense' as const 
       }));
