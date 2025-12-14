@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { billTypeAPI, expenseTypeAPI, type CreateBillTypeRequest, type CreateExpenseTypeRequest } from '../services/api';
 import { ArrowLeftIcon, PlusIcon, TrashIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
+import IconPicker from '../components/IconPicker';
 
 const CYCLE_OPTIONS = [
   { value: 0, label: 'On-demand' },
@@ -21,26 +22,28 @@ interface Template {
 
 const TEMPLATES: Template[] = [
   {
-    name: 'Personal Finance Essentials',
+    name: 'Household',
     billTypes: [
-      { name: 'Rent/Mortgage', icon: '🏠', color: '#3B82F6', bill_cycle: 1, bill_day: 1, fixed_amount: '', createExpenseType: false },
-      { name: 'Electricity', icon: '⚡', color: '#F59E0B', bill_cycle: 1, bill_day: 5, fixed_amount: '', createExpenseType: false },
-      { name: 'Water', icon: '💧', color: '#06B6D4', bill_cycle: 1, bill_day: 10, fixed_amount: '', createExpenseType: false },
-      { name: 'Internet', icon: '🌐', color: '#8B5CF6', bill_cycle: 1, bill_day: 15, fixed_amount: '', createExpenseType: false },
-      { name: 'Phone', icon: '📱', color: '#10B981', bill_cycle: 1, bill_day: 20, fixed_amount: '', createExpenseType: false },
-      { name: 'Insurance', icon: '🛡️', color: '#EF4444', bill_cycle: 1, bill_day: 25, fixed_amount: '', createExpenseType: false },
-      { name: 'Streaming Services', icon: '📺', color: '#EC4899', bill_cycle: 1, bill_day: 1, fixed_amount: '', createExpenseType: false },
-      { name: 'Gym Membership', icon: '💪', color: '#F97316', bill_cycle: 1, bill_day: 1, fixed_amount: '', createExpenseType: false },
+      { name: 'Rent/Mortgage', icon: '🏠', color: '#3B82F6', bill_cycle: 1, bill_day: 1, fixed_amount: '', createExpenseType: true },
+      { name: 'Electricity', icon: '⚡', color: '#F59E0B', bill_cycle: 1, bill_day: 5, fixed_amount: '', createExpenseType: true },
+      { name: 'Water', icon: '💧', color: '#06B6D4', bill_cycle: 1, bill_day: 10, fixed_amount: '', createExpenseType: true },
+      { name: 'Gas', icon: '🔥', color: '#EF4444', bill_cycle: 1, bill_day: 15, fixed_amount: '', createExpenseType: true },
+      { name: 'Internet', icon: '🌐', color: '#8B5CF6', bill_cycle: 1, bill_day: 15, fixed_amount: '', createExpenseType: true },
+      { name: 'Phone', icon: '📱', color: '#10B981', bill_cycle: 1, bill_day: 20, fixed_amount: '', createExpenseType: true },
+      { name: 'Insurance', icon: '🛡️', color: '#EC4899', bill_cycle: 12, bill_day: 1, fixed_amount: '', createExpenseType: true },
+      { name: 'Credit Card', icon: '💳', color: '#EC4899', bill_cycle: 1, bill_day: 28, fixed_amount: '', createExpenseType: false },
     ],
     expenseTypes: [
-      { name: 'Groceries', icon: '🛒', color: '#10B981' },
-      { name: 'Dining Out', icon: '🍔', color: '#F59E0B' },
-      { name: 'Transportation', icon: '🚗', color: '#3B82F6' },
-      { name: 'Entertainment', icon: '🎮', color: '#8B5CF6' },
-      { name: 'Healthcare', icon: '💊', color: '#EF4444' },
-      { name: 'Clothing', icon: '👕', color: '#EC4899' },
-      { name: 'Personal Care', icon: '💇', color: '#06B6D4' },
-      { name: 'Education', icon: '🎓', color: '#F97316' },
+      { name: 'Groceries', icon: '🛒', color: '#10B981', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Dining Out', icon: '🍔', color: '#F59E0B', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Transportation', icon: '🚗', color: '#3B82F6', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Entertainment', icon: '🎮', color: '#8B5CF6', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Healthcare', icon: '💊', color: '#EF4444', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Clothing', icon: '👕', color: '#EC4899', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Personal Care', icon: '💇', color: '#06B6D4', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Education', icon: '🎓', color: '#F97316', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Travel', icon: '✈️', color: '#3B82F6', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
+      { name: 'Sports & Fitness', icon: '💪', color: '#10B981', bill_cycle: 0, bill_day: 0, fixed_amount: '' },
     ],
   },
 ];
@@ -56,8 +59,14 @@ interface BillTypeInput {
   createExpenseType: boolean;
 }
 
-interface ExpenseTypeInput extends CreateExpenseTypeRequest {
+interface ExpenseTypeInput {
   tempId: string;
+  name: string;
+  icon: string;
+  color: string;
+  bill_cycle: number | '';
+  bill_day: number | '';
+  fixed_amount: string;
 }
 
 export default function BatchCreateTypesPage() {
@@ -88,30 +97,71 @@ export default function BatchCreateTypesPage() {
       name: '',
       icon: '🛒',
       color: '#10B981',
+      bill_cycle: 0,
+      bill_day: 0,
+      fixed_amount: '',
     },
   ]);
 
-  const applyTemplate = (templateName: string) => {
+  const applyTemplate = async (templateName: string) => {
     const template = TEMPLATES.find(t => t.name === templateName);
     if (!template) return;
 
-    // Apply bill types
-    const newBillTypes = template.billTypes.map((bt, index) => ({
-      ...bt,
-      tempId: (index + 1).toString(),
-    }));
-    setBillTypes(newBillTypes);
+    try {
+      // Fetch existing types from database
+      const [existingBillTypesRes, existingExpenseTypesRes] = await Promise.all([
+        billTypeAPI.list(),
+        expenseTypeAPI.list(),
+      ]);
 
-    // Apply expense types
-    const newExpenseTypes = template.expenseTypes.map((et, index) => ({
-      ...et,
-      tempId: (index + 1).toString(),
-    }));
-    setExpenseTypes(newExpenseTypes);
+      // Create sets of existing names (both from form and database)
+      const existingBillTypeNames = new Set([
+        ...billTypes.map(bt => bt.name.trim().toLowerCase()),
+        ...existingBillTypesRes.bill_types.map(bt => bt.name.toLowerCase()),
+      ]);
 
-    // Clear any error/success messages
-    setError('');
-    setSuccess('');
+      const existingExpenseTypeNames = new Set([
+        ...expenseTypes.map(et => et.name.trim().toLowerCase()),
+        ...existingExpenseTypesRes.expense_types.map(et => et.name.toLowerCase()),
+      ]);
+
+      // Apply bill types - check for duplicates
+      const uniqueTemplateBillTypes = template.billTypes.filter(
+        bt => !existingBillTypeNames.has(bt.name.toLowerCase())
+      );
+      
+      const nextBillTypeId = Math.max(...billTypes.map(bt => parseInt(bt.tempId)), 0) + 1;
+      const newBillTypes = uniqueTemplateBillTypes.map((bt, index) => ({
+        ...bt,
+        tempId: (nextBillTypeId + index).toString(),
+      }));
+      
+      if (newBillTypes.length > 0) {
+        setBillTypes([...billTypes, ...newBillTypes]);
+      }
+
+      // Apply expense types - check for duplicates
+      const uniqueTemplateExpenseTypes = template.expenseTypes.filter(
+        et => !existingExpenseTypeNames.has(et.name.toLowerCase())
+      );
+      
+      const nextExpenseTypeId = Math.max(...expenseTypes.map(et => parseInt(et.tempId)), 0) + 1;
+      const newExpenseTypes = uniqueTemplateExpenseTypes.map((et, index) => ({
+        ...et,
+        tempId: (nextExpenseTypeId + index).toString(),
+      }));
+      
+      if (newExpenseTypes.length > 0) {
+        setExpenseTypes([...expenseTypes, ...newExpenseTypes]);
+      }
+
+      // Clear any error/success messages
+      setError('');
+      setSuccess('');
+    } catch (err) {
+      console.error('Failed to fetch existing types:', err);
+      setError('Failed to load existing types. Please try again.');
+    }
   };
 
   const addBillType = () => {
@@ -152,6 +202,9 @@ export default function BatchCreateTypesPage() {
         name: '',
         icon: '🛒',
         color: '#10B981',
+        bill_cycle: 0,
+        bill_day: 0,
+        fixed_amount: '',
       },
     ]);
   };
@@ -162,7 +215,7 @@ export default function BatchCreateTypesPage() {
     }
   };
 
-  const updateExpenseType = (tempId: string, field: keyof ExpenseTypeInput, value: string) => {
+  const updateExpenseType = (tempId: string, field: keyof ExpenseTypeInput, value: string | number | boolean) => {
     setExpenseTypes(expenseTypes.map(et =>
       et.tempId === tempId ? { ...et, [field]: value } : et
     ));
@@ -174,8 +227,8 @@ export default function BatchCreateTypesPage() {
         setError('All bill types must have a name');
         return false;
       }
-      if (billType.bill_cycle === '' || billType.bill_cycle < 1) {
-        setError('Bill cycle must be at least 1 month');
+      if (billType.bill_cycle === '' || billType.bill_cycle < 0) {
+        setError('Bill cycle must be 0 or greater');
         return false;
       }
     }
@@ -186,6 +239,10 @@ export default function BatchCreateTypesPage() {
     for (const expenseType of expenseTypes) {
       if (!expenseType.name.trim()) {
         setError('All expense types must have a name');
+        return false;
+      }
+      if (expenseType.bill_cycle === '' || expenseType.bill_cycle < 0) {
+        setError('Bill cycle must be 0 or greater');
         return false;
       }
     }
@@ -258,6 +315,9 @@ export default function BatchCreateTypesPage() {
               name: expenseType.name.trim(),
               icon: expenseType.icon,
               color: expenseType.color,
+              bill_cycle: expenseType.bill_cycle as number,
+              bill_day: expenseType.bill_day === '' ? 0 : expenseType.bill_day,
+              fixed_amount: expenseType.fixed_amount || undefined,
             };
             return expenseTypeAPI.create(data);
           });
@@ -289,7 +349,6 @@ export default function BatchCreateTypesPage() {
     }
   };
 
-  const commonIcons = ['💳', '💰', '🏠', '🚗', '📱', '🍔', '🎮', '🛒', '⚡', '💊', '🎓', '✈️'];
   const commonColors = [
     '#3B82F6', // blue
     '#10B981', // green
@@ -304,23 +363,23 @@ export default function BatchCreateTypesPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-4">
         <div className="flex items-center space-x-4">
           <button
             onClick={() => navigate('/dashboard')}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
           >
             <ArrowLeftIcon className="h-5 w-5 text-gray-600" />
           </button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Batch Create Types</h1>
-            <p className="text-gray-600">Create multiple bill types or expense types at once</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Batch Create Types</h1>
+            <p className="text-sm sm:text-base text-gray-600 hidden sm:block">Create multiple bill types or expense types at once</p>
           </div>
         </div>
         
         {/* Template Selector */}
-        <div className="flex items-center space-x-2">
-          <label className="text-sm text-gray-600">Template:</label>
+        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+          <label className="text-sm text-gray-600 font-medium">Template:</label>
           <select
             onChange={(e) => {
               if (e.target.value) {
@@ -328,7 +387,7 @@ export default function BatchCreateTypesPage() {
                 e.target.value = ''; // Reset selection
               }
             }}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="">Select a template...</option>
             {TEMPLATES.map((template) => (
@@ -424,31 +483,17 @@ export default function BatchCreateTypesPage() {
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="text"
-                              value={billType.icon}
-                              onChange={(e) => updateBillType(billType.tempId, 'icon', e.target.value)}
-                              className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              maxLength={2}
-                            />
-                            <select
-                              value=""
-                              onChange={(e) => updateBillType(billType.tempId, 'icon', e.target.value)}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Pick</option>
-                              {commonIcons.map((icon) => (
-                                <option key={icon} value={icon}>{icon}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <IconPicker
+                            value={billType.icon}
+                            onChange={(icon) => updateBillType(billType.tempId, 'icon', icon)}
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <input
                             type="color"
                             value={billType.color}
                             onChange={(e) => updateBillType(billType.tempId, 'color', e.target.value)}
+                            list="color-presets"
                             className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
                           />
                         </td>
@@ -535,6 +580,9 @@ export default function BatchCreateTypesPage() {
                       <th className="px-4 py-3 border-b">Name *</th>
                       <th className="px-4 py-3 border-b">Icon</th>
                       <th className="px-4 py-3 border-b">Color</th>
+                      <th className="px-4 py-3 border-b">Cycle *</th>
+                      <th className="px-4 py-3 border-b">Due Day</th>
+                      <th className="px-4 py-3 border-b">Fixed Amount</th>
                       <th className="px-4 py-3 border-b w-16">Actions</th>
                     </tr>
                   </thead>
@@ -551,47 +599,52 @@ export default function BatchCreateTypesPage() {
                           />
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="text"
-                              value={expenseType.icon}
-                              onChange={(e) => updateExpenseType(expenseType.tempId, 'icon', e.target.value)}
-                              className="w-16 px-2 py-1 border border-gray-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              maxLength={2}
-                            />
-                            <select
-                              value=""
-                              onChange={(e) => updateExpenseType(expenseType.tempId, 'icon', e.target.value)}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Pick</option>
-                              {commonIcons.map((icon) => (
-                                <option key={icon} value={icon}>{icon}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <IconPicker
+                            value={expenseType.icon}
+                            onChange={(icon) => updateExpenseType(expenseType.tempId, 'icon', icon)}
+                          />
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="color"
-                              value={expenseType.color}
-                              onChange={(e) => updateExpenseType(expenseType.tempId, 'color', e.target.value)}
-                              className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
-                            />
-                            <select
-                              value=""
-                              onChange={(e) => updateExpenseType(expenseType.tempId, 'color', e.target.value)}
-                              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              <option value="">Pick</option>
-                              {commonColors.map((color) => (
-                                <option key={color} value={color} style={{ backgroundColor: color }}>
-                                  {color}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                          <input
+                            type="color"
+                            value={expenseType.color}
+                            onChange={(e) => updateExpenseType(expenseType.tempId, 'color', e.target.value)}
+                            list="color-presets"
+                            className="w-12 h-8 border border-gray-300 rounded cursor-pointer"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={expenseType.bill_cycle}
+                            onChange={(e) => updateExpenseType(expenseType.tempId, 'bill_cycle', parseInt(e.target.value))}
+                            className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            {CYCLE_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="number"
+                            value={expenseType.bill_day}
+                            onChange={(e) => updateExpenseType(expenseType.tempId, 'bill_day', e.target.value ? parseInt(e.target.value) : '')}
+                            placeholder="0"
+                            min="0"
+                            max="31"
+                            className="w-20 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <input
+                            type="text"
+                            value={expenseType.fixed_amount}
+                            onChange={(e) => updateExpenseType(expenseType.tempId, 'fixed_amount', e.target.value)}
+                            placeholder="Optional"
+                            className="w-24 px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
                         </td>
                         <td className="px-4 py-3">
                           <button
@@ -629,6 +682,13 @@ export default function BatchCreateTypesPage() {
           </div>
         </div>
       </div>
+
+      {/* Color Presets Datalist */}
+      <datalist id="color-presets">
+        {commonColors.map((color) => (
+          <option key={color} value={color} />
+        ))}
+      </datalist>
 
       {/* Help Text */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
