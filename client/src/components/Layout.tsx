@@ -63,10 +63,11 @@ export default function Layout({ children }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
     { name: 'Bills Due', href: '/bill-payments/due', icon: ClockIcon },
-    { name: 'Bill Types', href: '/bill-types', icon: CreditCardIcon },
+    { name: 'Expenses Due', href: '/expenses/due', icon: ClockIcon },
     { name: 'Bill Payments', href: '/bill-payments', icon: BanknotesIcon },
-    { name: 'Expense Types', href: '/expense-types', icon: RectangleGroupIcon },
     { name: 'Expenses', href: '/expense-items', icon: ReceiptPercentIcon },
+    { name: 'Expense Types', href: '/expense-types', icon: RectangleGroupIcon },
+    { name: 'Bill Types', href: '/bill-types', icon: CreditCardIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
   ];

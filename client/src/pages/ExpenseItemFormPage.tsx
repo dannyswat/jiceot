@@ -11,17 +11,21 @@ export default function ExpenseItemFormPage() {
   const [searchParams] = useSearchParams();
   const isEditing = Boolean(id);
 
+  // Get returnUrl from search params
+  const returnUrl = searchParams.get('returnUrl') || '/expense-items';
+
   const [formData, setFormData] = useState<CreateExpenseItemRequest>(() => {
     // Initialize with query parameters if present
     const expenseTypeId = searchParams.get('expense_type_id');
     const year = searchParams.get('year');
     const month = searchParams.get('month');
+    const amount = searchParams.get('amount');
     
     return {
       expense_type_id: expenseTypeId ? parseInt(expenseTypeId) : 0,
       year: year ? parseInt(year) : new Date().getFullYear(),
       month: month ? parseInt(month) : new Date().getMonth() + 1,
-      amount: '',
+      amount: amount || '',
       note: '',
     };
   });
@@ -40,6 +44,20 @@ export default function ExpenseItemFormPage() {
       loadExpenseItem(Number(id));
     }
   }, [id, isEditing]);
+
+  // Auto-fill bill_type_id when expense_type_id changes
+  useEffect(() => {
+    if (formData.expense_type_id && !isEditing) {
+      const selectedExpenseType = expenseTypes.find(et => et.id === formData.expense_type_id);
+      if (selectedExpenseType?.default_bill_type_id && !formData.bill_type_id) {
+        setFormData(prev => ({
+          ...prev,
+          bill_type_id: selectedExpenseType.default_bill_type_id,
+        }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.expense_type_id, expenseTypes, isEditing]);
 
   const loadExpenseTypes = async () => {
     try {
@@ -109,7 +127,7 @@ export default function ExpenseItemFormPage() {
         await expenseItemAPI.create(formData);
       }
 
-      navigate('/expense-items');
+      navigate(returnUrl);
     } catch (err: unknown) {
       if (err instanceof Error) {
         setError(err.message || 'Failed to save expense item');
@@ -159,7 +177,7 @@ export default function ExpenseItemFormPage() {
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button
-          onClick={() => navigate('/expense-items')}
+          onClick={() => navigate(returnUrl)}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <ArrowLeftIcon className="h-5 w-5 text-gray-600" />

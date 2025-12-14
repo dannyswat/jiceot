@@ -12,6 +12,9 @@ struct ExpenseType: Codable, Identifiable {
     let name: String
     let icon: String
     let color: String
+    let billDay: Int
+    let billCycle: Int
+    let fixedAmount: String
     let userId: Int
     let createdAt: String
     let updatedAt: String
@@ -21,6 +24,9 @@ struct ExpenseType: Codable, Identifiable {
         case name
         case icon
         case color
+        case billDay = "bill_day"
+        case billCycle = "bill_cycle"
+        case fixedAmount = "fixed_amount"
         case userId = "user_id"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
@@ -31,6 +37,18 @@ struct CreateExpenseTypeRequest: Codable {
     let name: String
     let icon: String?
     let color: String?
+    let billDay: Int?
+    let billCycle: Int?
+    let fixedAmount: String?
+    
+    enum CodingKeys: String, CodingKey {
+        case name
+        case icon
+        case color
+        case billDay = "bill_day"
+        case billCycle = "bill_cycle"
+        case fixedAmount = "fixed_amount"
+    }
 }
 
 struct ExpenseTypeListResponse: Codable {

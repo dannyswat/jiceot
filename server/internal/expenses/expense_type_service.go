@@ -18,15 +18,23 @@ type ExpenseTypeService struct {
 }
 
 type CreateExpenseTypeRequest struct {
-	Name  string `json:"name" validate:"required,min=1"`
-	Icon  string `json:"icon"`
-	Color string `json:"color"`
+	Name              string `json:"name" validate:"required,min=1"`
+	Icon              string `json:"icon"`
+	Color             string `json:"color"`
+	BillDay           int    `json:"bill_day" validate:"min=0,max=31"`
+	BillCycle         int    `json:"bill_cycle" validate:"min=0"`
+	FixedAmount       string `json:"fixed_amount"`
+	DefaultBillTypeID *uint  `json:"default_bill_type_id"`
 }
 
 type UpdateExpenseTypeRequest struct {
-	Name  string `json:"name" validate:"required,min=1"`
-	Icon  string `json:"icon"`
-	Color string `json:"color"`
+	Name              string `json:"name" validate:"required,min=1"`
+	Icon              string `json:"icon"`
+	Color             string `json:"color"`
+	BillDay           int    `json:"bill_day" validate:"min=0,max=31"`
+	BillCycle         int    `json:"bill_cycle" validate:"min=0"`
+	FixedAmount       string `json:"fixed_amount"`
+	DefaultBillTypeID *uint  `json:"default_bill_type_id"`
 }
 
 type ExpenseTypeListResponse struct {
@@ -55,10 +63,14 @@ func (s *ExpenseTypeService) CreateExpenseType(userID uint, req CreateExpenseTyp
 	}
 
 	expenseType := ExpenseType{
-		Name:   req.Name,
-		Icon:   req.Icon,
-		Color:  req.Color,
-		UserID: userID,
+		Name:              req.Name,
+		Icon:              req.Icon,
+		Color:             req.Color,
+		BillDay:           req.BillDay,
+		BillCycle:         req.BillCycle,
+		FixedAmount:       req.FixedAmount,
+		DefaultBillTypeID: req.DefaultBillTypeID,
+		UserID:            userID,
 	}
 
 	if err := s.db.Create(&expenseType).Error; err != nil {
@@ -111,6 +123,10 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	expenseType.Name = req.Name
 	expenseType.Icon = req.Icon
 	expenseType.Color = req.Color
+	expenseType.BillDay = req.BillDay
+	expenseType.BillCycle = req.BillCycle
+	expenseType.FixedAmount = req.FixedAmount
+	expenseType.DefaultBillTypeID = req.DefaultBillTypeID
 
 	if err := s.db.Save(&expenseType).Error; err != nil {
 		return nil, err

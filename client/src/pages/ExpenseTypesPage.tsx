@@ -132,7 +132,10 @@ export default function ExpenseTypesPage() {
                         {expenseType.name}
                       </h3>
                       <p className="text-xs text-gray-500">
-                        {expenseType.color || 'No color set'}
+                        {expenseType.bill_cycle > 0 
+                          ? `Every ${expenseType.bill_cycle} ${expenseType.bill_cycle === 1 ? 'mo' : 'mos'}`
+                          : 'On-demand'}
+                        {expenseType.fixed_amount && expenseType.fixed_amount !== '0.00' && ` • $${expenseType.fixed_amount}`}
                       </p>
                     </div>
                   </div>

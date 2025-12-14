@@ -13,7 +13,7 @@ type BillType struct {
 	Icon          string         `json:"icon"`
 	Color         string         `json:"color"`                                  // hex color code
 	BillDay       int            `json:"bill_day"`                               // day of month, 0 means no specific day
-	BillCycle     int            `json:"bill_cycle"`                             // in months, 0 means one-time
+	BillCycle     int            `json:"bill_cycle"`                             // in months, 0 means on-demand
 	FixedAmount   string         `json:"fixed_amount" gorm:"type:decimal(10,2)"` // Store as string for precision
 	Stopped       bool           `json:"stopped" gorm:"default:false"`
 	ExpenseTypeID *uint          `json:"expense_type_id" gorm:"index"` // optional, can be null

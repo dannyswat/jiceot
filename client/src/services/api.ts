@@ -221,6 +221,10 @@ export interface ExpenseType {
   name: string;
   icon: string;
   color: string;
+  bill_day: number;
+  bill_cycle: number;
+  fixed_amount: string;
+  default_bill_type_id?: number;
   user_id: number;
   created_at: string;
   updated_at: string;
@@ -230,12 +234,20 @@ export interface CreateExpenseTypeRequest {
   name: string;
   icon?: string;
   color?: string;
+  bill_day?: number;
+  bill_cycle?: number;
+  fixed_amount?: string;
+  default_bill_type_id?: number;
 }
 
 export interface UpdateExpenseTypeRequest {
   name: string;
   icon?: string;
   color?: string;
+  bill_day?: number;
+  bill_cycle?: number;
+  fixed_amount?: string;
+  default_bill_type_id?: number;
 }
 
 export interface ExpenseTypeListResponse {
@@ -635,6 +647,29 @@ export interface DueBillsResponse {
   month: number;
 }
 
+export interface DueExpense {
+  id: number;
+  name: string;
+  icon: string;
+  color: string;
+  fixed_amount: string;
+  bill_day: number;
+  bill_cycle: number;
+  next_due_date: string;
+  days_until_due: number;
+  status: 'overdue' | 'due_soon' | 'upcoming';
+  has_current_expense: boolean;
+  last_expense_year?: number;
+  last_expense_month?: number;
+  last_expense_amount?: string;
+}
+
+export interface DueExpensesResponse {
+  due_expenses: DueExpense[];
+  year: number;
+  month: number;
+}
+
 export const dashboardAPI = {
   // Get dashboard stats
   getStats: async (): Promise<DashboardStats> => {
@@ -648,6 +683,15 @@ export const dashboardAPI = {
     if (year) searchParams.append('year', year.toString());
     if (month) searchParams.append('month', month.toString());
     const response = await api.get<DueBillsResponse>(`/dashboard/due-bills?${searchParams.toString()}`);
+    return response.data;
+  },
+
+  // Get due expenses for a specific month
+  getDueExpenses: async (year?: number, month?: number): Promise<DueExpensesResponse> => {
+    const searchParams = new URLSearchParams();
+    if (year) searchParams.append('year', year.toString());
+    if (month) searchParams.append('month', month.toString());
+    const response = await api.get<DueExpensesResponse>(`/dashboard/due-expenses?${searchParams.toString()}`);
     return response.data;
   },
 };

@@ -12,6 +12,7 @@ import BillTypeFormPage from './pages/BillTypeFormPage'
 import BillPaymentsPage from './pages/BillPaymentsPage'
 import BillPaymentFormPage from './pages/BillPaymentFormPage'
 import BillPaymentDue from './pages/BillPaymentDue'
+import ExpensesDue from './pages/ExpensesDue'
 import ExpenseTypesPage from './pages/ExpenseTypesPage'
 import ExpenseTypeFormPage from './pages/ExpenseTypeFormPage'
 import ExpenseItemsPage from './pages/ExpenseItemsPage'
@@ -46,6 +47,7 @@ function App() {
                 <Route path="/expense-items" element={<ExpenseItemsPage />} />
                 <Route path="/expense-items/new" element={<ExpenseItemFormPage />} />
                 <Route path="/expense-items/:id/edit" element={<ExpenseItemFormPage />} />
+                <Route path="/expenses/due" element={<ExpensesDue />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/settings/notifications" element={<NotificationSettingsPage />} />

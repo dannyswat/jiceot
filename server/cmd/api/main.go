@@ -149,6 +149,7 @@ func main() {
 	// Dashboard routes
 	protected.GET("/dashboard/stats", dashboardHandler.GetDashboardStats)
 	protected.GET("/dashboard/due-bills", dashboardHandler.GetDueBills)
+	protected.GET("/dashboard/due-expenses", dashboardHandler.GetDueExpenses)
 
 	// Reports routes
 	protected.GET("/reports/monthly", reportsHandler.GetMonthlyReport)
