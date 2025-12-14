@@ -62,8 +62,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: HomeIcon },
-    { name: 'Bills Due', href: '/bill-payments/due', icon: ClockIcon },
-    { name: 'Expenses Due', href: '/expenses/due', icon: ClockIcon },
+    { name: 'Due Items', href: '/due-items', icon: ClockIcon },
     { name: 'Bill Payments', href: '/bill-payments', icon: BanknotesIcon },
     { name: 'Expenses', href: '/expense-items', icon: ReceiptPercentIcon },
     { name: 'Expense Types', href: '/expense-types', icon: RectangleGroupIcon },

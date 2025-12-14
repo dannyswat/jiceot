@@ -11,8 +11,7 @@ import BillTypesPage from './pages/BillTypesPage'
 import BillTypeFormPage from './pages/BillTypeFormPage'
 import BillPaymentsPage from './pages/BillPaymentsPage'
 import BillPaymentFormPage from './pages/BillPaymentFormPage'
-import BillPaymentDue from './pages/BillPaymentDue'
-import ExpensesDue from './pages/ExpensesDue'
+import DueItemsPage from './pages/DueItemsPage'
 import ExpenseTypesPage from './pages/ExpenseTypesPage'
 import ExpenseTypeFormPage from './pages/ExpenseTypeFormPage'
 import ExpenseItemsPage from './pages/ExpenseItemsPage'
@@ -40,14 +39,13 @@ function App() {
                 <Route path="/bill-payments" element={<BillPaymentsPage />} />
                 <Route path="/bill-payments/new" element={<BillPaymentFormPage />} />
                 <Route path="/bill-payments/:id/edit" element={<BillPaymentFormPage />} />
-                <Route path="/bill-payments/due" element={<BillPaymentDue />} />
+                <Route path="/due-items" element={<DueItemsPage />} />
                 <Route path="/expense-types" element={<ExpenseTypesPage />} />
                 <Route path="/expense-types/new" element={<ExpenseTypeFormPage />} />
                 <Route path="/expense-types/:id/edit" element={<ExpenseTypeFormPage />} />
                 <Route path="/expense-items" element={<ExpenseItemsPage />} />
                 <Route path="/expense-items/new" element={<ExpenseItemFormPage />} />
                 <Route path="/expense-items/:id/edit" element={<ExpenseItemFormPage />} />
-                <Route path="/expenses/due" element={<ExpensesDue />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/settings/notifications" element={<NotificationSettingsPage />} />

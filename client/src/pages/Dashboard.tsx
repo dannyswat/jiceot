@@ -150,7 +150,7 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 bg-white bg-opacity-20 rounded-lg flex items-center justify-center">
-                  <PlusIcon className="h-6 w-6 text-white" />
+                  <PlusIcon className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
                   <h3 className="text-lg font-semibold">Quick Setup</h3>
@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
                 to="/batch-create-types"
                 className="bg-white text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-50 transition-colors font-medium"
               >
-                Batch Create Types
+                Set up
               </Link>
             </div>
           </div>
