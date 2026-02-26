@@ -129,7 +129,7 @@ func (s *UserSettingService) TriggerManualReminder(userID uint, customDays *int)
 		if result.Error == gorm.ErrRecordNotFound {
 			// No payment exists, bill is due in current month/cycle
 			if billType.BillDay > 0 {
-				nextDueDate = time.Date(now.Year(), now.Month(), billType.BillDay, 0, 0, 0, 0, time.Local)
+				nextDueDate = dateWithClampedDay(now.Year(), now.Month(), billType.BillDay, time.Local)
 				// If the bill day has already passed this month, move to next cycle
 				if nextDueDate.AddDate(0, 0, 1).Before(now) {
 					nextDueDate = s.calculateNextDueDateFromDate(nextDueDate, billType.BillCycle)

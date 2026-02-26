@@ -112,7 +112,7 @@ func (s *RemindService) processUserReminders(setting UserNotificationSetting) er
 		if result.Error == gorm.ErrRecordNotFound {
 			// No payment exists, bill is due in current month/cycle
 			if billType.BillDay > 0 {
-				nextDueDate = time.Date(now.Year(), now.Month(), billType.BillDay, 0, 0, 0, 0, time.Local)
+				nextDueDate = dateWithClampedDay(now.Year(), now.Month(), billType.BillDay, time.Local)
 				// If the bill day has already passed this month, move to next cycle
 				if nextDueDate.Before(now) {
 					nextDueDate = s.calculateNextDueDateFromDate(nextDueDate, billType.BillCycle)
@@ -274,4 +274,12 @@ func (s *RemindService) getCycleDescription(billCycle int) string {
 		}
 		return fmt.Sprintf("every %d months", billCycle)
 	}
+}
+
+func dateWithClampedDay(year int, month time.Month, day int, loc *time.Location) time.Time {
+	lastDayOfMonth := time.Date(year, month+1, 0, 0, 0, 0, 0, loc).Day()
+	if day > lastDayOfMonth {
+		day = lastDayOfMonth
+	}
+	return time.Date(year, month, day, 0, 0, 0, 0, loc)
 }

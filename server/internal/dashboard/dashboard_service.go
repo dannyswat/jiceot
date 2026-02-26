@@ -276,7 +276,7 @@ func CalculateNextDueDateFromLastPayment(billType expenses.BillType, lastPayment
 			// No specific day, use end of month
 			return time.Date(currentYear, time.Month(currentMonth+1), 0, 0, 0, 0, 0, time.Local)
 		}
-		return time.Date(currentYear, time.Month(currentMonth), billType.BillDay, 0, 0, 0, 0, time.Local)
+		return dateWithClampedDay(currentYear, time.Month(currentMonth), billType.BillDay, time.Local)
 	}
 
 	// Calculate next due date based on last payment + bill cycle
@@ -294,7 +294,15 @@ func CalculateNextDueDateFromLastPayment(billType expenses.BillType, lastPayment
 		return time.Date(nextDueYear, time.Month(nextDueMonth+1), 0, 0, 0, 0, 0, time.Local)
 	}
 
-	return time.Date(nextDueYear, time.Month(nextDueMonth), billType.BillDay, 0, 0, 0, 0, time.Local)
+	return dateWithClampedDay(nextDueYear, time.Month(nextDueMonth), billType.BillDay, time.Local)
+}
+
+func dateWithClampedDay(year int, month time.Month, day int, loc *time.Location) time.Time {
+	lastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, loc).Day()
+	if day > lastDay {
+		day = lastDay
+	}
+	return time.Date(year, month, day, 0, 0, 0, 0, loc)
 }
 
 func sortUpcomingBills(bills []UpcomingBill) {
@@ -385,7 +393,7 @@ func calculateNextExpenseDueDateFromLastExpense(expenseType expenses.ExpenseType
 			// No specific day, use end of month
 			return time.Date(currentYear, time.Month(currentMonth+1), 0, 0, 0, 0, 0, time.Local)
 		}
-		return time.Date(currentYear, time.Month(currentMonth), expenseType.BillDay, 0, 0, 0, 0, time.Local)
+		return dateWithClampedDay(currentYear, time.Month(currentMonth), expenseType.BillDay, time.Local)
 	}
 
 	// Add the cycle to the last expense date
@@ -403,7 +411,7 @@ func calculateNextExpenseDueDateFromLastExpense(expenseType expenses.ExpenseType
 		return time.Date(nextDueYear, time.Month(nextDueMonth+1), 0, 0, 0, 0, 0, time.Local)
 	}
 
-	return time.Date(nextDueYear, time.Month(nextDueMonth), expenseType.BillDay, 0, 0, 0, 0, time.Local)
+	return dateWithClampedDay(nextDueYear, time.Month(nextDueMonth), expenseType.BillDay, time.Local)
 }
 
 func sortUpcomingExpenses(expenses []UpcomingExpense) {

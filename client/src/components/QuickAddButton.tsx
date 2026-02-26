@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { expenseTypeAPI, billTypeAPI, type ExpenseType, type BillType } from '../services/api';
+import { getNextRecurringDueDate } from '../common/date';
 
 export default function QuickAddButton() {
   const navigate = useNavigate();
@@ -41,19 +42,8 @@ export default function QuickAddButton() {
         const currentDay = now.getDate();
         
         const getNextDueDate = (billType: BillType) => {
-          let dueYear = currentYear;
-          let dueMonth = currentMonth;
-          
-          // If current day is past bill day, next due is next month
-          if (currentDay > billType.bill_day) {
-            dueMonth++;
-            if (dueMonth > 12) {
-              dueMonth = 1;
-              dueYear++;
-            }
-          }
-          
-          return new Date(dueYear, dueMonth - 1, billType.bill_day).getTime();
+          const referenceDate = new Date(currentYear, currentMonth - 1, currentDay);
+          return getNextRecurringDueDate(referenceDate, billType.bill_day).getTime();
         };
         
         const aDueDate = getNextDueDate(a);
