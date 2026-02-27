@@ -359,116 +359,119 @@ export default function DueItemsPage() {
                 : (item as DueExpense).has_current_expense;
 
               return (
-                <div key={`${item.itemType}-${item.id}`} className="p-4 sm:p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-                    <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
-                      {/* Item Info */}
-                      <div className="flex items-center space-x-3 flex-1 min-w-0">
-                        <div 
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold flex-shrink-0"
-                          style={{ backgroundColor: item.color || '#6b7280' }}
-                        >
-                          {item.icon || item.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-lg font-medium text-gray-900 truncate">{item.name}</h3>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              isBill ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                            }`}>
-                              {isBill ? (
-                                <><BanknotesIcon className="h-3 w-3 mr-1" /> Bill</>
-                              ) : (
-                                <><ReceiptPercentIcon className="h-3 w-3 mr-1" /> Expense</>
-                              )}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-500">
-                            Due: {formatDate(item.next_due_date)}
-                            {item.fixed_amount && item.fixed_amount !== '0.00' && ` • ${formatCurrency(item.fixed_amount)}`}
-                          </p>
-                        </div>
+                <div key={`${item.itemType}-${item.id}`} className="p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start space-x-3">
+                    {/* Left: Icon + Chip */}
+                    <div className="flex flex-col items-center gap-1 flex-shrink-0">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
+                        style={{ backgroundColor: item.color || '#6b7280' }}
+                      >
+                        {item.icon || item.name.charAt(0).toUpperCase()}
                       </div>
-
-                      {/* Status */}
-                      <div className={`inline-flex flex-1 sm:flex-none me-0 sm:me-2 items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium border flex-shrink-0 ${getStatusColor(item.status, hasCompleted)}`}>
-                        {getStatusIcon(item.status, hasCompleted)}
-                        <span className="inline">{getStatusText(item)}</span>
-                      </div>
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
+                        isBill ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {isBill ? (
+                          <><BanknotesIcon className="h-3 w-3 mr-1" /> Bill</>
+                        ) : (
+                          <><ReceiptPercentIcon className="h-3 w-3 mr-1" /> Expn</>
+                        )}
+                      </span>
                     </div>
 
-                    {/* Action Button */}
-                    <div className="flex items-center">
-                      {hasCompleted ? (
-                        <div className="flex items-center space-x-2 text-green-600">
-                          <CheckCircleIcon className="h-5 w-5" />
-                          <span className="text-sm font-medium">
-                            {(() => {
-                              const nextDueDate = new Date(item.next_due_date);
-                              const nextDueDateMonth = nextDueDate.getMonth() + 1;
-                              const nextDueDateYear = nextDueDate.getFullYear();
-                              const isNextDueDateInCurrentMonth = nextDueDateMonth === selectedMonth && nextDueDateYear === selectedYear;
-                              return isNextDueDateInCurrentMonth ? (isBill ? 'Paid' : 'Created') : 'Not Due';
-                            })()}
-                          </span>
-                        </div>
-                      ) : isBill ? (
-                        <div className="flex flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+                    {/* Right: Content rows */}
+                    <div className="flex-1 min-w-0 space-y-2">
+                      {/* Row 1: Name + Amount */}
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-base font-semibold text-gray-900 truncate">{item.name}</h3>
+                        {item.fixed_amount && item.fixed_amount !== '0.00' ? (
+                          <span className="text-sm font-medium text-gray-700 flex-shrink-0">{formatCurrency(item.fixed_amount)}</span>
+                        ) : (
+                          <span className="text-sm text-gray-400 flex-shrink-0">Custom</span>
+                        )}
+                      </div>
+
+                      {/* Row 2: Next Due status */}
+                      <div>
+                        <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(item.status, hasCompleted)}`}>
+                          {getStatusIcon(item.status, hasCompleted)}
+                          <span>{getStatusText(item)}</span>
+                        </span>
+                      </div>
+
+                      {/* Row 3: Action buttons */}
+                      <div className="flex items-center gap-2">
+                        {hasCompleted ? (
+                          <div className="flex items-center space-x-1.5 text-green-600">
+                            <CheckCircleIcon className="h-4 w-4" />
+                            <span className="text-sm font-medium">
+                              {(() => {
+                                const nextDueDate = new Date(item.next_due_date);
+                                const nextDueDateMonth = nextDueDate.getMonth() + 1;
+                                const nextDueDateYear = nextDueDate.getFullYear();
+                                const isNextDueDateInCurrentMonth = nextDueDateMonth === selectedMonth && nextDueDateYear === selectedYear;
+                                return isNextDueDateInCurrentMonth ? (isBill ? 'Paid' : 'Created') : 'Not Due';
+                              })()}
+                            </span>
+                          </div>
+                        ) : isBill ? (
+                          <>
+                            <button
+                              onClick={() => handleCreateBillPayment(item as DueBill)}
+                              className={`inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+                                item.status === 'overdue'
+                                  ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
+                                  : item.status === 'due_soon'
+                                  ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
+                                  : 'bg-blue-600 hover:bg-blue-700 focus:ring-indigo-500'
+                              }`}
+                            >
+                              <CurrencyDollarIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+                              Pay Now
+                            </button>
+                            <button
+                              onClick={() => handleMarkAsSettled(item as DueBill)}
+                              className="inline-flex items-center justify-center px-3 py-1.5 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                              title="Mark as settled without payment"
+                            >
+                              <CheckCircleIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+                              Settled
+                            </button>
+                          </>
+                        ) : (
                           <button
-                            onClick={() => handleCreateBillPayment(item as DueBill)}
-                            className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
-                              item.status === 'overdue' 
-                                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
+                            onClick={() => handleCreateExpense(item as DueExpense)}
+                            className={`inline-flex items-center justify-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
+                              item.status === 'overdue'
+                                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
                                 : item.status === 'due_soon'
                                 ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
-                                : 'bg-blue-600 hover:bg-blue-700 focus:ring-indigo-500'
+                                : 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500'
                             }`}
                           >
-                            <CurrencyDollarIcon className="-ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                            <span className="whitespace-nowrap">Pay Now</span>
+                            <CurrencyDollarIcon className="-ml-0.5 mr-1.5 h-4 w-4" />
+                            Create Expense
                           </button>
-                          
-                          <button
-                            onClick={() => handleMarkAsSettled(item as DueBill)}
-                            className="inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
-                            title="Mark as settled without payment"
-                          >
-                            <CheckCircleIcon className="-ml-1 mr-2 h-4 w-4" />
-                            <span className="whitespace-nowrap">Settled</span>
-                          </button>
-                        </div>
+                        )}
+                      </div>
+
+                      {/* Row 4: Last Payment/Expense Info */}
+                      {isBill ? (
+                        (item as DueBill).last_payment_year && (item as DueBill).last_payment_amount && (
+                          <div className="text-xs text-gray-500">
+                            Last payment: ${(item as DueBill).last_payment_amount} ({(item as DueBill).last_payment_month}/{(item as DueBill).last_payment_year})
+                          </div>
+                        )
                       ) : (
-                        <button
-                          onClick={() => handleCreateExpense(item as DueExpense)}
-                          className={`inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${
-                            item.status === 'overdue' 
-                              ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
-                              : item.status === 'due_soon'
-                              ? 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500'
-                              : 'bg-purple-600 hover:bg-purple-700 focus:ring-purple-500'
-                          }`}
-                        >
-                          <CurrencyDollarIcon className="-ml-1 mr-2 h-4 w-4 sm:h-5 sm:w-5" />
-                          <span className="whitespace-nowrap">Create Expense</span>
-                        </button>
+                        (item as DueExpense).last_expense_year && (item as DueExpense).last_expense_amount && (
+                          <div className="text-xs text-gray-500">
+                            Last expense: ${(item as DueExpense).last_expense_amount} ({(item as DueExpense).last_expense_month}/{(item as DueExpense).last_expense_year})
+                          </div>
+                        )
                       )}
                     </div>
                   </div>
-
-                  {/* Last Payment/Expense Info */}
-                  {isBill ? (
-                    (item as DueBill).last_payment_year && (item as DueBill).last_payment_amount && (
-                      <div className="mt-4 text-sm text-gray-500">
-                        Last payment: ${(item as DueBill).last_payment_amount} ({(item as DueBill).last_payment_month}/{(item as DueBill).last_payment_year})
-                      </div>
-                    )
-                  ) : (
-                    (item as DueExpense).last_expense_year && (item as DueExpense).last_expense_amount && (
-                      <div className="mt-4 text-sm text-gray-500">
-                        Last expense: ${(item as DueExpense).last_expense_amount} ({(item as DueExpense).last_expense_month}/{(item as DueExpense).last_expense_year})
-                      </div>
-                    )
-                  )}
                 </div>
               );
             })}

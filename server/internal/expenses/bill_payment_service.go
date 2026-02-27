@@ -196,8 +196,8 @@ func (s *BillPaymentService) ListBillPayments(userID uint, req BillPaymentListRe
 		query = query.Offset(req.Offset)
 	}
 
-	// Order by year and month descending (most recent first)
-	query = query.Order("year DESC, month DESC")
+	// Order by created_at descending (most recently created first)
+	query = query.Order("created_at DESC")
 
 	var billPayments []BillPayment
 	if err := query.Find(&billPayments).Error; err != nil {

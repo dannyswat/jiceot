@@ -3,12 +3,11 @@ import { Link } from 'react-router-dom';
 import { expenseItemAPI, expenseTypeAPI, type ExpenseItem, type ExpenseType } from '../services/api';
 import MonthSelect from '../components/MonthSelect';
 import YearSelect from '../components/YearSelect';
+import { getMonthName } from '../common/date';
 import { 
   PlusIcon, 
   PencilIcon, 
   TrashIcon,
-  CalendarIcon,
-  CurrencyDollarIcon,
   DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
@@ -92,25 +91,8 @@ export default function ExpenseItemsPage() {
     }).format(parseFloat(amount));
   };
 
-  const formatDate = (year: number, month: number) => {
-    return new Date(year, month - 1).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long'
-    });
-  };
-
-  const getExpenseTypeDisplay = (expenseItem: ExpenseItem) => {
-    const expenseType = expenseItem.expense_type || expenseTypes.find(et => et.id === expenseItem.expense_type_id);
-    return expenseType ? (
-      <div className="flex items-center">
-        <span className="text-lg mr-2">{expenseType.icon}</span>
-        <span className="text-sm font-medium" style={{ color: expenseType.color }}>
-          {expenseType.name}
-        </span>
-      </div>
-    ) : (
-      <span className="text-gray-500">Unknown</span>
-    );
+  const getExpenseType = (expenseItem: ExpenseItem) => {
+    return expenseItem.expense_type || expenseTypes.find(et => et.id === expenseItem.expense_type_id);
   };
 
   const totalPages = Math.ceil(total / itemsPerPage);
@@ -271,73 +253,60 @@ export default function ExpenseItemsPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Expense Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Note
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {expenseItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getExpenseTypeDisplay(item)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-gray-900">
-                          <CalendarIcon className="h-4 w-4 mr-2 text-gray-400" />
-                          {formatDate(item.year, item.month)}
+            <ul className="divide-y divide-gray-200">
+              {expenseItems.map((item) => {
+                const expenseType = getExpenseType(item);
+                return (
+                  <li key={item.id}>
+                    <div className="px-4 py-4 sm:px-6 hover:bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          {expenseType ? (
+                            <span
+                              className="text-lg w-6 text-center flex-shrink-0"
+                              style={{ color: expenseType.color }}
+                            >
+                              {expenseType.icon}
+                            </span>
+                          ) : (
+                            <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {expenseType?.name || 'Unknown Expense Type'}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {getMonthName(item.month)} {item.year} created on {item.created_at.slice(0, 10)}
+                              {item.note && ` • ${item.note}`}
+                            </p>
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-gray-900 font-medium">
-                          <CurrencyDollarIcon className="h-4 w-4 mr-1 text-gray-400" />
-                          {formatAmount(item.amount)}
+
+                        <div className="flex items-center space-x-4">
+                          <span className="text-lg font-semibold text-gray-900">
+                            {formatAmount(item.amount)}
+                          </span>
+                          <div className="flex space-x-2">
+                            <Link
+                              to={`/expense-items/${item.id}/edit`}
+                              className="text-blue-600 hover:text-blue-900"
+                            >
+                              <PencilIcon className="h-4 w-4" />
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(item.id)}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-gray-900 max-w-xs truncate" title={item.note}>
-                          {item.note || <span className="text-gray-400 italic">No note</span>}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <Link
-                            to={`/expense-items/${item.id}/edit`}
-                            className="text-blue-600 hover:text-blue-900 p-1"
-                            title="Edit"
-                          >
-                            <PencilIcon className="h-4 w-4" />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(item.id)}
-                            className="text-red-600 hover:text-red-900 p-1"
-                            title="Delete"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
 
             {/* Pagination */}
             {totalPages > 1 && (
