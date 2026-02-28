@@ -244,7 +244,7 @@ export default function NotificationSettingsPage() {
           {/* Reminder Time */}
           <div>
             <label htmlFor="remind_hour" className="block text-sm font-medium text-gray-900 mb-2">
-              Reminder Time
+              Reminder Time (GMT+0)
             </label>
             <select
               id="remind_hour"
