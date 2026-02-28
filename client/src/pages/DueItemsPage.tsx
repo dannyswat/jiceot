@@ -23,6 +23,7 @@ export default function DueItemsPage() {
   const [dueItems, setDueItems] = useState<DueItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [filter, setFilter] = useState<'all' | 'bills' | 'expenses'>('all');
@@ -215,7 +216,18 @@ export default function DueItemsPage() {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="md:hidden flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Filters</h2>
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters((prev) => !prev)}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            {showMobileFilters ? 'Hide' : 'Show'}
+          </button>
+        </div>
+
+        <div className={`${showMobileFilters ? 'grid' : 'hidden'} mt-3 grid-cols-1 gap-4 md:mt-0 md:grid md:grid-cols-4`}>
           <YearSelect
             value={selectedYear}
             onChange={(year) => setSelectedYear(year as number)}
@@ -256,7 +268,8 @@ export default function DueItemsPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+        <div className="flex min-w-max gap-3 pb-1 md:grid md:min-w-0 md:grid-cols-6 md:gap-4">
         {[
           {
             label: 'Overdue',
@@ -309,7 +322,7 @@ export default function DueItemsPage() {
             bg: 'bg-gray-50'
           }
         ].map((stat) => (
-          <div key={stat.label} className={`${stat.bg} rounded-lg p-4`}>
+          <div key={stat.label} className={`${stat.bg} min-w-[140px] rounded-lg p-4 md:min-w-0`}>
             <div className="flex items-center">
               <div>
                 <p className="text-sm font-medium text-gray-600">{stat.label}</p>
@@ -318,6 +331,7 @@ export default function DueItemsPage() {
             </div>
           </div>
         ))}
+        </div>
       </div>
 
       {/* Items List */}
