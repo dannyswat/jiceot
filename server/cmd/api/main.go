@@ -14,6 +14,7 @@ import (
 	"dannyswat/jiceot/internal/dashboard"
 	"dannyswat/jiceot/internal/expenses"
 	"dannyswat/jiceot/internal/notifications"
+	"dannyswat/jiceot/internal/reminders"
 	"dannyswat/jiceot/internal/reports"
 	"dannyswat/jiceot/internal/users"
 
@@ -49,6 +50,7 @@ func main() {
 		&expenses.ExpenseType{},
 		&expenses.ExpenseItem{},
 		&notifications.UserNotificationSetting{},
+		&reminders.Reminder{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
@@ -65,11 +67,12 @@ func main() {
 	expenseItemService := expenses.NewExpenseItemService(db)
 	remindService := notifications.NewRemindService(db)
 	userSettingService := notifications.NewUserSettingService(db)
+	reminderService := reminders.NewReminderService(db)
 	dashboardService := dashboard.NewDashboardService(db)
 	reportsService := reports.NewReportsService(db)
 
 	// Start background reminder service
-	remindService.StartBackgroundReminders()
+	remindService.StartBackgroundReminders(reminderService)
 
 	// Setup graceful shutdown for reminder service
 	go func() {
@@ -90,6 +93,7 @@ func main() {
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
 	expenseItemHandler := expenses.NewExpenseItemHandler(expenseItemService)
 	userSettingHandler := notifications.NewUserSettingHandler(userSettingService)
+	reminderHandler := reminders.NewReminderHandler(reminderService)
 	dashboardHandler := dashboard.NewDashboardHandler(dashboardService)
 	reportsHandler := reports.NewReportsHandler(reportsService)
 
@@ -186,6 +190,14 @@ func main() {
 	protected.PUT("/expense-items/:id", expenseItemHandler.UpdateExpenseItem)
 	protected.DELETE("/expense-items/:id", expenseItemHandler.DeleteExpenseItem)
 	protected.GET("/expense-items/monthly/:year/:month", expenseItemHandler.GetExpenseItemsByMonth)
+
+	// Reminder routes
+	protected.GET("/reminders", reminderHandler.ListReminders)
+	protected.POST("/reminders", reminderHandler.CreateReminder)
+	protected.GET("/reminders/:id", reminderHandler.GetReminder)
+	protected.PUT("/reminders/:id", reminderHandler.UpdateReminder)
+	protected.DELETE("/reminders/:id", reminderHandler.DeleteReminder)
+	protected.POST("/reminders/:id/toggle", reminderHandler.ToggleReminder)
 
 	// Notification Settings routes
 	protected.GET("/notifications/settings", userSettingHandler.GetUserSetting)

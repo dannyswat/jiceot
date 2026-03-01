@@ -3,6 +3,8 @@ package notifications
 import (
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"dannyswat/jiceot/internal/auth"
 
@@ -50,6 +52,7 @@ func (h *UserSettingHandler) CreateOrUpdateUserSetting(c echo.Context) error {
 	var req struct {
 		BarkApiUrl       string `json:"bark_api_url"`
 		BarkEnabled      bool   `json:"bark_enabled"`
+		Timezone         string `json:"timezone"`
 		RemindHour       int    `json:"remind_hour"`
 		RemindDaysBefore int    `json:"remind_days_before"`
 	}
@@ -74,10 +77,22 @@ func (h *UserSettingHandler) CreateOrUpdateUserSetting(c echo.Context) error {
 		})
 	}
 
+	timezone := strings.TrimSpace(req.Timezone)
+	if timezone == "" {
+		timezone = "UTC"
+	}
+
+	if _, err := time.LoadLocation(timezone); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid timezone",
+		})
+	}
+
 	setting := &UserNotificationSetting{
 		UserID:           userID,
 		BarkApiUrl:       req.BarkApiUrl,
 		BarkEnabled:      req.BarkEnabled,
+		Timezone:         timezone,
 		RemindHour:       req.RemindHour,
 		RemindDaysBefore: req.RemindDaysBefore,
 	}

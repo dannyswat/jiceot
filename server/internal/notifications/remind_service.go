@@ -11,9 +11,25 @@ import (
 	"gorm.io/gorm"
 )
 
+// DueReminder represents a reminder that is due for notification
+type DueReminder struct {
+	ID     uint
+	UserID uint
+	Title  string
+	Detail string
+}
+
+// ReminderChecker is an interface for checking and processing due reminders.
+// This avoids circular imports between notifications and reminders packages.
+type ReminderChecker interface {
+	GetDueRemindersForNotification(now time.Time) ([]DueReminder, error)
+	MarkRemindedByID(reminderID uint) error
+}
+
 type RemindService struct {
-	db     *gorm.DB
-	cancel context.CancelFunc
+	db              *gorm.DB
+	cancel          context.CancelFunc
+	reminderChecker ReminderChecker
 }
 
 func NewRemindService(db *gorm.DB) *RemindService {
@@ -23,7 +39,8 @@ func NewRemindService(db *gorm.DB) *RemindService {
 }
 
 // StartBackgroundReminders starts the background service that runs every hour
-func (s *RemindService) StartBackgroundReminders() {
+func (s *RemindService) StartBackgroundReminders(reminderChecker ReminderChecker) {
+	s.reminderChecker = reminderChecker
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
 
@@ -61,29 +78,44 @@ func (s *RemindService) StopBackgroundReminders() {
 
 // checkAndSendReminders checks all user settings and sends reminders if needed
 func (s *RemindService) checkAndSendReminders() {
-	now := time.Now()
-	currentHour := now.Hour()
+	nowUTC := time.Now().UTC()
 
-	log.Printf("Checking reminders at %s (hour: %d)", now.Format(time.RFC3339), currentHour)
+	log.Printf("Checking reminders at %s", nowUTC.Format(time.RFC3339))
 
+	// 1. Process bill due reminders (timezone-aware per user setting)
 	var settings []UserNotificationSetting
-	if err := s.db.Where("bark_enabled = ? AND remind_hour = ?", true, currentHour).Find(&settings).Error; err != nil {
+	if err := s.db.Where("bark_enabled = ?", true).Find(&settings).Error; err != nil {
 		log.Printf("Error fetching notification settings: %v", err)
 		return
 	}
 
-	log.Printf("Found %d users with notifications enabled for hour %d", len(settings), currentHour)
-
+	eligibleSettings := make([]UserNotificationSetting, 0, len(settings))
 	for _, setting := range settings {
-		if err := s.processUserReminders(setting); err != nil {
+		loc := notificationLocation(setting.Timezone)
+		currentHour := nowUTC.In(loc).Hour()
+		if currentHour == setting.RemindHour {
+			eligibleSettings = append(eligibleSettings, setting)
+		}
+	}
+
+	log.Printf("Found %d users with notifications enabled for their local reminder hour", len(eligibleSettings))
+
+	for _, setting := range eligibleSettings {
+		if err := s.processUserReminders(setting, nowUTC); err != nil {
 			log.Printf("Error processing reminders for user %d: %v", setting.UserID, err)
 		}
+	}
+
+	// 2. Process user-created reminders (only checks next_remind_at <= now, very efficient)
+	if s.reminderChecker != nil {
+		s.processUserCreatedReminders(nowUTC)
 	}
 }
 
 // processUserReminders processes reminders for a single user
-func (s *RemindService) processUserReminders(setting UserNotificationSetting) error {
-	now := time.Now()
+func (s *RemindService) processUserReminders(setting UserNotificationSetting, nowUTC time.Time) error {
+	loc := notificationLocation(setting.Timezone)
+	now := nowUTC.In(loc)
 
 	log.Printf("Processing reminders for user %d: checking bills due in %d days",
 		setting.UserID, setting.RemindDaysBefore)
@@ -112,21 +144,21 @@ func (s *RemindService) processUserReminders(setting UserNotificationSetting) er
 		if result.Error == gorm.ErrRecordNotFound {
 			// No payment exists, bill is due in current month/cycle
 			if billType.BillDay > 0 {
-				nextDueDate = dateWithClampedDay(now.Year(), now.Month(), billType.BillDay, time.Local)
+				nextDueDate = dateWithClampedDay(now.Year(), now.Month(), billType.BillDay, loc)
 				// If the bill day has already passed this month, move to next cycle
 				if nextDueDate.Before(now) {
 					nextDueDate = s.calculateNextDueDateFromDate(nextDueDate, billType.BillCycle)
 				}
 			} else {
 				// No specific day, use end of current month
-				nextDueDate = time.Date(now.Year(), now.Month()+1, 0, 23, 59, 59, 0, time.Local)
+				nextDueDate = time.Date(now.Year(), now.Month()+1, 0, 23, 59, 59, 0, loc)
 			}
 		} else if result.Error != nil {
 			log.Printf("Error fetching last payment for bill type %d: %v", billType.ID, result.Error)
 			continue
 		} else {
 			// Calculate next due date based on last payment + bill cycle
-			nextDueDate = s.calculateNextDueDateFromPayment(lastPayment, billType)
+			nextDueDate = s.calculateNextDueDateFromPayment(lastPayment, billType, loc)
 		}
 
 		// Check if the bill is due within the reminder window
@@ -161,7 +193,7 @@ func (s *RemindService) processUserReminders(setting UserNotificationSetting) er
 }
 
 // calculateNextDueDateFromPayment calculates the next due date based on the last payment and bill cycle
-func (s *RemindService) calculateNextDueDateFromPayment(lastPayment expenses.BillPayment, billType expenses.BillType) time.Time {
+func (s *RemindService) calculateNextDueDateFromPayment(lastPayment expenses.BillPayment, billType expenses.BillType, loc *time.Location) time.Time {
 	// Start from the last payment's month/year
 	nextYear := lastPayment.Year
 	nextMonth := lastPayment.Month + billType.BillCycle
@@ -175,15 +207,15 @@ func (s *RemindService) calculateNextDueDateFromPayment(lastPayment expenses.Bil
 	// Set the due date
 	if billType.BillDay > 0 {
 		// Get the last day of the target month to handle cases where bill_day > days in month
-		lastDayOfMonth := time.Date(nextYear, time.Month(nextMonth+1), 0, 0, 0, 0, 0, time.Local).Day()
+		lastDayOfMonth := time.Date(nextYear, time.Month(nextMonth+1), 0, 0, 0, 0, 0, loc).Day()
 		billDay := billType.BillDay
 		if billDay > lastDayOfMonth {
 			billDay = lastDayOfMonth
 		}
-		return time.Date(nextYear, time.Month(nextMonth), billDay, 0, 0, 0, 0, time.Local)
+		return time.Date(nextYear, time.Month(nextMonth), billDay, 0, 0, 0, 0, loc)
 	} else {
 		// No specific day, use end of month
-		return time.Date(nextYear, time.Month(nextMonth+1), 0, 23, 59, 59, 0, time.Local)
+		return time.Date(nextYear, time.Month(nextMonth+1), 0, 23, 59, 59, 0, loc)
 	}
 }
 
@@ -282,4 +314,61 @@ func dateWithClampedDay(year int, month time.Month, day int, loc *time.Location)
 		day = lastDayOfMonth
 	}
 	return time.Date(year, month, day, 0, 0, 0, 0, loc)
+}
+
+// processUserCreatedReminders checks for due user-created reminders and sends notifications.
+// This is very efficient: it only queries reminders with next_remind_at <= now.
+func (s *RemindService) processUserCreatedReminders(now time.Time) {
+	dueReminders, err := s.reminderChecker.GetDueRemindersForNotification(now)
+	if err != nil {
+		log.Printf("Error fetching due user reminders: %v", err)
+		return
+	}
+
+	if len(dueReminders) == 0 {
+		return
+	}
+
+	log.Printf("Found %d due user reminders", len(dueReminders))
+
+	// Group reminders by user
+	userReminders := make(map[uint][]DueReminder)
+	for _, r := range dueReminders {
+		userReminders[r.UserID] = append(userReminders[r.UserID], r)
+	}
+
+	for userID, reminders := range userReminders {
+		// Get user's notification settings
+		var setting UserNotificationSetting
+		if err := s.db.Where("user_id = ? AND bark_enabled = ?", userID, true).First(&setting).Error; err != nil {
+			log.Printf("No enabled notification settings for user %d, skipping user reminders", userID)
+			// Still mark reminders as reminded so they advance to next occurrence
+			for _, r := range reminders {
+				if err := s.reminderChecker.MarkRemindedByID(r.ID); err != nil {
+					log.Printf("Error marking reminder %d as reminded: %v", r.ID, err)
+				}
+			}
+			continue
+		}
+
+		// Send each reminder as a separate notification
+		for _, r := range reminders {
+			title := "🔔 " + r.Title
+			body := r.Detail
+			if body == "" {
+				body = "You have a reminder due."
+			}
+
+			if err := SendNotificationViaBark(setting.BarkApiUrl, title, body); err != nil {
+				log.Printf("Error sending reminder notification %d for user %d: %v", r.ID, userID, err)
+			} else {
+				log.Printf("Sent reminder notification %d to user %d", r.ID, userID)
+			}
+
+			// Mark as reminded (advances next_remind_at for recurring)
+			if err := s.reminderChecker.MarkRemindedByID(r.ID); err != nil {
+				log.Printf("Error marking reminder %d as reminded: %v", r.ID, err)
+			}
+		}
+	}
 }

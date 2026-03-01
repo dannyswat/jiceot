@@ -3,6 +3,7 @@ package notifications
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"dannyswat/jiceot/internal/expenses"
@@ -31,6 +32,7 @@ func (s *UserSettingService) GetUserSetting(userID uint) (*UserNotificationSetti
 			UserID:           userID,
 			BarkApiUrl:       "",
 			BarkEnabled:      false,
+			Timezone:         "UTC",
 			RemindHour:       9, // Default to 9 AM
 			RemindDaysBefore: 3, // Default to 3 days before
 		}
@@ -46,11 +48,22 @@ func (s *UserSettingService) GetUserSetting(userID uint) (*UserNotificationSetti
 		return nil, fmt.Errorf("failed to get user setting: %w", err)
 	}
 
+	if setting.Timezone == "" {
+		setting.Timezone = "UTC"
+		if saveErr := s.db.Save(&setting).Error; saveErr != nil {
+			return nil, fmt.Errorf("failed to normalize user setting timezone: %w", saveErr)
+		}
+	}
+
 	return &setting, nil
 }
 
 // CreateOrUpdateUserSetting creates or updates a user's notification setting
 func (s *UserSettingService) CreateOrUpdateUserSetting(setting *UserNotificationSetting) error {
+	if setting.Timezone == "" {
+		setting.Timezone = "UTC"
+	}
+
 	var existing UserNotificationSetting
 	err := s.db.Where("user_id = ?", setting.UserID).First(&existing).Error
 
@@ -69,6 +82,7 @@ func (s *UserSettingService) CreateOrUpdateUserSetting(setting *UserNotification
 	// Update existing setting
 	existing.BarkApiUrl = setting.BarkApiUrl
 	existing.BarkEnabled = setting.BarkEnabled
+	existing.Timezone = setting.Timezone
 	existing.RemindHour = setting.RemindHour
 	existing.RemindDaysBefore = setting.RemindDaysBefore
 
@@ -102,6 +116,8 @@ func (s *UserSettingService) TriggerManualReminder(userID uint, customDays *int)
 	}
 
 	now := time.Now()
+	loc := notificationLocation(setting.Timezone)
+	now = now.In(loc)
 
 	log.Printf("Manual reminder for user %d: checking bills due in %d days", userID, daysBefore)
 
@@ -129,21 +145,21 @@ func (s *UserSettingService) TriggerManualReminder(userID uint, customDays *int)
 		if result.Error == gorm.ErrRecordNotFound {
 			// No payment exists, bill is due in current month/cycle
 			if billType.BillDay > 0 {
-				nextDueDate = dateWithClampedDay(now.Year(), now.Month(), billType.BillDay, time.Local)
+				nextDueDate = dateWithClampedDay(now.Year(), now.Month(), billType.BillDay, loc)
 				// If the bill day has already passed this month, move to next cycle
 				if nextDueDate.AddDate(0, 0, 1).Before(now) {
 					nextDueDate = s.calculateNextDueDateFromDate(nextDueDate, billType.BillCycle)
 				}
 			} else {
 				// No specific day, use end of current month
-				nextDueDate = time.Date(now.Year(), now.Month()+1, 0, 23, 59, 59, 0, time.Local)
+				nextDueDate = time.Date(now.Year(), now.Month()+1, 0, 23, 59, 59, 0, loc)
 			}
 		} else if result.Error != nil {
 			log.Printf("Error fetching last payment for bill type %d: %v", billType.ID, result.Error)
 			continue
 		} else {
 			// Calculate next due date based on last payment + bill cycle
-			nextDueDate = s.calculateNextDueDateFromPayment(lastPayment, billType)
+			nextDueDate = s.calculateNextDueDateFromPayment(lastPayment, billType, loc)
 		}
 
 		// Check if the bill is due within the reminder window
@@ -216,7 +232,7 @@ func (s *UserSettingService) sendManualReminderNotification(setting UserNotifica
 }
 
 // calculateNextDueDateFromPayment calculates the next due date based on the last payment and bill cycle
-func (s *UserSettingService) calculateNextDueDateFromPayment(lastPayment expenses.BillPayment, billType expenses.BillType) time.Time {
+func (s *UserSettingService) calculateNextDueDateFromPayment(lastPayment expenses.BillPayment, billType expenses.BillType, loc *time.Location) time.Time {
 	// Start from the last payment's month/year
 	nextYear := lastPayment.Year
 	nextMonth := lastPayment.Month + billType.BillCycle
@@ -230,15 +246,15 @@ func (s *UserSettingService) calculateNextDueDateFromPayment(lastPayment expense
 	// Set the due date
 	if billType.BillDay > 0 {
 		// Get the last day of the target month to handle cases where bill_day > days in month
-		lastDayOfMonth := time.Date(nextYear, time.Month(nextMonth+1), 0, 0, 0, 0, 0, time.Local).Day()
+		lastDayOfMonth := time.Date(nextYear, time.Month(nextMonth+1), 0, 0, 0, 0, 0, loc).Day()
 		billDay := billType.BillDay
 		if billDay > lastDayOfMonth {
 			billDay = lastDayOfMonth
 		}
-		return time.Date(nextYear, time.Month(nextMonth), billDay, 0, 0, 0, 0, time.Local)
+		return time.Date(nextYear, time.Month(nextMonth), billDay, 0, 0, 0, 0, loc)
 	} else {
 		// No specific day, use end of month
-		return time.Date(nextYear, time.Month(nextMonth+1), 0, 23, 59, 59, 0, time.Local)
+		return time.Date(nextYear, time.Month(nextMonth+1), 0, 23, 59, 59, 0, loc)
 	}
 }
 
@@ -254,4 +270,18 @@ func (s *UserSettingService) calculateNextDueDateFromDate(date time.Time, billCy
 	}
 
 	return time.Date(nextYear, time.Month(nextMonth), date.Day(), date.Hour(), date.Minute(), date.Second(), date.Nanosecond(), date.Location())
+}
+
+func notificationLocation(timezone string) *time.Location {
+	timezone = strings.TrimSpace(timezone)
+	if timezone == "" {
+		return time.UTC
+	}
+
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		return time.UTC
+	}
+
+	return loc
 }

@@ -12,6 +12,7 @@ import {
   ReceiptPercentIcon,
   ArrowRightStartOnRectangleIcon,
   BellIcon,
+  BellAlertIcon,
   UserCircleIcon,
   ClockIcon,
   Bars3Icon,
@@ -67,6 +68,7 @@ export default function Layout({ children }: LayoutProps) {
     { name: 'Expenses', href: '/expense-items', icon: ReceiptPercentIcon },
     { name: 'Expense Types', href: '/expense-types', icon: RectangleGroupIcon },
     { name: 'Bill Types', href: '/bill-types', icon: CreditCardIcon },
+    { name: 'Reminders', href: '/reminders', icon: BellAlertIcon },
     { name: 'Reports', href: '/reports', icon: ChartBarIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
   ];

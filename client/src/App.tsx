@@ -17,6 +17,8 @@ import ExpenseTypeFormPage from './pages/ExpenseTypeFormPage'
 import ExpenseItemsPage from './pages/ExpenseItemsPage'
 import ExpenseItemFormPage from './pages/ExpenseItemFormPage'
 import ReportsPage from './pages/ReportsPage'
+import RemindersPage from './pages/RemindersPage'
+import ReminderFormPage from './pages/ReminderFormPage'
 import BatchCreateTypesPage from './pages/BatchCreateTypesPage'
 import { AuthProvider } from './contexts/AuthContext';
 
@@ -46,6 +48,9 @@ function App() {
                 <Route path="/expense-items" element={<ExpenseItemsPage />} />
                 <Route path="/expense-items/new" element={<ExpenseItemFormPage />} />
                 <Route path="/expense-items/:id/edit" element={<ExpenseItemFormPage />} />
+                <Route path="/reminders" element={<RemindersPage />} />
+                <Route path="/reminders/new" element={<ReminderFormPage />} />
+                <Route path="/reminders/:id/edit" element={<ReminderFormPage />} />
                 <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/settings/notifications" element={<NotificationSettingsPage />} />

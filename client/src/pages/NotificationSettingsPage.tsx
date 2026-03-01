@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeftIcon,
@@ -10,8 +10,10 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 import { notificationSettingsApi, type UserNotificationSetting, type CreateOrUpdateNotificationSettingRequest } from '../services/api';
+import TimezoneSelect from '../components/TimezoneSelect';
 
 export default function NotificationSettingsPage() {
+  const localTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -20,16 +22,13 @@ export default function NotificationSettingsPage() {
   const [formData, setFormData] = useState<CreateOrUpdateNotificationSettingRequest>({
     bark_api_url: '',
     bark_enabled: false,
+    timezone: localTimezone,
     remind_hour: 9,
     remind_days_before: 3
   });
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     try {
       setLoading(true);
       const data = await notificationSettingsApi.get();
@@ -37,6 +36,7 @@ export default function NotificationSettingsPage() {
       setFormData({
         bark_api_url: data.bark_api_url,
         bark_enabled: data.bark_enabled,
+        timezone: data.timezone || localTimezone,
         remind_hour: data.remind_hour,
         remind_days_before: data.remind_days_before
       });
@@ -49,7 +49,11 @@ export default function NotificationSettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [localTimezone]);
+
+  useEffect(() => {
+    void loadSettings();
+  }, [loadSettings]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,7 +248,7 @@ export default function NotificationSettingsPage() {
           {/* Reminder Time */}
           <div>
             <label htmlFor="remind_hour" className="block text-sm font-medium text-gray-900 mb-2">
-              Reminder Time (GMT+0)
+              Reminder Time (Local Time)
             </label>
             <select
               id="remind_hour"
@@ -260,7 +264,23 @@ export default function NotificationSettingsPage() {
               ))}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Time of day when you want to receive reminders (24-hour format)
+              Time of day in your timezone ({formData.timezone || localTimezone}) when you want to receive reminders
+            </p>
+          </div>
+
+          {/* Timezone */}
+          <div>
+            <label htmlFor="timezone" className="block text-sm font-medium text-gray-900 mb-2">
+              Timezone
+            </label>
+            <TimezoneSelect
+              id="timezone"
+              value={formData.timezone || localTimezone}
+              onChange={(tz) => setFormData({ ...formData, timezone: tz })}
+              disabled={!formData.bark_enabled}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Reminder hour and notification timing are interpreted using this timezone.
             </p>
           </div>
 

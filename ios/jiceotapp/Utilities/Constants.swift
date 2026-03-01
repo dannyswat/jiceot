@@ -54,6 +54,11 @@ struct Constants {
             
             // Notifications
             static let notificationSettings = "/notifications/settings"
+            
+            // Reminders
+            static let reminders = "/reminders"
+            static func reminder(id: Int) -> String { "/reminders/\(id)" }
+            static func toggleReminder(id: Int) -> String { "/reminders/\(id)/toggle" }
         }
     }
     

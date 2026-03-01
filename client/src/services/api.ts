@@ -548,6 +548,7 @@ export interface UserNotificationSetting {
   user_id: number;
   bark_api_url: string;
   bark_enabled: boolean;
+  timezone: string;
   remind_hour: number;
   remind_days_before: number;
   created_at: string;
@@ -557,6 +558,7 @@ export interface UserNotificationSetting {
 export interface CreateOrUpdateNotificationSettingRequest {
   bark_api_url: string;
   bark_enabled: boolean;
+  timezone: string;
   remind_hour: number;
   remind_days_before: number;
 }
@@ -785,6 +787,90 @@ export const deviceAPI = {
   // Delete all other devices
   deleteAll: async (): Promise<{ message: string; count: number }> => {
     const response = await api.delete<{ message: string; count: number }>('/devices');
+    return response.data;
+  },
+};
+
+// Reminder types
+export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface Reminder {
+  id: number;
+  title: string;
+  detail: string;
+  timezone: string;
+  remind_at: string;
+  remind_hour: number;
+  recurrence_type: RecurrenceType;
+  recurrence_interval: number;
+  recurrence_days_of_week: string;
+  recurrence_day_of_month: number;
+  recurrence_month_of_year: number;
+  recurrence_end_date: string | null;
+  next_remind_at: string;
+  last_reminded_at: string | null;
+  is_active: boolean;
+  completed_at: string | null;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateReminderRequest {
+  title: string;
+  detail?: string;
+  timezone: string;
+  remind_at: string;
+  remind_hour: number;
+  recurrence_type: RecurrenceType;
+  recurrence_interval?: number;
+  recurrence_days_of_week?: string;
+  recurrence_day_of_month?: number;
+  recurrence_month_of_year?: number;
+  recurrence_end_date?: string;
+}
+
+export interface UpdateReminderRequest extends CreateReminderRequest {
+  is_active: boolean;
+}
+
+export interface ReminderListResponse {
+  reminders: Reminder[];
+  total: number;
+}
+
+export const reminderAPI = {
+  list: async (params?: { show_all?: boolean; limit?: number; offset?: number }): Promise<ReminderListResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.show_all) searchParams.append('show_all', 'true');
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.offset) searchParams.append('offset', params.offset.toString());
+    const response = await api.get<ReminderListResponse>(`/reminders?${searchParams.toString()}`);
+    return response.data;
+  },
+
+  get: async (id: number): Promise<Reminder> => {
+    const response = await api.get<Reminder>(`/reminders/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateReminderRequest): Promise<Reminder> => {
+    const response = await api.post<Reminder>('/reminders', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: UpdateReminderRequest): Promise<Reminder> => {
+    const response = await api.put<Reminder>(`/reminders/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/reminders/${id}`);
+    return response.data;
+  },
+
+  toggle: async (id: number): Promise<Reminder> => {
+    const response = await api.post<Reminder>(`/reminders/${id}/toggle`);
     return response.data;
   },
 };

@@ -32,6 +32,15 @@ struct SettingsView: View {
                 }
                 
                 Section {
+                    NavigationLink(destination: RemindersListView()) {
+                        Label("Reminders", systemImage: "bell.badge")
+                    }
+                    NavigationLink(destination: NotificationSettingsView()) {
+                        Label("Notification Settings", systemImage: "gearshape.2")
+                    }
+                }
+                
+                Section {
                     Button(action: {
                         authViewModel.logout()
                     }) {
