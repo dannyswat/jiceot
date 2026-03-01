@@ -218,7 +218,7 @@ func (s *DashboardService) calculateUpcomingBills(billTypes []expenses.BillType,
 
 		// Calculate next due date
 		nextDueDate := CalculateNextDueDateFromLastPayment(bt, lastPayment, currentYear, currentMonth)
-		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+		daysUntilDue := calendarDaysUntil(now, nextDueDate)
 
 		// Check for current month payment
 		hasCurrentPayment := false
@@ -337,7 +337,7 @@ func (s *DashboardService) calculateUpcomingExpenses(expenseTypes []expenses.Exp
 
 		// Calculate next due date
 		nextDueDate := calculateNextExpenseDueDateFromLastExpense(et, lastExpense, currentYear, currentMonth)
-		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+		daysUntilDue := calendarDaysUntil(now, nextDueDate)
 
 		// Check for current month expense
 		hasCurrentExpense := false
@@ -434,6 +434,17 @@ func parseAmount(amount string) (float64, error) {
 	return result, err
 }
 
+func calendarDaysUntil(now, due time.Time) int {
+	loc := due.Location()
+	nowInLoc := now.In(loc)
+	dueInLoc := due.In(loc)
+
+	nowDate := time.Date(nowInLoc.Year(), nowInLoc.Month(), nowInLoc.Day(), 0, 0, 0, 0, loc)
+	dueDate := time.Date(dueInLoc.Year(), dueInLoc.Month(), dueInLoc.Day(), 0, 0, 0, 0, loc)
+
+	return int(dueDate.Sub(nowDate).Hours() / 24)
+}
+
 // GetDueBills returns all due bills for a specific month
 func (s *DashboardService) GetDueBills(userID uint, year, month int) (*DueBillsResponse, error) {
 	now := time.Now()
@@ -469,7 +480,7 @@ func (s *DashboardService) GetDueBills(userID uint, year, month int) (*DueBillsR
 
 		// Calculate next due date
 		nextDueDate := CalculateNextDueDateFromLastPayment(bt, lastPayment, year, month)
-		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+		daysUntilDue := calendarDaysUntil(now, nextDueDate)
 
 		// Check for current month payment
 		hasCurrentPayment := false
@@ -593,7 +604,7 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 
 		// Calculate next due date (similar to bill types)
 		nextDueDate := calculateNextDueDate(et.BillDay, et.BillCycle, lastExpense, year, month)
-		daysUntilDue := int(nextDueDate.Sub(now).Hours() / 24)
+		daysUntilDue := calendarDaysUntil(now, nextDueDate)
 
 		// Check for current month expense
 		hasCurrentExpense := false
