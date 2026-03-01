@@ -506,7 +506,7 @@ func (s *DashboardService) GetDueBills(userID uint, year, month int) (*DueBillsR
 			status = "upcoming"
 		} else if daysUntilDue < 0 {
 			status = "overdue"
-		} else if daysUntilDue <= 7 {
+		} else if daysUntilDue <= 5 {
 			status = "due_soon"
 		} else {
 			status = "upcoming"
@@ -628,7 +628,7 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 			status = "upcoming"
 		} else if daysUntilDue < 0 {
 			status = "overdue"
-		} else if daysUntilDue <= 7 {
+		} else if daysUntilDue <= 5 {
 			status = "due_soon"
 		} else {
 			status = "upcoming"
