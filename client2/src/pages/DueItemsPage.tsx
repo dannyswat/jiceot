@@ -169,7 +169,7 @@ export default function DueItemsPage() {
             <section className="due-section">
               <h2 className="due-section__title">
                 <span className="due-section__dot" style={{ background: '#f48c06' }} />
-                Wallet Bills
+                Credit Bills
                 <span className="due-section__count">{dueWallets.length}</span>
               </h2>
               <div className="due-items-list">
@@ -200,7 +200,7 @@ export default function DueItemsPage() {
                       {w.has_payment ? (
                         <span className="badge badge--green">Paid</span>
                       ) : (
-                        <Link to={`/payments/new?wallet=${w.id}`} className="btn btn--sm btn--primary">
+                        <Link to={`/payments/new?wallet_id=${w.id}`} className="btn btn--sm btn--primary">
                           Pay
                         </Link>
                       )}
@@ -216,7 +216,7 @@ export default function DueItemsPage() {
             <section className="due-section">
               <h2 className="due-section__title">
                 <span className="due-section__dot" style={{ background: '#d94f3d' }} />
-                Fixed Due Expenses
+                Recurring Expenses
                 <span className="due-section__count">{fixedExpenses.length}</span>
               </h2>
               <div className="due-items-list">
@@ -247,7 +247,7 @@ export default function DueItemsPage() {
                       >
                         {statusLabel(e.status)}
                       </span>
-                      <Link to={`/expenses/new?type=${e.id}`} className="btn btn--sm btn--primary">
+                      <Link to={`/expenses/new?expense_type_id=${e.id}`} className="btn btn--sm btn--primary">
                         Record
                       </Link>
                     </div>
@@ -262,7 +262,7 @@ export default function DueItemsPage() {
             <section className="due-section">
               <h2 className="due-section__title">
                 <span className="due-section__dot" style={{ background: '#577590' }} />
-                Suggested
+                Suggested Tasks
                 <span className="due-section__count">{flexibleExpenses.length}</span>
               </h2>
               <div className="due-items-list">
@@ -293,6 +293,7 @@ export default function DueItemsPage() {
                       >
                         {statusLabel(e.status)}
                       </span>
+                      {e.days_until_due <= 3 && (
                       <div className="due-item__postpone">
                         <button
                           className="btn btn--sm btn--ghost"
@@ -313,7 +314,8 @@ export default function DueItemsPage() {
                           <span>+30d</span>
                         </button>
                       </div>
-                      <Link to={`/expenses/new?type=${e.id}`} className="btn btn--sm btn--primary">
+                      )}
+                      <Link to={`/expenses/new?expense_type_id=${e.id}`} className="btn btn--sm btn--primary">
                         Record
                       </Link>
                     </div>

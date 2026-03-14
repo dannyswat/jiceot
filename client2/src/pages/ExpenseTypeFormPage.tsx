@@ -4,12 +4,11 @@ import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 import { expenseTypeAPI, walletAPI } from '../services/api'
 import {
-  PRESET_COLORS,
   RECURRING_TYPE_OPTIONS,
   RECURRING_PERIOD_OPTIONS,
 } from '../common/constants'
-import { toDateInputValue } from '../common/date'
 import IconPicker from '../components/IconPicker'
+import ColorPicker from '../components/ColorPicker'
 import type { ExpenseType, RecurringPeriod, RecurringType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
@@ -22,14 +21,13 @@ export default function ExpenseTypeFormPage() {
     parent_id: '' as string,
     name: '',
     icon: '',
-    color: PRESET_COLORS[0] as string,
+    color: '#d94f3d',
     description: '',
     default_amount: '',
     default_wallet_id: '' as string,
     recurring_type: 'none' as RecurringType,
     recurring_period: 'none' as RecurringPeriod,
     recurring_due_day: 0,
-    next_due_day: '',
     stopped: false,
   })
   const [parentTypes, setParentTypes] = useState<ExpenseType[]>([])
@@ -42,11 +40,11 @@ export default function ExpenseTypeFormPage() {
     expenseTypeAPI
       .list({ includeStopped: true })
       .then((r) => setParentTypes(r.expense_types.filter((et) => !et.parent_id)))
-      .catch(() => {})
+      .catch((err) => { console.error(err) })
     walletAPI
       .list({ includeStopped: false })
       .then((r) => setWallets(r.wallets))
-      .catch(() => {})
+      .catch((err) => { console.error(err) })
   }, [])
 
   useEffect(() => {
@@ -59,14 +57,13 @@ export default function ExpenseTypeFormPage() {
           parent_id: et.parent_id?.toString() ?? '',
           name: et.name,
           icon: et.icon,
-          color: et.color || (PRESET_COLORS[0] as string),
+          color: et.color || '#d94f3d',
           description: et.description,
-          default_amount: et.default_amount ? et.default_amount.toString() : '',
+          default_amount: et.default_amount ? Math.round(et.default_amount).toString() : '',
           default_wallet_id: et.default_wallet_id?.toString() ?? '',
           recurring_type: et.recurring_type,
           recurring_period: et.recurring_period,
           recurring_due_day: et.recurring_due_day,
-          next_due_day: et.next_due_day ? toDateInputValue(et.next_due_day) : '',
           stopped: et.stopped,
         })
       })
@@ -90,7 +87,6 @@ export default function ExpenseTypeFormPage() {
         recurring_type: form.recurring_type,
         recurring_period: form.recurring_type !== 'none' ? form.recurring_period : ('none' as RecurringPeriod),
         recurring_due_day: form.recurring_type === 'fixed_day' ? form.recurring_due_day : 0,
-        next_due_day: form.next_due_day || null,
         ...(isEdit ? { stopped: form.stopped } : {}),
       }
       if (isEdit && id) {
@@ -172,17 +168,7 @@ export default function ExpenseTypeFormPage() {
           </div>
           <div className="field field--flex1">
             <label className="field__label">Color</label>
-            <div className="color-swatches">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`color-swatch${form.color === c ? ' color-swatch--active' : ''}`}
-                  style={{ background: c }}
-                  onClick={() => set('color', c)}
-                />
-              ))}
-            </div>
+            <ColorPicker value={form.color} onChange={(v) => set('color', v)} />
           </div>
         </div>
 
@@ -204,11 +190,11 @@ export default function ExpenseTypeFormPage() {
             <input
               className="field__input"
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               value={form.default_amount}
               onChange={(e) => set('default_amount', e.target.value)}
-              placeholder="0.00"
+              placeholder="0"
             />
           </div>
           <div className="field field--flex1">
@@ -278,16 +264,6 @@ export default function ExpenseTypeFormPage() {
                   </select>
                 </div>
               )}
-            </div>
-            <div className="field">
-              <label className="field__label">Next Due Day</label>
-              <input
-                className="field__input"
-                type="date"
-                value={form.next_due_day}
-                onChange={(e) => set('next_due_day', e.target.value)}
-              />
-              <p className="field-hint">When is this expense next expected?</p>
             </div>
           </>
         )}

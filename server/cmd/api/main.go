@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -29,20 +30,14 @@ func main() {
 	config := internal.LoadConfig()
 
 	// Initialize database
-	db, err := gorm.Open(postgres.Open(config.DatabaseURL), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DatabaseURL), &gorm.Config{
+		DisableForeignKeyConstraintWhenMigrating: true,
+	})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
 
-	// Auto migrate the schema
-	if err := db.AutoMigrate(
-		&users.User{},
-		&users.UserDevice{},
-		&expenses.Wallet{},
-		&expenses.Payment{},
-		&expenses.ExpenseType{},
-		&expenses.Expense{},
-	); err != nil {
+	if err := migrateSchema(db); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
@@ -176,4 +171,45 @@ func main() {
 
 	e.Logger.Printf("Server started at port %s", config.Port)
 	e.Logger.Fatal(e.Start(":" + config.Port))
+}
+
+func migrateSchema(db *gorm.DB) error {
+	if err := db.AutoMigrate(
+		&users.User{},
+		&users.UserDevice{},
+		&expenses.Wallet{},
+		&expenses.ExpenseType{},
+		&expenses.Payment{},
+		&expenses.Expense{},
+	); err != nil {
+		return err
+	}
+
+	type migrationConstraint struct {
+		model any
+		name  string
+	}
+
+	constraints := []migrationConstraint{
+		{model: &users.UserDevice{}, name: "User"},
+		{model: &expenses.Wallet{}, name: "DefaultExpenseType"},
+		{model: &expenses.ExpenseType{}, name: "Parent"},
+		{model: &expenses.ExpenseType{}, name: "DefaultWallet"},
+		{model: &expenses.Payment{}, name: "Wallet"},
+		{model: &expenses.Expense{}, name: "ExpenseType"},
+		{model: &expenses.Expense{}, name: "Wallet"},
+		{model: &expenses.Expense{}, name: "Payment"},
+	}
+
+	for _, constraint := range constraints {
+		if db.Migrator().HasConstraint(constraint.model, constraint.name) {
+			continue
+		}
+
+		if err := db.Migrator().CreateConstraint(constraint.model, constraint.name); err != nil {
+			return fmt.Errorf("create constraint %T.%s: %w", constraint.model, constraint.name, err)
+		}
+	}
+
+	return nil
 }

@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 import { walletAPI, expenseTypeAPI } from '../services/api'
-import { PRESET_COLORS, BILL_PERIOD_OPTIONS } from '../common/constants'
+import { BILL_PERIOD_OPTIONS } from '../common/constants'
 import IconPicker from '../components/IconPicker'
+import ColorPicker from '../components/ColorPicker'
 import type { ExpenseType } from '../types/expense'
 
 export default function WalletFormPage() {
@@ -15,7 +16,7 @@ export default function WalletFormPage() {
   const [form, setForm] = useState({
     name: '',
     icon: '',
-    color: PRESET_COLORS[0] as string,
+    color: '#d94f3d',
     description: '',
     is_credit: false,
     is_cash: false,
@@ -33,7 +34,7 @@ export default function WalletFormPage() {
     expenseTypeAPI
       .list()
       .then((res) => setExpenseTypes(res.expense_types))
-      .catch(() => {})
+      .catch((err) => { console.error(err) })
   }, [])
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function WalletFormPage() {
         setForm({
           name: w.name,
           icon: w.icon,
-          color: w.color || (PRESET_COLORS[0] as string),
+          color: w.color || '#d94f3d',
           description: w.description,
           is_credit: w.is_credit,
           is_cash: w.is_cash,
@@ -140,17 +141,7 @@ export default function WalletFormPage() {
           </div>
           <div className="field field--flex1">
             <label className="field__label">Color</label>
-            <div className="color-swatches">
-              {PRESET_COLORS.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`color-swatch${form.color === c ? ' color-swatch--active' : ''}`}
-                  style={{ background: c }}
-                  onClick={() => set('color', c)}
-                />
-              ))}
-            </div>
+            <ColorPicker value={form.color} onChange={(v) => set('color', v)} />
           </div>
         </div>
 

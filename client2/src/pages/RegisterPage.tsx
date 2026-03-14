@@ -40,7 +40,7 @@ export default function RegisterPage() {
     <main className="auth-page">
       <div className="auth-card">
         <div className="auth-card__header">
-          <h1>Jiceot</h1>
+          <img src="/jiceot.svg" alt="Jiceot" className="auth-card__logo" />
           <p>Create your account</p>
         </div>
 

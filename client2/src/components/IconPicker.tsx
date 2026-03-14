@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface IconPickerProps {
@@ -16,12 +17,13 @@ const ICON_CATEGORIES: Record<string, string[]> = {
   Entertainment: ['🎮', '🎯', '🎲', '🎰', '🎳', '🎪', '🎭', '🎬', '🎤', '🎧', '🎸', '🎹', '🎺', '🎻', '🥁', '🎨', '🖼️'],
   Media: ['📺', '📻', '📱', '💻', '🖥️', '⌨️', '🖱️', '🖨️', '📷', '📹', '📼', '🎥', '🎞️', '📞', '☎️'],
   Health: ['💊', '💉', '🩺', '🩹', '🩼', '⚕️', '🏥', '🚑', '🧘', '🏋️', '🤸', '💆', '💇'],
-  Shopping: ['👕', '👔', '👗', '👘', '👚', '👖', '🧥', '🧤', '🧣', '🧦', '👠', '👡', '👢', '👞', '👟', '🥾', '👒', '🧢', '💄', '💍', '💎'],
+  Fitness: ['💪', '🏃', '🚴', '🏊', '🤾', '🏌️', '🧗', '🤺', '🏇', '⛷️', '🏂', '🤼', '⛹️'],
+  Shopping: ['👕', '👔', '👗', '👘', '👚', '👖', '🧥', '🧤', '🧣', '🧦', '👠', '👡', '👢', '👞', '👟', '🥾', '👒', '🧢', '👑', '💄', '💍', '💎', '🛍️'],
   Education: ['🎓', '📚', '📖', '📝', '✏️', '✒️', '🖊️', '🖍️', '📏', '📐', '🧮', '🎒', '🏫', '🎨', '🖌️'],
-  Travel: ['✈️', '🛫', '🛬', '🚁', '🚂', '🚃', '🚄', '🚅', '⛵', '🛶', '🚤', '🛳️', '🚢', '🗺️', '🧳'],
+  Travel: ['✈️', '🛫', '🛬', '🚁', '🚂', '🚃', '🚄', '🚅', '🚆', '🚇', '🚈', '🚉', '🚊', '🚝', '🚞', '🚋', '⛵', '🛶', '🚤', '🛳️', '⛴️', '🛥️', '🚢', '🛩️', '💺', '🚟', '🚠', '🚡', '🛰️', '🚀', '🛸', '🗺️', '🧳'],
   Insurance: ['🛡️', '🔒', '🔐', '🔑', '🗝️', '⚖️', '📋', '📄', '📃'],
-  Pets: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦'],
-  Other: ['📅', '📆', '🗓️', '📇', '🗂️', '📌', '📍', '✉️', '📧', '📨', '📩', '📦', '🔔', '🎁', '🎀', '🎈', '🎉', '🎊', '✨', '🎯', '⭐', '🌟', '💫', '⚡', '🔥', '💥', '✔️', '✅', '❌', '❓', '❗', '⚠️'],
+  Pets: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐', '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🐆', '🦓', '🦍', '🦧', '🐘', '🦛', '🦏', '🐪', '🐫', '🦒', '🦘', '🦬', '🐃', '🐂', '🐄', '🦙', '🐏', '🐑', '🐐', '🦌', '🐕', '🐩', '🦮', '🐈', '🪶', '🐓', '🦃', '🦤', '🦚', '🦜', '🦢', '🦩', '🕊️'],
+  Other: ['📅', '📆', '🗓️', '📇', '🗂️', '📌', '📍', '✉️', '📧', '📨', '📩', '📤', '📥', '📦', '📫', '🔔', '🔕', '🎁', '🎀', '🎈', '🎉', '🎊', '✨', '🎯', '⭐', '🌟', '💫', '⚡', '🔥', '💥', '✔️', '✅', '❌', '❓', '❗', '⚠️'],
 }
 
 const ALL_ICONS = Object.values(ICON_CATEGORIES).flat()
@@ -45,14 +47,14 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           maxLength={2}
-          placeholder="🔍"
+          placeholder="�"
         />
         <button type="button" onClick={() => setIsOpen(true)} title="Browse icons">
           <MagnifyingGlassIcon />
         </button>
       </div>
 
-      {isOpen && (
+      {isOpen && createPortal(
         <>
           <div className="modal-backdrop" onClick={() => setIsOpen(false)} />
           <div className="modal-wrap">
@@ -119,7 +121,8 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
               <p className="icon-picker__hint">Tip: type an emoji directly in the input field</p>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   )

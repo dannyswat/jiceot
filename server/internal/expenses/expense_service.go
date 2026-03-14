@@ -78,16 +78,24 @@ func (s *ExpenseService) CreateExpense(userID uint, req CreateExpenseRequest) (*
 		}
 		if expense.PaymentID == nil && expense.WalletID != nil {
 			var wallet Wallet
-			if err := tx.Where("id = ? AND user_id = ?", *expense.WalletID, userID).First(&wallet).Error; err == nil && wallet.IsCash {
-				matchingPaymentID, err := s.findMatchingCashPayment(tx, userID, wallet.ID, expense.Amount, expense.Date)
-				if err != nil {
-					return err
-				}
-				if matchingPaymentID != nil {
-					expense.PaymentID = matchingPaymentID
-					if err := tx.Model(&Expense{}).Where("id = ? AND user_id = ?", expense.ID, userID).Update("payment_id", *matchingPaymentID).Error; err != nil {
-						return fmt.Errorf("failed to link matching cash payment: %w", err)
+			if err := tx.Where("id = ? AND user_id = ?", *expense.WalletID, userID).First(&wallet).Error; err == nil {
+				if wallet.IsCash {
+					matchingPaymentID, err := s.findMatchingCashPayment(tx, userID, wallet.ID, expense.Amount, expense.Date)
+					if err != nil {
+						return err
 					}
+					if matchingPaymentID != nil {
+						expense.PaymentID = matchingPaymentID
+						if err := tx.Model(&Expense{}).Where("id = ? AND user_id = ?", expense.ID, userID).Update("payment_id", *matchingPaymentID).Error; err != nil {
+							return fmt.Errorf("failed to link matching cash payment: %w", err)
+						}
+					}
+				} else if !wallet.IsCredit {
+					paymentID, err := s.autoCreatePaymentForNormalWallet(tx, userID, wallet.ID, expense)
+					if err != nil {
+						return err
+					}
+					expense.PaymentID = paymentID
 				}
 			}
 		}
@@ -139,13 +147,16 @@ func (s *ExpenseService) UpdateExpense(userID, expenseID uint, req UpdateExpense
 }
 
 func (s *ExpenseService) DeleteExpense(userID, expenseID uint) error {
-	if _, err := s.GetExpense(userID, expenseID); err != nil {
+	expense, err := s.GetExpense(userID, expenseID)
+	if err != nil {
 		return err
 	}
-	if err := s.db.Where("id = ? AND user_id = ?", expenseID, userID).Delete(&Expense{}).Error; err != nil {
-		return fmt.Errorf("failed to delete expense: %w", err)
-	}
-	return nil
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("id = ? AND user_id = ?", expenseID, userID).Delete(&Expense{}).Error; err != nil {
+			return fmt.Errorf("failed to delete expense: %w", err)
+		}
+		return s.recalcFlexibleDueDate(tx, userID, expense.ExpenseTypeID)
+	})
 }
 
 func (s *ExpenseService) ListExpenses(userID uint, req ExpenseListRequest) (*ExpenseListResponse, error) {
@@ -261,6 +272,11 @@ func (s *ExpenseService) advanceExpenseTypeDueDate(tx *gorm.DB, userID uint, exp
 	if expenseType == nil || expenseType.RecurringType == RecurringTypeNone {
 		return nil
 	}
+	// Only advance stored next_due_day for flexible types.
+	// Fixed day types compute their next due date dynamically from the last expense.
+	if expenseType.RecurringType != RecurringTypeFlexible {
+		return nil
+	}
 	nextDueDay, err := AdvanceNextDueDayFrom(expenseDate, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
 	if err != nil {
 		return err
@@ -269,4 +285,54 @@ func (s *ExpenseService) advanceExpenseTypeDueDate(tx *gorm.DB, userID uint, exp
 		return fmt.Errorf("failed to advance next due day: %w", err)
 	}
 	return nil
+}
+
+// recalcFlexibleDueDate recomputes next_due_day for a flexible expense type
+// based on the most recent remaining expense, or resets to now if none remain.
+func (s *ExpenseService) recalcFlexibleDueDate(tx *gorm.DB, userID, expenseTypeID uint) error {
+	var expenseType ExpenseType
+	if err := tx.Where("id = ? AND user_id = ?", expenseTypeID, userID).First(&expenseType).Error; err != nil {
+		return nil // type not found or deleted, nothing to do
+	}
+	if expenseType.RecurringType != RecurringTypeFlexible {
+		return nil
+	}
+
+	// Find the most recent expense for this type
+	var lastExpense Expense
+	err := tx.Where("expense_type_id = ? AND user_id = ?", expenseTypeID, userID).Order("date DESC").First(&lastExpense).Error
+	if err != nil {
+		// No expenses remain — reset to today
+		now := NormalizeDateOnly(time.Now())
+		if err := tx.Model(&ExpenseType{}).Where("id = ? AND user_id = ?", expenseTypeID, userID).Update("next_due_day", now).Error; err != nil {
+			return fmt.Errorf("failed to reset next due day: %w", err)
+		}
+		return nil
+	}
+
+	nextDueDay, err := AdvanceNextDueDayFrom(lastExpense.Date, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
+	if err != nil {
+		return err
+	}
+	if err := tx.Model(&ExpenseType{}).Where("id = ? AND user_id = ?", expenseTypeID, userID).Update("next_due_day", nextDueDay).Error; err != nil {
+		return fmt.Errorf("failed to recalculate next due day: %w", err)
+	}
+	return nil
+}
+
+func (s *ExpenseService) autoCreatePaymentForNormalWallet(tx *gorm.DB, userID, walletID uint, expense Expense) (*uint, error) {
+	payment := Payment{
+		WalletID: walletID,
+		Amount:   expense.Amount,
+		Date:     expense.Date,
+		Note:     expense.Note,
+		UserID:   userID,
+	}
+	if err := tx.Create(&payment).Error; err != nil {
+		return nil, fmt.Errorf("failed to auto-create payment: %w", err)
+	}
+	if err := tx.Model(&Expense{}).Where("id = ? AND user_id = ?", expense.ID, userID).Update("payment_id", payment.ID).Error; err != nil {
+		return nil, fmt.Errorf("failed to link auto-created payment: %w", err)
+	}
+	return &payment.ID, nil
 }

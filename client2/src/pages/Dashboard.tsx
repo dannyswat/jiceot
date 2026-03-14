@@ -116,15 +116,15 @@ export default function Dashboard() {
         </div>
         <div className="stat-card stat-card--teal">
           <p>Payments Made</p>
-          <strong>{formatCurrency(stats.payments_made)}</strong>
+          <strong>{stats.payments_made}</strong>
         </div>
         <div className="stat-card stat-card--ink">
-          <p>Pending Wallets</p>
+          <p>Pending Credit Bills</p>
           <strong>{stats.pending_wallets}</strong>
         </div>
         <div className="stat-card stat-card--sand">
-          <p>Categories</p>
-          <strong>{stats.categories}</strong>
+          <p>Pending Expenses</p>
+          <strong>{stats.pending_expenses}</strong>
         </div>
       </div>
 
@@ -151,7 +151,7 @@ export default function Dashboard() {
           {dueWallets.length > 0 && (
             <div className="surface-card">
               <div className="surface-card__header">
-                <h2>Due Wallet Bills</h2>
+                <h2>Credit Bills Due</h2>
                 <Link to="/due-items" className="btn btn--sm btn--ghost">View all</Link>
               </div>
               <DueWalletList items={dueWallets} />
@@ -162,7 +162,7 @@ export default function Dashboard() {
           {fixedExpenses.length > 0 && (
             <div className="surface-card">
               <div className="surface-card__header">
-                <h2>Due Expenses</h2>
+                <h2>Expenses Due</h2>
                 <Link to="/due-items" className="btn btn--sm btn--ghost">View all</Link>
               </div>
               <DueExpenseList items={fixedExpenses} />
@@ -225,7 +225,7 @@ function DueWalletList({ items }: { items: DueWallet[] }) {
             {w.has_payment ? (
               <span className="badge badge--green">Paid</span>
             ) : (
-              <Link to={`/payments/new?wallet=${w.id}`} className="btn btn--sm btn--primary">
+              <Link to={`/payments/new?wallet_id=${w.id}`} className="btn btn--sm btn--primary">
                 Pay
               </Link>
             )}
@@ -264,7 +264,7 @@ function DueExpenseList({ items }: { items: DueExpense[] }) {
               {statusLabel(e.status)}
             </span>
             <Link
-              to={`/expenses/new?type=${e.id}`}
+              to={`/expenses/new?expense_type_id=${e.id}`}
               className="btn btn--sm btn--primary"
             >
               Record

@@ -97,11 +97,30 @@ func (s *DashboardService) GetDashboardStats(userID uint) (*DashboardStats, erro
 		return nil, err
 	}
 
+	pendingCount := 0
+	for _, w := range dueWallets.DueWallets {
+		if w.DaysUntilDue <= 5 {
+			pendingCount++
+		}
+	}
+
+	pendingExpenseCount := 0
+	for _, e := range dueExpenses.FixedDue {
+		if e.DaysUntilDue <= 5 {
+			pendingExpenseCount++
+		}
+	}
+	for _, e := range dueExpenses.FlexibleSuggested {
+		if e.DaysUntilDue <= 5 {
+			pendingExpenseCount++
+		}
+	}
+
 	stats := &DashboardStats{
 		TotalExpenses:    totalExpenses,
 		PaymentsMade:     paymentsMade,
-		PendingWallets:   len(dueWallets.DueWallets),
-		PendingExpenses:  len(dueExpenses.FixedDue) + len(dueExpenses.FlexibleSuggested),
+		PendingWallets:   pendingCount,
+		PendingExpenses:  pendingExpenseCount,
 		Categories:       categoryCount,
 		DueWallets:       limitDueWallets(dueWallets.DueWallets, 5),
 		FixedExpenses:    limitDueExpenses(dueExpenses.FixedDue, 5),
@@ -185,14 +204,61 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 	now := expenses.NormalizeDateOnly(time.Now().UTC())
 
 	var expenseTypes []expenses.ExpenseType
-	if err := s.db.Where("user_id = ? AND stopped = ? AND recurring_type <> ?", userID, false, expenses.RecurringTypeNone).Order("next_due_day ASC").Find(&expenseTypes).Error; err != nil {
+	if err := s.db.Where("user_id = ? AND stopped = ? AND recurring_type <> ?", userID, false, expenses.RecurringTypeNone).Find(&expenseTypes).Error; err != nil {
 		return nil, err
+	}
+
+	// For fixed_day types, compute next due date from last expense per type
+	fixedTypeIDs := make([]uint, 0)
+	for _, et := range expenseTypes {
+		if et.RecurringType == expenses.RecurringTypeFixedDay {
+			fixedTypeIDs = append(fixedTypeIDs, et.ID)
+		}
+	}
+	lastExpenseByType := make(map[uint]time.Time)
+	if len(fixedTypeIDs) > 0 {
+		type result struct {
+			ExpenseTypeID uint
+			LastDate      time.Time
+		}
+		var results []result
+		if err := s.db.Model(&expenses.Expense{}).
+			Select("expense_type_id, MAX(date) as last_date").
+			Where("user_id = ? AND expense_type_id IN ?", userID, fixedTypeIDs).
+			Group("expense_type_id").
+			Find(&results).Error; err != nil {
+			return nil, err
+		}
+		for _, r := range results {
+			lastExpenseByType[r.ExpenseTypeID] = r.LastDate
+		}
 	}
 
 	fixedDue := make([]DueExpense, 0)
 	flexibleSuggested := make([]DueExpense, 0)
 	for _, expenseType := range expenseTypes {
-		if expenseType.NextDueDay == nil || expenseType.NextDueDay.After(periodEnd) {
+		var nextDue *time.Time
+
+		if expenseType.RecurringType == expenses.RecurringTypeFlexible {
+			// Flexible: use stored next_due_day
+			nextDue = expenseType.NextDueDay
+		} else {
+			// Fixed day: compute from last expense
+			if lastDate, ok := lastExpenseByType[expenseType.ID]; ok {
+				computed, err := expenses.AdvanceNextDueDayFrom(lastDate, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
+				if err == nil {
+					nextDue = computed
+				}
+			} else {
+				// No expense recorded yet — compute initial due date
+				computed, err := expenses.ComputeInitialNextDueDay(now, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
+				if err == nil {
+					nextDue = computed
+				}
+			}
+		}
+
+		if nextDue == nil || nextDue.After(periodEnd) {
 			continue
 		}
 		entry := DueExpense{
@@ -203,15 +269,15 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 			DefaultAmount:   expenseType.DefaultAmount,
 			RecurringType:   expenseType.RecurringType,
 			RecurringPeriod: expenseType.RecurringPeriod,
-			NextDueDate:     expenseType.NextDueDay.Format(expenses.DateOnlyLayout),
-			DaysUntilDue:    dayDiff(now, *expenseType.NextDueDay),
+			NextDueDate:     nextDue.Format(expenses.DateOnlyLayout),
+			DaysUntilDue:    dayDiff(now, *nextDue),
 		}
 		if expenseType.RecurringType == expenses.RecurringTypeFlexible {
 			entry.Status = "suggested"
 			flexibleSuggested = append(flexibleSuggested, entry)
 			continue
 		}
-		entry.Status = dueStatus(now, *expenseType.NextDueDay)
+		entry.Status = dueStatus(now, *nextDue)
 		fixedDue = append(fixedDue, entry)
 	}
 

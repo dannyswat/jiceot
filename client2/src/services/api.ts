@@ -219,8 +219,16 @@ export const expenseTypeAPI = {
 	update: async (expenseTypeId: number, payload: UpdateExpenseTypeRequest): Promise<ExpenseType> =>
 		(await api.put<ExpenseType>(`/expense-types/${expenseTypeId}`, payload)).data,
 	delete: async (expenseTypeId: number): Promise<MessageResponse> => (await api.delete<MessageResponse>(`/expense-types/${expenseTypeId}`)).data,
-	tree: async (includeStopped = false): Promise<ExpenseTypeTreeResponse> =>
-		(await api.get<ExpenseTypeTreeResponse>(`/expense-types/tree${queryString({ include_stopped: includeStopped })}`)).data,
+	tree: async (includeStopped = false): Promise<ExpenseTypeTreeResponse> => {
+		const response = (await api.get<ExpenseTypeTreeResponse>(`/expense-types/tree${queryString({ include_stopped: includeStopped })}`)).data
+		return {
+			...response,
+			tree: response.tree.map((node) => ({
+				...node,
+				children: node.children ?? [],
+			})),
+		}
+	},
 	postpone: async (expenseTypeId: number, payload: PostponeExpenseTypeRequest): Promise<ExpenseType> =>
 		(await api.put<ExpenseType>(`/expense-types/${expenseTypeId}/postpone`, payload)).data,
 	toggle: async (expenseTypeId: number): Promise<ExpenseType> => (await api.post<ExpenseType>(`/expense-types/${expenseTypeId}/toggle`)).data,

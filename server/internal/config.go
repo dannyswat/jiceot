@@ -20,7 +20,7 @@ type Config struct {
 func LoadConfig() *Config {
 	return &Config{
 		Port:        getEnv("PORT", "8080"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://jiceot:jiceot@localhost:5432/jiceot?sslmode=disable"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/jiceot?sslmode=disable"),
 		JWTSecret:   getSecret(),
 		JWTExpiry:   getDurationEnv("JWT_EXPIRY", "24h"),
 	}

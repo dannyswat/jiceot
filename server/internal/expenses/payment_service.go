@@ -274,7 +274,7 @@ func (s *PaymentService) autoCreateDefaultExpense(tx *gorm.DB, userID uint, wall
 	if err := tx.Create(&expense).Error; err != nil {
 		return fmt.Errorf("failed to auto-create payment expense: %w", err)
 	}
-	if expenseType.RecurringType != RecurringTypeNone {
+	if expenseType.RecurringType == RecurringTypeFlexible {
 		nextDueDay, err := AdvanceNextDueDayFrom(expense.Date, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
 		if err != nil {
 			return err

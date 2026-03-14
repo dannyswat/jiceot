@@ -50,7 +50,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'sidebar--open' : ''}`}>
         <div className="sidebar__header">
-          <span className="sidebar__brand">Jiceot</span>
+          <img src="/jiceot.svg" alt="Jiceot" className="sidebar__brand-logo" />
           <button
             className="sidebar__close"
             type="button"
@@ -101,7 +101,9 @@ export default function Layout() {
           >
             <Bars3Icon />
           </button>
-          <span className="topbar__brand">Jiceot</span>
+          <Link to="/dashboard" className="topbar__brand">
+            <img src="/jiceot.svg" alt="Jiceot" className="topbar__brand-logo" />
+          </Link>
           <button
             className="topbar__logout-btn"
             type="button"

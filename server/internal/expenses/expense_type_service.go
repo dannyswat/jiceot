@@ -193,7 +193,11 @@ func (s *ExpenseTypeService) GetExpenseTypeTree(userID uint, includeStopped bool
 	}
 	tree := make([]ExpenseTypeTreeNode, 0, len(roots))
 	for _, root := range roots {
-		tree = append(tree, ExpenseTypeTreeNode{ExpenseType: root, Children: childrenByParent[root.ID]})
+		children := childrenByParent[root.ID]
+		if children == nil {
+			children = []ExpenseType{}
+		}
+		tree = append(tree, ExpenseTypeTreeNode{ExpenseType: root, Children: children})
 	}
 	return tree, nil
 }
@@ -302,6 +306,12 @@ func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, exp
 	}
 	if existing != nil && existing.RecurringType == recurringType && existing.RecurringPeriod == recurringPeriod && existing.RecurringDueDay == recurringDueDay && existing.NextDueDay != nil {
 		prepared.NextDueDay = existing.NextDueDay
+		return prepared, nil
+	}
+	// Only store next_due_day for flexible types.
+	// Fixed day types compute their next due date dynamically from the last expense.
+	if recurringType == RecurringTypeFixedDay {
+		prepared.NextDueDay = nil
 		return prepared, nil
 	}
 	computedNextDueDay, err := ComputeInitialNextDueDay(time.Now(), recurringType, recurringPeriod, recurringDueDay)
