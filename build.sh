@@ -15,8 +15,8 @@ mkdir -p dist/client
 
 # Build the client
 echo "📦 Building client..."
-cd client
-npm ci
+cd client2
+npm install
 npm run build
 cd ..
 echo "✅ Client build completed"

@@ -32,8 +32,8 @@ func (h *DashboardHandler) GetDashboardStats(c echo.Context) error {
 	return c.JSON(http.StatusOK, stats)
 }
 
-// GetDueBills returns due bills for a specific month
-func (h *DashboardHandler) GetDueBills(c echo.Context) error {
+// GetDueWallets returns due wallets for a specific month
+func (h *DashboardHandler) GetDueWallets(c echo.Context) error {
 	userID := auth.GetUserIDFromContext(c)
 
 	// Get year and month from query params, default to current month
@@ -53,14 +53,14 @@ func (h *DashboardHandler) GetDueBills(c echo.Context) error {
 		}
 	}
 
-	dueBills, err := h.service.GetDueBills(userID, year, month)
+	dueWallets, err := h.service.GetDueWallets(userID, year, month)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to load due bills",
+			"error": "Failed to load due wallets",
 		})
 	}
 
-	return c.JSON(http.StatusOK, dueBills)
+	return c.JSON(http.StatusOK, dueWallets)
 }
 
 // GetDueExpenses returns due expenses for a specific month

@@ -1,20 +1,38 @@
 package users
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	t.Helper()
+
+	databaseURL := os.Getenv("TEST_DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = os.Getenv("DATABASE_URL")
+	}
+	if databaseURL == "" {
+		t.Skip("set TEST_DATABASE_URL or DATABASE_URL to run database-backed tests")
+	}
+
+	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 	require.NoError(t, err)
 
 	err = db.AutoMigrate(&User{})
 	require.NoError(t, err)
+	require.NoError(t, db.Exec("TRUNCATE TABLE users RESTART IDENTITY CASCADE").Error)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = sqlDB.Close()
+	})
 
 	return db
 }

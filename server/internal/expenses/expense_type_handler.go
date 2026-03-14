@@ -22,35 +22,15 @@ func NewExpenseTypeHandler(expenseTypeService *ExpenseTypeService) *ExpenseTypeH
 // CreateExpenseType handles POST /api/expense-types
 func (h *ExpenseTypeHandler) CreateExpenseType(c echo.Context) error {
 	userID := auth.GetUserIDFromContext(c)
-	if userID == 0 {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Unauthorized",
-		})
-	}
 
 	var req CreateExpenseTypeRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request format",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
 	expenseType, err := h.expenseTypeService.CreateExpenseType(userID, req)
 	if err != nil {
-		switch err {
-		case ErrExpenseTypeNameExists:
-			return c.JSON(http.StatusConflict, map[string]string{
-				"error": "Expense type name already exists",
-			})
-		case ErrEmptyExpenseTypeName:
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": err.Error(),
-			})
-		default:
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Failed to create expense type",
-			})
-		}
+		return h.expenseTypeError(c, err, "Failed to create expense type")
 	}
 
 	return c.JSON(http.StatusCreated, expenseType)
@@ -59,30 +39,16 @@ func (h *ExpenseTypeHandler) CreateExpenseType(c echo.Context) error {
 // GetExpenseType handles GET /api/expense-types/:id
 func (h *ExpenseTypeHandler) GetExpenseType(c echo.Context) error {
 	userID := auth.GetUserIDFromContext(c)
-	if userID == 0 {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Unauthorized",
-		})
-	}
 
 	idParam := c.Param("id")
 	expenseTypeID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid expense type ID",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid expense type ID"})
 	}
 
 	expenseType, err := h.expenseTypeService.GetExpenseType(userID, uint(expenseTypeID))
 	if err != nil {
-		if err == ErrExpenseTypeNotFound {
-			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Expense type not found",
-			})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to get expense type",
-		})
+		return h.expenseTypeError(c, err, "Failed to get expense type")
 	}
 
 	return c.JSON(http.StatusOK, expenseType)
@@ -91,47 +57,21 @@ func (h *ExpenseTypeHandler) GetExpenseType(c echo.Context) error {
 // UpdateExpenseType handles PUT /api/expense-types/:id
 func (h *ExpenseTypeHandler) UpdateExpenseType(c echo.Context) error {
 	userID := auth.GetUserIDFromContext(c)
-	if userID == 0 {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Unauthorized",
-		})
-	}
 
 	idParam := c.Param("id")
 	expenseTypeID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid expense type ID",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid expense type ID"})
 	}
 
 	var req UpdateExpenseTypeRequest
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request format",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
 	}
 
 	expenseType, err := h.expenseTypeService.UpdateExpenseType(userID, uint(expenseTypeID), req)
 	if err != nil {
-		switch err {
-		case ErrExpenseTypeNotFound:
-			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Expense type not found",
-			})
-		case ErrExpenseTypeNameExists:
-			return c.JSON(http.StatusConflict, map[string]string{
-				"error": "Expense type name already exists",
-			})
-		case ErrEmptyExpenseTypeName:
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": err.Error(),
-			})
-		default:
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Failed to update expense type",
-			})
-		}
+		return h.expenseTypeError(c, err, "Failed to update expense type")
 	}
 
 	return c.JSON(http.StatusOK, expenseType)
@@ -140,51 +80,24 @@ func (h *ExpenseTypeHandler) UpdateExpenseType(c echo.Context) error {
 // DeleteExpenseType handles DELETE /api/expense-types/:id
 func (h *ExpenseTypeHandler) DeleteExpenseType(c echo.Context) error {
 	userID := auth.GetUserIDFromContext(c)
-	if userID == 0 {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Unauthorized",
-		})
-	}
 
 	idParam := c.Param("id")
 	expenseTypeID, err := strconv.ParseUint(idParam, 10, 32)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid expense type ID",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid expense type ID"})
 	}
 
 	err = h.expenseTypeService.DeleteExpenseType(userID, uint(expenseTypeID))
 	if err != nil {
-		if err == ErrExpenseTypeNotFound {
-			return c.JSON(http.StatusNotFound, map[string]string{
-				"error": "Expense type not found",
-			})
-		}
-		// Check for constraint violation (expense type in use)
-		if err.Error() == "cannot delete expense type that is being used by expense items" {
-			return c.JSON(http.StatusConflict, map[string]string{
-				"error": "Cannot delete expense type that is being used by expense items",
-			})
-		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to delete expense type",
-		})
+		return h.expenseTypeError(c, err, "Failed to delete expense type")
 	}
 
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": "Expense type deleted successfully",
-	})
+	return c.JSON(http.StatusOK, map[string]string{"message": "Expense type deleted successfully"})
 }
 
 // ListExpenseTypes handles GET /api/expense-types
 func (h *ExpenseTypeHandler) ListExpenseTypes(c echo.Context) error {
 	userID := auth.GetUserIDFromContext(c)
-	if userID == 0 {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "Unauthorized",
-		})
-	}
 
 	// Parse query parameters
 	var limit, offset int
@@ -204,13 +117,68 @@ func (h *ExpenseTypeHandler) ListExpenseTypes(c echo.Context) error {
 	if limit == 0 {
 		limit = 100
 	}
+	includeStopped := c.QueryParam("include_stopped") == "true"
 
-	response, err := h.expenseTypeService.ListExpenseTypes(userID, limit, offset)
+	response, err := h.expenseTypeService.ListExpenseTypes(userID, limit, offset, includeStopped)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "Failed to list expense types",
-		})
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to list expense types"})
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func (h *ExpenseTypeHandler) GetExpenseTypeTree(c echo.Context) error {
+	userID := auth.GetUserIDFromContext(c)
+	includeStopped := c.QueryParam("include_stopped") == "true"
+	tree, err := h.expenseTypeService.GetExpenseTypeTree(userID, includeStopped)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to load expense type tree"})
+	}
+	return c.JSON(http.StatusOK, map[string]interface{}{"tree": tree, "total": len(tree)})
+}
+
+func (h *ExpenseTypeHandler) PostponeExpenseType(c echo.Context) error {
+	userID := auth.GetUserIDFromContext(c)
+	expenseTypeID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid expense type ID"})
+	}
+	var req PostponeExpenseTypeRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+	expenseType, err := h.expenseTypeService.PostponeExpenseType(userID, uint(expenseTypeID), req)
+	if err != nil {
+		return h.expenseTypeError(c, err, "Failed to postpone expense type")
+	}
+	return c.JSON(http.StatusOK, expenseType)
+}
+
+func (h *ExpenseTypeHandler) ToggleExpenseType(c echo.Context) error {
+	userID := auth.GetUserIDFromContext(c)
+	expenseTypeID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid expense type ID"})
+	}
+	expenseType, err := h.expenseTypeService.ToggleExpenseType(userID, uint(expenseTypeID))
+	if err != nil {
+		return h.expenseTypeError(c, err, "Failed to toggle expense type")
+	}
+	return c.JSON(http.StatusOK, expenseType)
+}
+
+func (h *ExpenseTypeHandler) expenseTypeError(c echo.Context, err error, fallback string) error {
+	switch err {
+	case ErrExpenseTypeNotFound, ErrWalletNotFound:
+		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
+	case ErrExpenseTypeNameExists:
+		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
+	case ErrEmptyExpenseTypeName, ErrInvalidExpenseParent, ErrInvalidRecurringType, ErrInvalidRecurringPeriod, ErrInvalidRecurringDueDay, ErrFlexiblePostponeOnly, ErrExpenseTypeCycleReference, ErrExpenseTypeInUse:
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	default:
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+		}
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": fallback})
+	}
 }

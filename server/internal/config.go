@@ -10,7 +10,7 @@ type Config struct {
 	Port string
 
 	// Database
-	DBPath string
+	DatabaseURL string
 
 	// JWT
 	JWTSecret string
@@ -19,10 +19,10 @@ type Config struct {
 
 func LoadConfig() *Config {
 	return &Config{
-		Port:      getEnv("PORT", "8080"),
-		DBPath:    getEnv("DB_PATH", "./data/jiceot.db"),
-		JWTSecret: getSecret(),
-		JWTExpiry: getDurationEnv("JWT_EXPIRY", "24h"),
+		Port:        getEnv("PORT", "8080"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://jiceot:jiceot@localhost:5432/jiceot?sslmode=disable"),
+		JWTSecret:   getSecret(),
+		JWTExpiry:   getDurationEnv("JWT_EXPIRY", "24h"),
 	}
 }
 

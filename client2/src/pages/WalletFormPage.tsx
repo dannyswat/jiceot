@@ -1,0 +1,296 @@
+import { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+
+import { walletAPI, expenseTypeAPI } from '../services/api'
+import { PRESET_COLORS, BILL_PERIOD_OPTIONS } from '../common/constants'
+import IconPicker from '../components/IconPicker'
+import type { ExpenseType } from '../types/expense'
+
+export default function WalletFormPage() {
+  const navigate = useNavigate()
+  const { id } = useParams()
+  const isEdit = Boolean(id)
+
+  const [form, setForm] = useState({
+    name: '',
+    icon: '',
+    color: PRESET_COLORS[0] as string,
+    description: '',
+    is_credit: false,
+    is_cash: false,
+    bill_period: 'none',
+    bill_due_day: 0,
+    default_expense_type_id: '' as string,
+    stopped: false,
+  })
+  const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([])
+  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(isEdit)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    expenseTypeAPI
+      .list()
+      .then((res) => setExpenseTypes(res.expense_types))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!isEdit || !id) return
+    setInitialLoading(true)
+    walletAPI
+      .get(Number(id))
+      .then((w) => {
+        setForm({
+          name: w.name,
+          icon: w.icon,
+          color: w.color || (PRESET_COLORS[0] as string),
+          description: w.description,
+          is_credit: w.is_credit,
+          is_cash: w.is_cash,
+          bill_period: w.bill_period || 'none',
+          bill_due_day: w.bill_due_day,
+          default_expense_type_id: w.default_expense_type_id?.toString() ?? '',
+          stopped: w.stopped,
+        })
+      })
+      .catch(() => setError('Failed to load wallet'))
+      .finally(() => setInitialLoading(false))
+  }, [isEdit, id])
+
+  async function handleSubmit(e: React.FormEvent): Promise<void> {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    try {
+      const payload = {
+        name: form.name,
+        icon: form.icon || undefined,
+        color: form.color || undefined,
+        description: form.description || undefined,
+        is_credit: form.is_credit,
+        is_cash: form.is_cash,
+        bill_period: form.bill_period !== 'none' ? form.bill_period : undefined,
+        bill_due_day: form.bill_due_day || undefined,
+        default_expense_type_id: form.default_expense_type_id
+          ? Number(form.default_expense_type_id)
+          : null,
+        ...(isEdit ? { stopped: form.stopped } : {}),
+      }
+      if (isEdit && id) {
+        await walletAPI.update(Number(id), payload)
+      } else {
+        await walletAPI.create(payload)
+      }
+      navigate('/wallets')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save wallet')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="page">
+        <div className="page__loading">
+          <div className="loading-orb" />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="page">
+      <div className="page__header page__header--with-back">
+        <button className="back-button" onClick={() => navigate('/wallets')}>
+          <ArrowLeftIcon />
+        </button>
+        <div>
+          <h1>{isEdit ? 'Edit Wallet' : 'New Wallet'}</h1>
+          <p>{isEdit ? 'Update wallet configuration' : 'Create a new money source'}</p>
+        </div>
+      </div>
+
+      <form className="form-card" onSubmit={handleSubmit}>
+        {error && <div className="alert alert--error">{error}</div>}
+
+        {/* Name */}
+        <div className="field">
+          <label className="field__label">Name *</label>
+          <input
+            className="field__input"
+            required
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="e.g. Visa Gold, Cash Wallet"
+          />
+        </div>
+
+        {/* Icon & Color */}
+        <div className="field-row">
+          <div className="field field--flex1">
+            <label className="field__label">Icon</label>
+            <IconPicker value={form.icon} onChange={(v) => set('icon', v)} />
+          </div>
+          <div className="field field--flex1">
+            <label className="field__label">Color</label>
+            <div className="color-swatches">
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`color-swatch${form.color === c ? ' color-swatch--active' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => set('color', c)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="field">
+          <label className="field__label">Description</label>
+          <input
+            className="field__input"
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            placeholder="Optional description"
+          />
+        </div>
+
+        {/* Type toggles */}
+        <div className="field-row">
+          <label className="field-check">
+            <input
+              type="checkbox"
+              checked={form.is_credit}
+              onChange={(e) => {
+                set('is_credit', e.target.checked)
+                if (e.target.checked) set('is_cash', false)
+              }}
+            />
+            <span>Credit wallet</span>
+          </label>
+          <label className="field-check">
+            <input
+              type="checkbox"
+              checked={form.is_cash}
+              onChange={(e) => {
+                set('is_cash', e.target.checked)
+                if (e.target.checked) set('is_credit', false)
+              }}
+            />
+            <span>Cash wallet</span>
+          </label>
+        </div>
+
+        {/* Billing */}
+        <div className="field-row">
+          <div className="field field--flex1">
+            <label className="field__label">Billing Period</label>
+            <select
+              className="field__input"
+              value={form.bill_period}
+              onChange={(e) => set('bill_period', e.target.value)}
+            >
+              {BILL_PERIOD_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field field--flex1">
+            <label className="field__label">Due Day</label>
+            <select
+              className="field__input"
+              value={form.bill_due_day}
+              onChange={(e) => set('bill_due_day', Number(e.target.value))}
+            >
+              <option value={0}>No specific day</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Default expense type */}
+        <div className="field">
+          <label className="field__label">Default Expense Type</label>
+          <select
+            className="field__input"
+            value={form.default_expense_type_id}
+            onChange={(e) => set('default_expense_type_id', e.target.value)}
+          >
+            <option value="">None</option>
+            {expenseTypes.map((et) => (
+              <option key={et.id} value={et.id}>
+                {et.icon} {et.name}
+              </option>
+            ))}
+          </select>
+          <p className="field-hint">Automatically used when recording expenses for this wallet</p>
+        </div>
+
+        {/* Stopped (edit only) */}
+        {isEdit && (
+          <label className="field-check">
+            <input
+              type="checkbox"
+              checked={form.stopped}
+              onChange={(e) => set('stopped', e.target.checked)}
+            />
+            <span>Mark as stopped</span>
+          </label>
+        )}
+
+        {/* Preview */}
+        <div className="form-preview">
+          <div
+            className="entity-card__icon"
+            style={{ background: form.color }}
+          >
+            {form.icon || (form.name ? form.name.charAt(0).toUpperCase() : '?')}
+          </div>
+          <div>
+            <strong>{form.name || 'Wallet Name'}</strong>
+            <span className="form-preview__sub">
+              {form.is_credit ? 'Credit' : form.is_cash ? 'Cash' : 'Standard'}
+              {form.bill_period !== 'none' &&
+                ` · ${BILL_PERIOD_OPTIONS.find((o) => o.value === form.bill_period)?.label}`}
+              {form.bill_due_day > 0 && ` · Due day ${form.bill_due_day}`}
+            </span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="form-actions">
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={loading || !form.name.trim()}
+          >
+            {loading ? 'Saving…' : isEdit ? 'Update Wallet' : 'Create Wallet'}
+          </button>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => navigate('/wallets')}
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}

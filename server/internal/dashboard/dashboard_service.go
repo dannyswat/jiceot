@@ -1,7 +1,7 @@
 package dashboard
 
 import (
-	"fmt"
+	"sort"
 	"time"
 
 	"dannyswat/jiceot/internal/expenses"
@@ -14,706 +14,297 @@ type DashboardService struct {
 }
 
 type DashboardStats struct {
-	TotalExpenses    float64           `json:"total_expenses"`
-	BillsPaid        int               `json:"bills_paid"`
-	PendingBills     int               `json:"pending_bills"`
-	PendingExpenses  int               `json:"pending_expenses"`
-	Categories       int               `json:"categories"`
-	UpcomingBills    []UpcomingBill    `json:"upcoming_bills"`
-	UpcomingExpenses []UpcomingExpense `json:"upcoming_expenses"`
-	OnDemandBills    []BillTypeInfo    `json:"on_demand_bills"`
+	TotalExpenses    float64      `json:"total_expenses"`
+	PaymentsMade     int64        `json:"payments_made"`
+	PendingWallets   int          `json:"pending_wallets"`
+	PendingExpenses  int          `json:"pending_expenses"`
+	Categories       int64        `json:"categories"`
+	DueWallets       []DueWallet  `json:"due_wallets"`
+	FixedExpenses    []DueExpense `json:"fixed_expenses"`
+	FlexibleExpenses []DueExpense `json:"flexible_expenses"`
 }
 
-type UpcomingBill struct {
-	ID           uint   `json:"id"`
-	Name         string `json:"name"`
-	Icon         string `json:"icon"`
-	Color        string `json:"color"`
-	FixedAmount  string `json:"fixed_amount"`
-	NextDueDate  string `json:"next_due_date"`
-	DaysUntilDue int    `json:"days_until_due"`
+type DueWallet struct {
+	ID           uint    `json:"id"`
+	Name         string  `json:"name"`
+	Icon         string  `json:"icon"`
+	Color        string  `json:"color"`
+	BillPeriod   string  `json:"bill_period"`
+	BillDueDay   int     `json:"bill_due_day"`
+	NextDueDate  string  `json:"next_due_date"`
+	DaysUntilDue int     `json:"days_until_due"`
+	Status       string  `json:"status"`
+	HasPayment   bool    `json:"has_payment"`
+	LastPaidAt   *string `json:"last_paid_at,omitempty"`
 }
 
-type UpcomingExpense struct {
-	ID           uint   `json:"id"`
-	Name         string `json:"name"`
-	Icon         string `json:"icon"`
-	Color        string `json:"color"`
-	FixedAmount  string `json:"fixed_amount"`
-	NextDueDate  string `json:"next_due_date"`
-	DaysUntilDue int    `json:"days_until_due"`
-}
-
-type BillTypeInfo struct {
-	ID          uint   `json:"id"`
-	Name        string `json:"name"`
-	Icon        string `json:"icon"`
-	Color       string `json:"color"`
-	FixedAmount string `json:"fixed_amount"`
-}
-
-type DueBill struct {
-	ID                uint    `json:"id"`
-	Name              string  `json:"name"`
-	Icon              string  `json:"icon"`
-	Color             string  `json:"color"`
-	FixedAmount       string  `json:"fixed_amount"`
-	BillDay           int     `json:"bill_day"`
-	BillCycle         int     `json:"bill_cycle"`
-	NextDueDate       string  `json:"next_due_date"`
-	DaysUntilDue      int     `json:"days_until_due"`
-	Status            string  `json:"status"` // "overdue", "due_soon", "upcoming"
-	HasCurrentPayment bool    `json:"has_current_payment"`
-	LastPaymentYear   *int    `json:"last_payment_year,omitempty"`
-	LastPaymentMonth  *int    `json:"last_payment_month,omitempty"`
-	LastPaymentAmount *string `json:"last_payment_amount,omitempty"`
-}
-
-type DueBillsResponse struct {
-	DueBills []DueBill `json:"due_bills"`
-	Year     int       `json:"year"`
-	Month    int       `json:"month"`
+type DueWalletsResponse struct {
+	DueWallets []DueWallet `json:"due_wallets"`
+	Year       int         `json:"year"`
+	Month      int         `json:"month"`
 }
 
 type DueExpense struct {
-	ID                uint    `json:"id"`
-	Name              string  `json:"name"`
-	Icon              string  `json:"icon"`
-	Color             string  `json:"color"`
-	FixedAmount       string  `json:"fixed_amount"`
-	BillDay           int     `json:"bill_day"`
-	BillCycle         int     `json:"bill_cycle"`
-	NextDueDate       string  `json:"next_due_date"`
-	DaysUntilDue      int     `json:"days_until_due"`
-	Status            string  `json:"status"` // "overdue", "due_soon", "upcoming"
-	HasCurrentExpense bool    `json:"has_current_expense"`
-	LastExpenseYear   *int    `json:"last_expense_year,omitempty"`
-	LastExpenseMonth  *int    `json:"last_expense_month,omitempty"`
-	LastExpenseAmount *string `json:"last_expense_amount,omitempty"`
+	ID              uint    `json:"id"`
+	Name            string  `json:"name"`
+	Icon            string  `json:"icon"`
+	Color           string  `json:"color"`
+	DefaultAmount   float64 `json:"default_amount"`
+	RecurringType   string  `json:"recurring_type"`
+	RecurringPeriod string  `json:"recurring_period"`
+	NextDueDate     string  `json:"next_due_date"`
+	DaysUntilDue    int     `json:"days_until_due"`
+	Status          string  `json:"status"`
 }
 
 type DueExpensesResponse struct {
-	DueExpenses []DueExpense `json:"due_expenses"`
-	Year        int          `json:"year"`
-	Month       int          `json:"month"`
+	FixedDue          []DueExpense `json:"fixed_due"`
+	FlexibleSuggested []DueExpense `json:"flexible_suggested"`
+	Year              int          `json:"year"`
+	Month             int          `json:"month"`
 }
 
 func NewDashboardService(db *gorm.DB) *DashboardService {
 	return &DashboardService{db: db}
 }
 
-// GetDashboardStats returns dashboard statistics for the current month
 func (s *DashboardService) GetDashboardStats(userID uint) (*DashboardStats, error) {
-	now := time.Now()
-	currentYear := now.Year()
-	currentMonth := int(now.Month())
+	now := time.Now().UTC()
+	start := expenses.BeginningOfMonth(now.Year(), int(now.Month()))
+	end := expenses.EndOfMonth(now.Year(), int(now.Month()))
 
-	// Get current month bill payments
-	var billPayments []expenses.BillPayment
-	if err := s.db.Where("user_id = ? AND year = ? AND month = ?", userID, currentYear, currentMonth).
-		Find(&billPayments).Error; err != nil {
+	var totalExpenses float64
+	if err := s.db.Model(&expenses.Expense{}).Where("user_id = ? AND date >= ? AND date <= ?", userID, start, end).Select("COALESCE(SUM(amount), 0)").Scan(&totalExpenses).Error; err != nil {
 		return nil, err
 	}
 
-	// Get current month expense items (excluding those linked to bill payments)
-	var expenseItems []expenses.ExpenseItem
-	if err := s.db.Where("user_id = ? AND year = ? AND month = ? AND bill_payment_id IS NULL", userID, currentYear, currentMonth).
-		Find(&expenseItems).Error; err != nil {
+	var paymentsMade int64
+	if err := s.db.Model(&expenses.Payment{}).Where("user_id = ? AND date >= ? AND date <= ?", userID, start, end).Count(&paymentsMade).Error; err != nil {
 		return nil, err
 	}
 
-	// Get all bill types for upcoming bills calculation
-	var billTypes []expenses.BillType
-	if err := s.db.Where("user_id = ?", userID).Find(&billTypes).Error; err != nil {
-		return nil, err
-	}
-
-	// Get all bill payments for due date calculation
-	var allPayments []expenses.BillPayment
-	if err := s.db.Where("user_id = ?", userID).Find(&allPayments).Error; err != nil {
-		return nil, err
-	}
-
-	// Get all expense types for upcoming expenses calculation
-	var expenseTypes []expenses.ExpenseType
-	if err := s.db.Where("user_id = ?", userID).Find(&expenseTypes).Error; err != nil {
-		return nil, err
-	}
-
-	// Get all expense items for due date calculation
-	var allExpenseItems []expenses.ExpenseItem
-	if err := s.db.Where("user_id = ?", userID).Find(&allExpenseItems).Error; err != nil {
-		return nil, err
-	}
-
-	// Get expense types count
 	var categoryCount int64
 	if err := s.db.Model(&expenses.ExpenseType{}).Where("user_id = ?", userID).Count(&categoryCount).Error; err != nil {
 		return nil, err
 	}
 
-	// Calculate totals
-	var totalExpenseAmount float64
-	for _, item := range expenseItems {
-		amount, _ := parseAmount(item.Amount)
-		totalExpenseAmount += amount
+	dueWallets, err := s.GetDueWallets(userID, now.Year(), int(now.Month()))
+	if err != nil {
+		return nil, err
 	}
-
-	var totalBillAmount float64
-	for _, payment := range billPayments {
-		amount, _ := parseAmount(payment.Amount)
-		totalBillAmount += amount
-	}
-
-	// Get upcoming bills
-	upcomingBills := s.calculateUpcomingBills(billTypes, allPayments, currentYear, currentMonth)
-
-	// Get upcoming expenses
-	upcomingExpenses := s.calculateUpcomingExpenses(expenseTypes, allExpenseItems, currentYear, currentMonth)
-
-	// Get on-demand bills
-	var onDemandBills []BillTypeInfo
-	for _, bt := range billTypes {
-		if bt.BillCycle == 0 && !bt.Stopped {
-			onDemandBills = append(onDemandBills, BillTypeInfo{
-				ID:          bt.ID,
-				Name:        bt.Name,
-				Icon:        bt.Icon,
-				Color:       bt.Color,
-				FixedAmount: bt.FixedAmount,
-			})
-		}
-	}
-
-	return &DashboardStats{
-		TotalExpenses:    totalExpenseAmount + totalBillAmount,
-		BillsPaid:        len(billPayments),
-		PendingBills:     len(upcomingBills),
-		PendingExpenses:  len(upcomingExpenses),
-		Categories:       int(categoryCount),
-		UpcomingBills:    upcomingBills,
-		UpcomingExpenses: upcomingExpenses,
-		OnDemandBills:    onDemandBills,
-	}, nil
-}
-
-func (s *DashboardService) calculateUpcomingBills(billTypes []expenses.BillType, allPayments []expenses.BillPayment, currentYear int, currentMonth int) []UpcomingBill {
-	now := time.Now()
-	upcomingBills := make([]UpcomingBill, 0)
-
-	for _, bt := range billTypes {
-		if bt.Stopped || bt.BillCycle <= 0 {
-			continue
-		}
-
-		// Find last payment for this bill type
-		var lastPayment *expenses.BillPayment
-		for i := range allPayments {
-			if allPayments[i].BillTypeID == bt.ID {
-				if lastPayment == nil || (allPayments[i].Year*12+allPayments[i].Month > lastPayment.Year*12+lastPayment.Month) {
-					lastPayment = &allPayments[i]
-				}
-			}
-		}
-
-		// Calculate next due date
-		nextDueDate := CalculateNextDueDateFromLastPayment(bt, lastPayment, currentYear, currentMonth)
-		daysUntilDue := calendarDaysUntil(now, nextDueDate)
-
-		// Check for current month payment
-		hasCurrentPayment := false
-		for _, p := range allPayments {
-			if p.BillTypeID == bt.ID && p.Year == currentYear && p.Month == currentMonth {
-				hasCurrentPayment = true
-				break
-			}
-		}
-
-		// Determine if bill is due in or before the current month
-		nextDueDateMonth := int(nextDueDate.Month())
-		nextDueDateYear := nextDueDate.Year()
-
-		// Convert to comparable format (year*12 + month)
-		currentPeriod := currentYear*12 + currentMonth
-		nextDuePeriod := nextDueDateYear*12 + nextDueDateMonth
-
-		// Bill is due if the next due date is in or before the current month
-		isDueInOrBeforeCurrentMonth := nextDuePeriod <= currentPeriod
-
-		// isPaid means either:
-		// 1. There's already a payment for the current month, OR
-		// 2. The next due date is after the current month (not due yet)
-		isPaid := hasCurrentPayment || !isDueInOrBeforeCurrentMonth
-
-		// Show bills that are not paid and have upcoming due dates (not overdue)
-		if !isPaid && daysUntilDue >= 0 {
-			upcomingBills = append(upcomingBills, UpcomingBill{
-				ID:           bt.ID,
-				Name:         bt.Name,
-				Icon:         bt.Icon,
-				Color:        bt.Color,
-				FixedAmount:  bt.FixedAmount,
-				NextDueDate:  nextDueDate.Format("2006-01-02"),
-				DaysUntilDue: daysUntilDue,
-			})
-		}
-	}
-
-	// Sort by days until due and limit to 5
-	sortUpcomingBills(upcomingBills)
-	if len(upcomingBills) > 5 {
-		upcomingBills = upcomingBills[:5]
-	}
-
-	return upcomingBills
-}
-
-// CalculateNextDueDateFromLastPayment calculates the next due date based on last payment and bill cycle
-// This is exported so it can be reused by other services
-func CalculateNextDueDateFromLastPayment(billType expenses.BillType, lastPayment *expenses.BillPayment, currentYear int, currentMonth int) time.Time {
-	if lastPayment == nil {
-		if billType.BillDay == 0 {
-			// No specific day, use end of month
-			return time.Date(currentYear, time.Month(currentMonth+1), 0, 0, 0, 0, 0, time.Local)
-		}
-		return dateWithClampedDay(currentYear, time.Month(currentMonth), billType.BillDay, time.Local)
-	}
-
-	// Calculate next due date based on last payment + bill cycle
-	nextDueYear := lastPayment.Year
-	nextDueMonth := lastPayment.Month + billType.BillCycle
-
-	// Handle year overflow
-	for nextDueMonth > 12 {
-		nextDueYear++
-		nextDueMonth -= 12
-	}
-
-	if billType.BillDay == 0 {
-		// No specific day, use end of month
-		return time.Date(nextDueYear, time.Month(nextDueMonth+1), 0, 0, 0, 0, 0, time.Local)
-	}
-
-	return dateWithClampedDay(nextDueYear, time.Month(nextDueMonth), billType.BillDay, time.Local)
-}
-
-func dateWithClampedDay(year int, month time.Month, day int, loc *time.Location) time.Time {
-	lastDay := time.Date(year, month+1, 0, 0, 0, 0, 0, loc).Day()
-	if day > lastDay {
-		day = lastDay
-	}
-	return time.Date(year, month, day, 0, 0, 0, 0, loc)
-}
-
-func sortUpcomingBills(bills []UpcomingBill) {
-	// Simple bubble sort for small arrays
-	for i := 0; i < len(bills)-1; i++ {
-		for j := 0; j < len(bills)-i-1; j++ {
-			if bills[j].DaysUntilDue > bills[j+1].DaysUntilDue {
-				bills[j], bills[j+1] = bills[j+1], bills[j]
-			}
-		}
-	}
-}
-
-func (s *DashboardService) calculateUpcomingExpenses(expenseTypes []expenses.ExpenseType, allExpenseItems []expenses.ExpenseItem, currentYear int, currentMonth int) []UpcomingExpense {
-	now := time.Now()
-	upcomingExpenses := make([]UpcomingExpense, 0)
-
-	for _, et := range expenseTypes {
-		if et.BillCycle <= 0 {
-			continue
-		}
-
-		// Find last expense for this expense type
-		var lastExpense *expenses.ExpenseItem
-		for i := range allExpenseItems {
-			if allExpenseItems[i].ExpenseTypeID == et.ID {
-				if lastExpense == nil || (allExpenseItems[i].Year*12+allExpenseItems[i].Month > lastExpense.Year*12+lastExpense.Month) {
-					lastExpense = &allExpenseItems[i]
-				}
-			}
-		}
-
-		// Calculate next due date
-		nextDueDate := calculateNextExpenseDueDateFromLastExpense(et, lastExpense, currentYear, currentMonth)
-		daysUntilDue := calendarDaysUntil(now, nextDueDate)
-
-		// Check for current month expense
-		hasCurrentExpense := false
-		for _, e := range allExpenseItems {
-			if e.ExpenseTypeID == et.ID && e.Year == currentYear && e.Month == currentMonth {
-				hasCurrentExpense = true
-				break
-			}
-		}
-
-		// Determine if expense is due in or before the current month
-		nextDueDateMonth := int(nextDueDate.Month())
-		nextDueDateYear := nextDueDate.Year()
-
-		// Convert to comparable format (year*12 + month)
-		currentPeriod := currentYear*12 + currentMonth
-		nextDuePeriod := nextDueDateYear*12 + nextDueDateMonth
-
-		// Expense is due if the next due date is in or before the current month
-		isDueInOrBeforeCurrentMonth := nextDuePeriod <= currentPeriod
-
-		// isCreated means either:
-		// 1. There's already an expense for the current month, OR
-		// 2. The next due date is after the current month (not due yet)
-		isCreated := hasCurrentExpense || !isDueInOrBeforeCurrentMonth
-
-		// Show expenses that are not created and have upcoming due dates (not overdue)
-		if !isCreated && daysUntilDue >= 0 {
-			upcomingExpenses = append(upcomingExpenses, UpcomingExpense{
-				ID:           et.ID,
-				Name:         et.Name,
-				Icon:         et.Icon,
-				Color:        et.Color,
-				FixedAmount:  et.FixedAmount,
-				NextDueDate:  nextDueDate.Format("2006-01-02"),
-				DaysUntilDue: daysUntilDue,
-			})
-		}
-	}
-
-	// Sort by days until due and limit to 5
-	sortUpcomingExpenses(upcomingExpenses)
-	if len(upcomingExpenses) > 5 {
-		upcomingExpenses = upcomingExpenses[:5]
-	}
-
-	return upcomingExpenses
-}
-
-func calculateNextExpenseDueDateFromLastExpense(expenseType expenses.ExpenseType, lastExpense *expenses.ExpenseItem, currentYear int, currentMonth int) time.Time {
-	if lastExpense == nil {
-		if expenseType.BillDay == 0 {
-			// No specific day, use end of month
-			return time.Date(currentYear, time.Month(currentMonth+1), 0, 0, 0, 0, 0, time.Local)
-		}
-		return dateWithClampedDay(currentYear, time.Month(currentMonth), expenseType.BillDay, time.Local)
-	}
-
-	// Add the cycle to the last expense date
-	nextDueYear := lastExpense.Year
-	nextDueMonth := lastExpense.Month + expenseType.BillCycle
-
-	// Handle month overflow
-	for nextDueMonth > 12 {
-		nextDueMonth -= 12
-		nextDueYear++
-	}
-
-	if expenseType.BillDay == 0 {
-		// No specific day, use end of month
-		return time.Date(nextDueYear, time.Month(nextDueMonth+1), 0, 0, 0, 0, 0, time.Local)
-	}
-
-	return dateWithClampedDay(nextDueYear, time.Month(nextDueMonth), expenseType.BillDay, time.Local)
-}
-
-func sortUpcomingExpenses(expenses []UpcomingExpense) {
-	// Simple bubble sort for small arrays
-	for i := 0; i < len(expenses)-1; i++ {
-		for j := 0; j < len(expenses)-i-1; j++ {
-			if expenses[j].DaysUntilDue > expenses[j+1].DaysUntilDue {
-				expenses[j], expenses[j+1] = expenses[j+1], expenses[j]
-			}
-		}
-	}
-}
-
-func parseAmount(amount string) (float64, error) {
-	if amount == "" {
-		return 0, nil
-	}
-	var result float64
-	_, err := fmt.Sscanf(amount, "%f", &result)
-	return result, err
-}
-
-func calendarDaysUntil(now, due time.Time) int {
-	loc := due.Location()
-	nowInLoc := now.In(loc)
-	dueInLoc := due.In(loc)
-
-	nowDate := time.Date(nowInLoc.Year(), nowInLoc.Month(), nowInLoc.Day(), 0, 0, 0, 0, loc)
-	dueDate := time.Date(dueInLoc.Year(), dueInLoc.Month(), dueInLoc.Day(), 0, 0, 0, 0, loc)
-
-	return int(dueDate.Sub(nowDate).Hours() / 24)
-}
-
-// GetDueBills returns all due bills for a specific month
-func (s *DashboardService) GetDueBills(userID uint, year, month int) (*DueBillsResponse, error) {
-	now := time.Now()
-
-	// Get all bill types
-	var billTypes []expenses.BillType
-	if err := s.db.Where("user_id = ?", userID).Find(&billTypes).Error; err != nil {
+	dueExpenses, err := s.GetDueExpenses(userID, now.Year(), int(now.Month()))
+	if err != nil {
 		return nil, err
 	}
 
-	// Get all bill payments
-	var allPayments []expenses.BillPayment
-	if err := s.db.Where("user_id = ?", userID).Find(&allPayments).Error; err != nil {
+	stats := &DashboardStats{
+		TotalExpenses:    totalExpenses,
+		PaymentsMade:     paymentsMade,
+		PendingWallets:   len(dueWallets.DueWallets),
+		PendingExpenses:  len(dueExpenses.FixedDue) + len(dueExpenses.FlexibleSuggested),
+		Categories:       categoryCount,
+		DueWallets:       limitDueWallets(dueWallets.DueWallets, 5),
+		FixedExpenses:    limitDueExpenses(dueExpenses.FixedDue, 5),
+		FlexibleExpenses: limitDueExpenses(dueExpenses.FlexibleSuggested, 5),
+	}
+
+	return stats, nil
+}
+
+func (s *DashboardService) GetDueWallets(userID uint, year, month int) (*DueWalletsResponse, error) {
+	periodStart := expenses.BeginningOfMonth(year, month)
+	periodEnd := expenses.EndOfMonth(year, month)
+	now := expenses.NormalizeDateOnly(time.Now().UTC())
+
+	var wallets []expenses.Wallet
+	if err := s.db.Where("user_id = ? AND is_credit = ? AND stopped = ? AND bill_period <> ?", userID, true, false, expenses.WalletPeriodNone).Find(&wallets).Error; err != nil {
 		return nil, err
 	}
 
-	dueBills := make([]DueBill, 0)
+	var payments []expenses.Payment
+	if err := s.db.Where("user_id = ? AND wallet_id IN ? AND date <= ?", userID, walletIDs(wallets), periodEnd).Order("date DESC").Find(&payments).Error; err != nil {
+		return nil, err
+	}
 
-	for _, bt := range billTypes {
-		if bt.Stopped || bt.BillCycle <= 0 {
+	lastPaymentByWallet := make(map[uint]expenses.Payment)
+	paidMonths := make(map[uint]map[string]bool)
+	for _, payment := range payments {
+		if _, ok := lastPaymentByWallet[payment.WalletID]; !ok {
+			lastPaymentByWallet[payment.WalletID] = payment
+		}
+		monthKey := payment.Date.Format("2006-01")
+		if _, ok := paidMonths[payment.WalletID]; !ok {
+			paidMonths[payment.WalletID] = make(map[string]bool)
+		}
+		paidMonths[payment.WalletID][monthKey] = true
+	}
+
+	dueWallets := make([]DueWallet, 0)
+	for _, wallet := range wallets {
+		nextDue := nextWalletDueDate(wallet, lastPaymentByWallet[wallet.ID], periodStart)
+		if nextDue.After(periodEnd) {
 			continue
 		}
-
-		// Find last payment for this bill type
-		var lastPayment *expenses.BillPayment
-		for i := range allPayments {
-			if allPayments[i].BillTypeID == bt.ID {
-				if lastPayment == nil || (allPayments[i].Year*12+allPayments[i].Month > lastPayment.Year*12+lastPayment.Month) {
-					lastPayment = &allPayments[i]
-				}
-			}
+		monthKey := nextDue.Format("2006-01")
+		hasPayment := paidMonths[wallet.ID][monthKey]
+		if hasPayment {
+			continue
 		}
-
-		// Calculate next due date
-		nextDueDate := CalculateNextDueDateFromLastPayment(bt, lastPayment, year, month)
-		daysUntilDue := calendarDaysUntil(now, nextDueDate)
-
-		// Check for current month payment
-		hasCurrentPayment := false
-		for _, p := range allPayments {
-			if p.BillTypeID == bt.ID && p.Year == year && p.Month == month {
-				hasCurrentPayment = true
-				break
-			}
+		status := dueStatus(now, nextDue)
+		entry := DueWallet{
+			ID:           wallet.ID,
+			Name:         wallet.Name,
+			Icon:         wallet.Icon,
+			Color:        wallet.Color,
+			BillPeriod:   wallet.BillPeriod,
+			BillDueDay:   wallet.BillDueDay,
+			NextDueDate:  nextDue.Format(expenses.DateOnlyLayout),
+			DaysUntilDue: dayDiff(now, nextDue),
+			Status:       status,
+			HasPayment:   false,
 		}
-
-		// Determine if bill is due in or before the selected month
-		nextDueDateMonth := int(nextDueDate.Month())
-		nextDueDateYear := nextDueDate.Year()
-
-		// Convert to comparable format (year*12 + month)
-		selectedPeriod := year*12 + month
-		nextDuePeriod := nextDueDateYear*12 + nextDueDateMonth
-
-		// Bill is due if the next due date is in or before the selected month
-		isDueInOrBeforeSelectedMonth := nextDuePeriod <= selectedPeriod
-
-		// isPaid means either:
-		// 1. There's already a payment for the selected month, OR
-		// 2. The next due date is after the selected month (not due yet)
-		isPaid := hasCurrentPayment || !isDueInOrBeforeSelectedMonth
-
-		// Determine status
-		var status string
-		if hasCurrentPayment {
-			// Actually paid for this month
-			status = "upcoming"
-		} else if !isDueInOrBeforeSelectedMonth {
-			// Not due yet in this month
-			status = "upcoming"
-		} else if daysUntilDue < 0 {
-			status = "overdue"
-		} else if daysUntilDue <= 5 {
-			status = "due_soon"
-		} else {
-			status = "upcoming"
+		if lastPayment, ok := lastPaymentByWallet[wallet.ID]; ok {
+			formatted := lastPayment.Date.Format(expenses.DateOnlyLayout)
+			entry.LastPaidAt = &formatted
 		}
-
-		dueBill := DueBill{
-			ID:                bt.ID,
-			Name:              bt.Name,
-			Icon:              bt.Icon,
-			Color:             bt.Color,
-			FixedAmount:       bt.FixedAmount,
-			BillDay:           bt.BillDay,
-			BillCycle:         bt.BillCycle,
-			NextDueDate:       nextDueDate.Format("2006-01-02"),
-			DaysUntilDue:      daysUntilDue,
-			Status:            status,
-			HasCurrentPayment: isPaid,
-		}
-
-		if lastPayment != nil {
-			dueBill.LastPaymentYear = &lastPayment.Year
-			dueBill.LastPaymentMonth = &lastPayment.Month
-			dueBill.LastPaymentAmount = &lastPayment.Amount
-		}
-
-		dueBills = append(dueBills, dueBill)
+		dueWallets = append(dueWallets, entry)
 	}
 
-	// Sort by priority: overdue first, then due soon, then by due date
-	sortDueBills(dueBills)
-
-	return &DueBillsResponse{
-		DueBills: dueBills,
-		Year:     year,
-		Month:    month,
-	}, nil
-}
-
-func sortDueBills(bills []DueBill) {
-	statusPriority := map[string]int{"overdue": 0, "due_soon": 1, "upcoming": 2}
-	for i := 0; i < len(bills)-1; i++ {
-		for j := 0; j < len(bills)-i-1; j++ {
-			if statusPriority[bills[j].Status] > statusPriority[bills[j+1].Status] ||
-				(statusPriority[bills[j].Status] == statusPriority[bills[j+1].Status] &&
-					bills[j].DaysUntilDue > bills[j+1].DaysUntilDue) {
-				bills[j], bills[j+1] = bills[j+1], bills[j]
-			}
+	sort.Slice(dueWallets, func(i, j int) bool {
+		if dueWallets[i].Status != dueWallets[j].Status {
+			return statusPriority(dueWallets[i].Status) < statusPriority(dueWallets[j].Status)
 		}
-	}
+		return dueWallets[i].DaysUntilDue < dueWallets[j].DaysUntilDue
+	})
+
+	return &DueWalletsResponse{DueWallets: dueWallets, Year: year, Month: month}, nil
 }
 
-// GetDueExpenses returns all due expenses for a specific month
 func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExpensesResponse, error) {
-	now := time.Now()
+	periodEnd := expenses.EndOfMonth(year, month)
+	now := expenses.NormalizeDateOnly(time.Now().UTC())
 
-	// Get all expense types with recurring settings
 	var expenseTypes []expenses.ExpenseType
-	if err := s.db.Where("user_id = ? AND bill_cycle > 0", userID).Find(&expenseTypes).Error; err != nil {
+	if err := s.db.Where("user_id = ? AND stopped = ? AND recurring_type <> ?", userID, false, expenses.RecurringTypeNone).Order("next_due_day ASC").Find(&expenseTypes).Error; err != nil {
 		return nil, err
 	}
 
-	// Get all expense items
-	var allExpenses []expenses.ExpenseItem
-	if err := s.db.Where("user_id = ?", userID).Find(&allExpenses).Error; err != nil {
-		return nil, err
-	}
-
-	dueExpenses := make([]DueExpense, 0)
-
-	for _, et := range expenseTypes {
-		if et.BillCycle <= 0 {
+	fixedDue := make([]DueExpense, 0)
+	flexibleSuggested := make([]DueExpense, 0)
+	for _, expenseType := range expenseTypes {
+		if expenseType.NextDueDay == nil || expenseType.NextDueDay.After(periodEnd) {
 			continue
 		}
-
-		// Find last expense for this expense type
-		var lastExpense *expenses.ExpenseItem
-		for i := range allExpenses {
-			if allExpenses[i].ExpenseTypeID == et.ID {
-				if lastExpense == nil || (allExpenses[i].Year*12+allExpenses[i].Month > lastExpense.Year*12+lastExpense.Month) {
-					lastExpense = &allExpenses[i]
-				}
-			}
+		entry := DueExpense{
+			ID:              expenseType.ID,
+			Name:            expenseType.Name,
+			Icon:            expenseType.Icon,
+			Color:           expenseType.Color,
+			DefaultAmount:   expenseType.DefaultAmount,
+			RecurringType:   expenseType.RecurringType,
+			RecurringPeriod: expenseType.RecurringPeriod,
+			NextDueDate:     expenseType.NextDueDay.Format(expenses.DateOnlyLayout),
+			DaysUntilDue:    dayDiff(now, *expenseType.NextDueDay),
 		}
-
-		// Calculate next due date (similar to bill types)
-		nextDueDate := calculateNextDueDate(et.BillDay, et.BillCycle, lastExpense, year, month)
-		daysUntilDue := calendarDaysUntil(now, nextDueDate)
-
-		// Check for current month expense
-		hasCurrentExpense := false
-		for _, e := range allExpenses {
-			if e.ExpenseTypeID == et.ID && e.Year == year && e.Month == month {
-				hasCurrentExpense = true
-				break
-			}
+		if expenseType.RecurringType == expenses.RecurringTypeFlexible {
+			entry.Status = "suggested"
+			flexibleSuggested = append(flexibleSuggested, entry)
+			continue
 		}
-
-		// Determine if expense is due in or before the selected month
-		nextDueDateMonth := int(nextDueDate.Month())
-		nextDueDateYear := nextDueDate.Year()
-
-		// Convert to comparable format (year*12 + month)
-		selectedPeriod := year*12 + month
-		nextDuePeriod := nextDueDateYear*12 + nextDueDateMonth
-
-		// Expense is due if the next due date is in or before the selected month
-		isDueInOrBeforeSelectedMonth := nextDuePeriod <= selectedPeriod
-
-		// isCreated means either:
-		// 1. There's already an expense for the selected month, OR
-		// 2. The next due date is after the selected month (not due yet)
-		isCreated := hasCurrentExpense || !isDueInOrBeforeSelectedMonth
-
-		// Determine status
-		var status string
-		if hasCurrentExpense {
-			status = "upcoming"
-		} else if !isDueInOrBeforeSelectedMonth {
-			status = "upcoming"
-		} else if daysUntilDue < 0 {
-			status = "overdue"
-		} else if daysUntilDue <= 5 {
-			status = "due_soon"
-		} else {
-			status = "upcoming"
-		}
-
-		dueExpense := DueExpense{
-			ID:                et.ID,
-			Name:              et.Name,
-			Icon:              et.Icon,
-			Color:             et.Color,
-			FixedAmount:       et.FixedAmount,
-			BillDay:           et.BillDay,
-			BillCycle:         et.BillCycle,
-			NextDueDate:       nextDueDate.Format("2006-01-02"),
-			DaysUntilDue:      daysUntilDue,
-			Status:            status,
-			HasCurrentExpense: isCreated,
-		}
-
-		if lastExpense != nil {
-			dueExpense.LastExpenseYear = &lastExpense.Year
-			dueExpense.LastExpenseMonth = &lastExpense.Month
-			dueExpense.LastExpenseAmount = &lastExpense.Amount
-		}
-
-		dueExpenses = append(dueExpenses, dueExpense)
+		entry.Status = dueStatus(now, *expenseType.NextDueDay)
+		fixedDue = append(fixedDue, entry)
 	}
 
-	// Sort by priority: overdue first, then due soon, then by due date
-	sortDueExpenses(dueExpenses)
+	sort.Slice(fixedDue, func(i, j int) bool {
+		if fixedDue[i].Status != fixedDue[j].Status {
+			return statusPriority(fixedDue[i].Status) < statusPriority(fixedDue[j].Status)
+		}
+		return fixedDue[i].DaysUntilDue < fixedDue[j].DaysUntilDue
+	})
+	sort.Slice(flexibleSuggested, func(i, j int) bool {
+		return flexibleSuggested[i].DaysUntilDue < flexibleSuggested[j].DaysUntilDue
+	})
 
-	return &DueExpensesResponse{
-		DueExpenses: dueExpenses,
-		Year:        year,
-		Month:       month,
-	}, nil
+	return &DueExpensesResponse{FixedDue: fixedDue, FlexibleSuggested: flexibleSuggested, Year: year, Month: month}, nil
 }
 
-func sortDueExpenses(expenses []DueExpense) {
-	statusPriority := map[string]int{"overdue": 0, "due_soon": 1, "upcoming": 2}
-	for i := 0; i < len(expenses)-1; i++ {
-		for j := 0; j < len(expenses)-i-1; j++ {
-			if statusPriority[expenses[j].Status] > statusPriority[expenses[j+1].Status] ||
-				(statusPriority[expenses[j].Status] == statusPriority[expenses[j+1].Status] &&
-					expenses[j].DaysUntilDue > expenses[j+1].DaysUntilDue) {
-				expenses[j], expenses[j+1] = expenses[j+1], expenses[j]
-			}
-		}
+func nextWalletDueDate(wallet expenses.Wallet, lastPayment expenses.Payment, reference time.Time) time.Time {
+	periodMonths := expenses.PeriodMonths(wallet.BillPeriod)
+	if periodMonths <= 0 {
+		periodMonths = 1
+	}
+	dueDay := wallet.BillDueDay
+	if dueDay == 0 {
+		dueDay = expenses.EndOfMonth(reference.Year(), int(reference.Month())).Day()
+	}
+	if lastPayment.ID == 0 {
+		return walletDueDate(reference, dueDay)
+	}
+	base := lastPayment.Date.AddDate(0, periodMonths, 0)
+	due := walletDueDate(base, dueDay)
+	for due.Before(reference) {
+		base = base.AddDate(0, periodMonths, 0)
+		due = walletDueDate(base, dueDay)
+	}
+	return due
+}
+
+func walletDueDate(reference time.Time, dueDay int) time.Time {
+	lastDay := time.Date(reference.Year(), reference.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+	if dueDay > lastDay {
+		dueDay = lastDay
+	}
+	return time.Date(reference.Year(), reference.Month(), dueDay, 0, 0, 0, 0, time.UTC)
+}
+
+func walletIDs(wallets []expenses.Wallet) []uint {
+	ids := make([]uint, 0, len(wallets))
+	for _, wallet := range wallets {
+		ids = append(ids, wallet.ID)
+	}
+	return ids
+}
+
+func dayDiff(from, to time.Time) int {
+	from = expenses.NormalizeDateOnly(from)
+	to = expenses.NormalizeDateOnly(to)
+	return int(to.Sub(from).Hours() / 24)
+}
+
+func dueStatus(now, dueDate time.Time) string {
+	days := dayDiff(now, dueDate)
+	if days < 0 {
+		return "overdue"
+	}
+	if days <= 5 {
+		return "due_soon"
+	}
+	return "upcoming"
+}
+
+func statusPriority(status string) int {
+	switch status {
+	case "overdue":
+		return 0
+	case "due_soon":
+		return 1
+	case "suggested":
+		return 2
+	default:
+		return 3
 	}
 }
 
-func calculateNextDueDate(billDay, billCycle int, lastExpense *expenses.ExpenseItem, targetYear, targetMonth int) time.Time {
-	var baseDate time.Time
-
-	if lastExpense != nil {
-		// Start from the month after the last expense
-		baseDate = time.Date(lastExpense.Year, time.Month(lastExpense.Month), 1, 0, 0, 0, 0, time.UTC)
-		baseDate = baseDate.AddDate(0, billCycle, 0)
-	} else {
-		// No previous expense, start from target month
-		baseDate = time.Date(targetYear, time.Month(targetMonth), 1, 0, 0, 0, 0, time.UTC)
+func limitDueWallets(items []DueWallet, limit int) []DueWallet {
+	if len(items) <= limit {
+		return items
 	}
+	return items[:limit]
+}
 
-	// Set the bill day
-	day := billDay
-	if day == 0 {
-		day = 1 // Default to first day if not specified
+func limitDueExpenses(items []DueExpense, limit int) []DueExpense {
+	if len(items) <= limit {
+		return items
 	}
-
-	// Get the last day of the base month
-	lastDayOfMonth := time.Date(baseDate.Year(), baseDate.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
-	if day > lastDayOfMonth {
-		day = lastDayOfMonth
-	}
-
-	return time.Date(baseDate.Year(), baseDate.Month(), day, 0, 0, 0, 0, time.UTC)
+	return items[:limit]
 }

@@ -3,25 +3,19 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"path/filepath"
 	"strings"
-	"syscall"
 
 	"dannyswat/jiceot/internal"
 	"dannyswat/jiceot/internal/auth"
 	"dannyswat/jiceot/internal/dashboard"
 	"dannyswat/jiceot/internal/expenses"
-	"dannyswat/jiceot/internal/notifications"
-	"dannyswat/jiceot/internal/reminders"
 	"dannyswat/jiceot/internal/reports"
 	"dannyswat/jiceot/internal/users"
 
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -34,9 +28,8 @@ func main() {
 	// Load configuration
 	config := internal.LoadConfig()
 
-	os.MkdirAll(filepath.Dir(config.DBPath), 0o755)
 	// Initialize database
-	db, err := gorm.Open(sqlite.Open(config.DBPath), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(config.DatabaseURL), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
 	}
@@ -45,12 +38,10 @@ func main() {
 	if err := db.AutoMigrate(
 		&users.User{},
 		&users.UserDevice{},
-		&expenses.BillType{},
-		&expenses.BillPayment{},
+		&expenses.Wallet{},
+		&expenses.Payment{},
 		&expenses.ExpenseType{},
-		&expenses.ExpenseItem{},
-		&notifications.UserNotificationSetting{},
-		&reminders.Reminder{},
+		&expenses.Expense{},
 	); err != nil {
 		log.Fatal("Failed to migrate database:", err)
 	}
@@ -61,39 +52,21 @@ func main() {
 	passwordHasher := &users.BcryptPasswordHasher{}
 	userService := users.NewUserService(db, passwordHasher)
 	userDeviceService := users.NewUserDeviceService(db)
-	billTypeService := expenses.NewBillTypeService(db)
-	billPaymentService := expenses.NewBillPaymentService(db)
+	walletService := expenses.NewWalletService(db)
+	paymentService := expenses.NewPaymentService(db)
 	expenseTypeService := expenses.NewExpenseTypeService(db)
-	expenseItemService := expenses.NewExpenseItemService(db)
-	remindService := notifications.NewRemindService(db)
-	userSettingService := notifications.NewUserSettingService(db)
-	reminderService := reminders.NewReminderService(db)
+	expenseService := expenses.NewExpenseService(db)
 	dashboardService := dashboard.NewDashboardService(db)
 	reportsService := reports.NewReportsService(db)
-
-	// Start background reminder service
-	remindService.StartBackgroundReminders(reminderService)
-
-	// Setup graceful shutdown for reminder service
-	go func() {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-		<-sigChan
-		log.Println("Shutting down reminder service...")
-		remindService.StopBackgroundReminders()
-		os.Exit(0)
-	}()
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, userDeviceService, config, auth.NewRateLimiter(5, 1))
 	userHandler := users.NewUserHandler(userService)
 	userDeviceHandler := users.NewUserDeviceHandler(userDeviceService)
-	billTypeHandler := expenses.NewBillTypeHandler(billTypeService)
-	billPaymentHandler := expenses.NewBillPaymentHandler(billPaymentService, expenseItemService)
+	walletHandler := expenses.NewWalletHandler(walletService)
+	paymentHandler := expenses.NewPaymentHandler(paymentService)
 	expenseTypeHandler := expenses.NewExpenseTypeHandler(expenseTypeService)
-	expenseItemHandler := expenses.NewExpenseItemHandler(expenseItemService)
-	userSettingHandler := notifications.NewUserSettingHandler(userSettingService)
-	reminderHandler := reminders.NewReminderHandler(reminderService)
+	expenseHandler := expenses.NewExpenseHandler(expenseService)
 	dashboardHandler := dashboard.NewDashboardHandler(dashboardService)
 	reportsHandler := reports.NewReportsHandler(reportsService)
 
@@ -152,58 +125,48 @@ func main() {
 
 	// Dashboard routes
 	protected.GET("/dashboard/stats", dashboardHandler.GetDashboardStats)
-	protected.GET("/dashboard/due-bills", dashboardHandler.GetDueBills)
+	protected.GET("/dashboard/due-wallets", dashboardHandler.GetDueWallets)
 	protected.GET("/dashboard/due-expenses", dashboardHandler.GetDueExpenses)
 
 	// Reports routes
 	protected.GET("/reports/monthly", reportsHandler.GetMonthlyReport)
 	protected.GET("/reports/yearly", reportsHandler.GetYearlyReport)
 
-	// Bill Type routes
-	protected.GET("/bill-types", billTypeHandler.ListBillTypes)
-	protected.POST("/bill-types", billTypeHandler.CreateBillType)
-	protected.GET("/bill-types/:id", billTypeHandler.GetBillType)
-	protected.PUT("/bill-types/:id", billTypeHandler.UpdateBillType)
-	protected.DELETE("/bill-types/:id", billTypeHandler.DeleteBillType)
-	protected.POST("/bill-types/:id/toggle", billTypeHandler.ToggleBillType)
-	protected.GET("/bill-types/:id/payments", billPaymentHandler.GetBillPaymentsByBillType)
+	// Wallet routes
+	protected.GET("/wallets", walletHandler.ListWallets)
+	protected.POST("/wallets", walletHandler.CreateWallet)
+	protected.GET("/wallets/:id", walletHandler.GetWallet)
+	protected.PUT("/wallets/:id", walletHandler.UpdateWallet)
+	protected.DELETE("/wallets/:id", walletHandler.DeleteWallet)
+	protected.POST("/wallets/:id/toggle", walletHandler.ToggleWallet)
+	protected.GET("/wallets/:id/payments", walletHandler.GetWalletPayments)
+	protected.GET("/wallets/:id/unbilled-expenses", walletHandler.GetUnbilledExpenses)
 
-	// Bill Payment routes
-	protected.GET("/bill-payments", billPaymentHandler.ListBillPayments)
-	protected.POST("/bill-payments", billPaymentHandler.CreateBillPayment)
-	protected.GET("/bill-payments/:id", billPaymentHandler.GetBillPayment)
-	protected.PUT("/bill-payments/:id", billPaymentHandler.UpdateBillPayment)
-	protected.DELETE("/bill-payments/:id", billPaymentHandler.DeleteBillPayment)
-	protected.GET("/bill-payments/monthly-total", billPaymentHandler.GetMonthlyTotal)
+	// Payment routes
+	protected.GET("/payments", paymentHandler.ListPayments)
+	protected.POST("/payments", paymentHandler.CreatePayment)
+	protected.GET("/payments/monthly-total", paymentHandler.GetMonthlyTotal)
+	protected.GET("/payments/:id", paymentHandler.GetPayment)
+	protected.PUT("/payments/:id", paymentHandler.UpdatePayment)
+	protected.DELETE("/payments/:id", paymentHandler.DeletePayment)
 
 	// Expense Type routes
 	protected.GET("/expense-types", expenseTypeHandler.ListExpenseTypes)
 	protected.POST("/expense-types", expenseTypeHandler.CreateExpenseType)
+	protected.GET("/expense-types/tree", expenseTypeHandler.GetExpenseTypeTree)
 	protected.GET("/expense-types/:id", expenseTypeHandler.GetExpenseType)
 	protected.PUT("/expense-types/:id", expenseTypeHandler.UpdateExpenseType)
+	protected.PUT("/expense-types/:id/postpone", expenseTypeHandler.PostponeExpenseType)
 	protected.DELETE("/expense-types/:id", expenseTypeHandler.DeleteExpenseType)
+	protected.POST("/expense-types/:id/toggle", expenseTypeHandler.ToggleExpenseType)
 
-	// Expense Item routes
-	protected.GET("/expense-items", expenseItemHandler.ListExpenseItems)
-	protected.POST("/expense-items", expenseItemHandler.CreateExpenseItem)
-	protected.GET("/expense-items/:id", expenseItemHandler.GetExpenseItem)
-	protected.PUT("/expense-items/:id", expenseItemHandler.UpdateExpenseItem)
-	protected.DELETE("/expense-items/:id", expenseItemHandler.DeleteExpenseItem)
-	protected.GET("/expense-items/monthly/:year/:month", expenseItemHandler.GetExpenseItemsByMonth)
-
-	// Reminder routes
-	protected.GET("/reminders", reminderHandler.ListReminders)
-	protected.POST("/reminders", reminderHandler.CreateReminder)
-	protected.GET("/reminders/:id", reminderHandler.GetReminder)
-	protected.PUT("/reminders/:id", reminderHandler.UpdateReminder)
-	protected.DELETE("/reminders/:id", reminderHandler.DeleteReminder)
-	protected.POST("/reminders/:id/toggle", reminderHandler.ToggleReminder)
-
-	// Notification Settings routes
-	protected.GET("/notifications/settings", userSettingHandler.GetUserSetting)
-	protected.PUT("/notifications/settings", userSettingHandler.CreateOrUpdateUserSetting)
-	protected.POST("/notifications/test", userSettingHandler.TestNotification)
-	protected.POST("/notifications/manual-reminder", userSettingHandler.TriggerManualReminder)
+	// Expense routes
+	protected.GET("/expenses", expenseHandler.ListExpenses)
+	protected.POST("/expenses", expenseHandler.CreateExpense)
+	protected.GET("/expenses/by-date", expenseHandler.GetExpensesByDate)
+	protected.GET("/expenses/:id", expenseHandler.GetExpense)
+	protected.PUT("/expenses/:id", expenseHandler.UpdateExpense)
+	protected.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
 
 	// Start server
 	e.GET("*", func(c echo.Context) error {
