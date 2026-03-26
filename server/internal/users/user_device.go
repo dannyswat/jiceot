@@ -7,8 +7,8 @@ import (
 )
 
 type UserDevice struct {
-	ID           uint           `json:"id" gorm:"primaryKey"`
-	UserID       uint           `json:"user_id" gorm:"not null;index"`
+	ID           uint           `json:"id" gorm:"primaryKey;type:bigint"`
+	UserID       uint           `json:"user_id" gorm:"type:bigint;not null;index"`
 	User         *User          `json:"user,omitempty" gorm:"foreignKey:UserID"`
 	RefreshToken string         `json:"-" gorm:"uniqueIndex;not null"` // Hidden from JSON
 	DeviceName   string         `json:"device_name" gorm:"not null"`

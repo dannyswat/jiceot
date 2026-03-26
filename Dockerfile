@@ -54,10 +54,5 @@ USER jiceot
 # Expose the port
 EXPOSE 8080
 
-# Set environment variables
-ENV PORT=8080
-ENV DATABASE_URL=postgres://jiceot:jiceot@postgres:5432/jiceot?sslmode=disable
-ENV JWT_EXPIRY=24h
-
 # Start the application
 CMD ["./jiceot-server"]

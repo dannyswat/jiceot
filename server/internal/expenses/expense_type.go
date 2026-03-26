@@ -27,20 +27,20 @@ const (
 )
 
 type ExpenseType struct {
-	ID              uint           `json:"id" gorm:"primaryKey"`
-	ParentID        *uint          `json:"parent_id" gorm:"index"`
+	ID              uint           `json:"id" gorm:"primaryKey;type:bigint"`
+	ParentID        *uint          `json:"parent_id" gorm:"type:bigint;index"`
 	Name            string         `json:"name" gorm:"type:varchar(255);not null"`
 	Icon            string         `json:"icon" gorm:"type:varchar(50)"`
 	Color           string         `json:"color" gorm:"type:varchar(10)"`
 	Description     string         `json:"description" gorm:"type:text"`
 	DefaultAmount   float64        `json:"default_amount" gorm:"type:numeric(12,2);not null;default:0"`
-	DefaultWalletID *uint          `json:"default_wallet_id" gorm:"index"`
+	DefaultWalletID *uint          `json:"default_wallet_id" gorm:"type:bigint;index"`
 	RecurringType   string         `json:"recurring_type" gorm:"type:varchar(20);not null;default:'none';check:chk_expense_type_recurring_type,recurring_type IN ('none','fixed_day','flexible')"`
 	RecurringPeriod string         `json:"recurring_period" gorm:"type:varchar(20);not null;default:'none';check:chk_expense_type_recurring_period,recurring_period IN ('none','weekly','biweekly','monthly','bimonthly','quarterly','fourmonths','semiannually','annually')"`
 	RecurringDueDay int            `json:"recurring_due_day" gorm:"not null;default:0"`
 	NextDueDay      *time.Time     `json:"next_due_day" gorm:"type:date;index"`
 	Stopped         bool           `json:"stopped" gorm:"not null;default:false"`
-	UserID          uint           `json:"user_id" gorm:"not null;index"`
+	UserID          uint           `json:"user_id" gorm:"type:bigint;not null;index"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt `json:"-" gorm:"index"`

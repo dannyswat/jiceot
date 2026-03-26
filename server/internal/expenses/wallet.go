@@ -17,7 +17,7 @@ const (
 )
 
 type Wallet struct {
-	ID                   uint           `json:"id" gorm:"primaryKey"`
+	ID                   uint           `json:"id" gorm:"primaryKey;type:bigint"`
 	Name                 string         `json:"name" gorm:"type:varchar(255);not null"`
 	Icon                 string         `json:"icon" gorm:"type:varchar(50)"`
 	Color                string         `json:"color" gorm:"type:varchar(10)"`
@@ -27,8 +27,8 @@ type Wallet struct {
 	BillPeriod           string         `json:"bill_period" gorm:"type:varchar(20);not null;default:'none';check:chk_wallet_bill_period,bill_period IN ('none','monthly','bimonthly','quarterly','fourmonths','semiannually','annually')"`
 	BillDueDay           int            `json:"bill_due_day" gorm:"not null;default:0"`
 	Stopped              bool           `json:"stopped" gorm:"not null;default:false"`
-	DefaultExpenseTypeID *uint          `json:"default_expense_type_id" gorm:"index"`
-	UserID               uint           `json:"user_id" gorm:"not null;index"`
+	DefaultExpenseTypeID *uint          `json:"default_expense_type_id" gorm:"type:bigint;index"`
+	UserID               uint           `json:"user_id" gorm:"type:bigint;not null;index"`
 	CreatedAt            time.Time      `json:"created_at"`
 	UpdatedAt            time.Time      `json:"updated_at"`
 	DeletedAt            gorm.DeletedAt `json:"-" gorm:"index"`

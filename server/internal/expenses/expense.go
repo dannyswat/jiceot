@@ -7,14 +7,14 @@ import (
 )
 
 type Expense struct {
-	ID            uint           `json:"id" gorm:"primaryKey"`
-	ExpenseTypeID uint           `json:"expense_type_id" gorm:"not null;index"`
-	WalletID      *uint          `json:"wallet_id" gorm:"index"`
-	PaymentID     *uint          `json:"payment_id" gorm:"index"`
+	ID            uint           `json:"id" gorm:"primaryKey;type:bigint"`
+	ExpenseTypeID uint           `json:"expense_type_id" gorm:"type:bigint;not null;index"`
+	WalletID      *uint          `json:"wallet_id" gorm:"type:bigint;index"`
+	PaymentID     *uint          `json:"payment_id" gorm:"type:bigint;index"`
 	Amount        float64        `json:"amount" gorm:"type:numeric(12,2);not null"`
 	Date          time.Time      `json:"date" gorm:"type:date;not null;index"`
 	Note          string         `json:"note" gorm:"type:text"`
-	UserID        uint           `json:"user_id" gorm:"not null;index"`
+	UserID        uint           `json:"user_id" gorm:"type:bigint;not null;index"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `json:"-" gorm:"index"`
