@@ -20,11 +20,12 @@ type PaymentService struct {
 }
 
 type CreatePaymentRequest struct {
-	WalletID   uint    `json:"wallet_id"`
-	Amount     float64 `json:"amount"`
-	Date       string  `json:"date"`
-	Note       string  `json:"note"`
-	ExpenseIDs []uint  `json:"expense_ids"`
+	WalletID                 uint    `json:"wallet_id"`
+	Amount                   float64 `json:"amount"`
+	Date                     string  `json:"date"`
+	Note                     string  `json:"note"`
+	ExpenseIDs               []uint  `json:"expense_ids"`
+	AutoCreateDefaultExpense *bool   `json:"auto_create_default_expense"`
 }
 
 type UpdatePaymentRequest struct {
@@ -75,7 +76,8 @@ func (s *PaymentService) CreatePayment(userID uint, req CreatePaymentRequest) (*
 			return err
 		}
 
-		if len(req.ExpenseIDs) == 0 {
+		autoCreateDefaultExpense := req.AutoCreateDefaultExpense == nil || *req.AutoCreateDefaultExpense
+		if len(req.ExpenseIDs) == 0 && autoCreateDefaultExpense {
 			if err := s.autoCreateDefaultExpense(tx, userID, wallet, payment); err != nil {
 				return err
 			}

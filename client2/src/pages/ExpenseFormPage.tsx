@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ChangeEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeftIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
@@ -6,6 +6,15 @@ import { expenseAPI, expenseTypeAPI, walletAPI } from '../services/api'
 import { toDateInputValue } from '../common/date'
 import type { ExpenseType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
+
+function normalizeAmountInput(value: string): string {
+  const digitsOnly = value.replace(/\D/g, '')
+  if (!digitsOnly) {
+    return ''
+  }
+
+  return digitsOnly.replace(/^0+(?=\d)/, '')
+}
 
 export default function ExpenseFormPage() {
   const navigate = useNavigate()
@@ -274,7 +283,7 @@ export default function ExpenseFormPage() {
               min="0"
               required
               value={form.amount}
-              onChange={(e) => set('amount', e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => set('amount', normalizeAmountInput(e.currentTarget.value))}
               placeholder={selectedType?.default_amount ? `Default: ${Math.round(selectedType.default_amount)}` : '0'}
             />
           </div>

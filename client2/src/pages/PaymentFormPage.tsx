@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeftIcon, PlusIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 import { paymentAPI, walletAPI, expenseAPI, expenseTypeAPI } from '../services/api'
@@ -15,11 +15,46 @@ interface NewExpenseEntry {
   note: string
 }
 
+type AmountMode = 'expenses-total' | 'manual'
+type DiscrepancyMode = 'default-expense' | 'unexplained'
+
+function mergeExpenses(linkedExpenses: Expense[], unbilledExpenses: Expense[]): Expense[] {
+  const map = new Map<number, Expense>()
+  for (const expense of linkedExpenses) {
+    map.set(expense.id, expense)
+  }
+  for (const expense of unbilledExpenses) {
+    map.set(expense.id, expense)
+  }
+  return Array.from(map.values())
+}
+
+function formatAmountInput(amount: number): string {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return ''
+  }
+  return Math.round(amount).toString()
+}
+
+function normalizeAmountInput(value: string): string {
+  const digitsOnly = value.replace(/\D/g, '')
+  if (!digitsOnly) {
+    return ''
+  }
+
+  return digitsOnly.replace(/^0+(?=\d)/, '')
+}
+
 export default function PaymentFormPage() {
+  const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isEdit = Boolean(id)
+  const presetWalletId = searchParams.get('wallet_id') ?? ''
+  const presetDate = searchParams.get('date') ?? ''
+  const navigationState = location.state as { returnTo?: string } | null
+  const returnTo = !isEdit ? navigationState?.returnTo ?? '/payments' : '/payments'
 
   const [form, setForm] = useState({
     wallet_id: '' as string,
@@ -36,6 +71,9 @@ export default function PaymentFormPage() {
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(isEdit)
   const [error, setError] = useState('')
+  const [walletPickerOpen, setWalletPickerOpen] = useState(!isEdit)
+  const [amountMode, setAmountMode] = useState<AmountMode>(isEdit ? 'manual' : 'expenses-total')
+  const [discrepancyMode, setDiscrepancyMode] = useState<DiscrepancyMode>('unexplained')
 
   // Type picker state for new expense
   const [typePickerOpen, setTypePickerOpen] = useState(false)
@@ -43,6 +81,20 @@ export default function PaymentFormPage() {
   const [typeSearch, setTypeSearch] = useState('')
 
   const selectedWallet = wallets.find((w) => w.id === Number(form.wallet_id))
+  const allExpenses = mergeExpenses(linkedExpenses, unbilledExpenses)
+  const linkedTotal = allExpenses
+    .filter((expense) => selectedExpenseIds.includes(expense.id))
+    .reduce((sum, expense) => sum + expense.amount, 0)
+  const validNewExpenses = newExpenses.filter((expense) => expense.expense_type_id && Number(expense.amount) > 0)
+  const newTotal = validNewExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0)
+  const expenseGrandTotal = Math.round(linkedTotal + newTotal)
+  const paymentAmount = Number(form.amount) || 0
+  const discrepancy = paymentAmount - expenseGrandTotal
+  const hasExpenses = selectedExpenseIds.length > 0 || newExpenses.length > 0
+  const canCreateDefaultDiscrepancyExpense = discrepancy > 0 && Boolean(selectedWallet?.default_expense_type_id) && !selectedWallet?.is_cash
+  const defaultExpenseType = selectedWallet?.default_expense_type_id
+    ? expenseTypes.find((type) => type.id === selectedWallet.default_expense_type_id)
+    : undefined
 
   useEffect(() => {
     walletAPI
@@ -57,16 +109,15 @@ export default function PaymentFormPage() {
 
   useEffect(() => {
     if (isEdit) return
-
-    const walletId = searchParams.get('wallet_id')
-    const date = searchParams.get('date')
-
     setForm((prev) => ({
       ...prev,
-      wallet_id: walletId ?? prev.wallet_id,
-      date: date ?? prev.date,
+      wallet_id: presetWalletId || prev.wallet_id,
+      date: presetDate || prev.date,
     }))
-  }, [isEdit, searchParams])
+    if (presetWalletId) {
+      setWalletPickerOpen(false)
+    }
+  }, [isEdit, presetDate, presetWalletId])
 
   // Load unbilled expenses when wallet selected
   useEffect(() => {
@@ -89,10 +140,12 @@ export default function PaymentFormPage() {
       .then((p) => {
         setForm({
           wallet_id: p.wallet_id.toString(),
-          amount: p.amount.toString(),
+          amount: Math.round(p.amount).toString(),
           date: toDateInputValue(p.date),
           note: p.note,
         })
+        setAmountMode('manual')
+        setWalletPickerOpen(false)
         // Load existing linked expenses for edit
         return expenseAPI.list({ paymentId: p.id })
       })
@@ -106,25 +159,25 @@ export default function PaymentFormPage() {
       .finally(() => setInitialLoading(false))
   }, [isEdit, id])
 
-  // Merge linked (edit) + unbilled expenses, deduplicating by id
-  const allExpenses = (() => {
-    const map = new Map<number, Expense>()
-    for (const e of linkedExpenses) map.set(e.id, e)
-    for (const e of unbilledExpenses) map.set(e.id, e)
-    return Array.from(map.values())
-  })()
-
-  // Auto-calculate amount from selected + new expenses
   useEffect(() => {
-    const existingTotal = allExpenses
-      .filter((e) => selectedExpenseIds.includes(e.id))
-      .reduce((s, e) => s + e.amount, 0)
-    const newTotal = newExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
-    const total = existingTotal + newTotal
-    if (total > 0) {
-      setForm((prev) => ({ ...prev, amount: total.toString() }))
+    if (amountMode !== 'expenses-total') {
+      return
     }
-  }, [selectedExpenseIds, allExpenses, newExpenses])
+
+    const nextAmount = formatAmountInput(expenseGrandTotal)
+    setForm((prev) => (prev.amount === nextAmount ? prev : { ...prev, amount: nextAmount }))
+  }, [amountMode, expenseGrandTotal])
+
+  useEffect(() => {
+    if (canCreateDefaultDiscrepancyExpense && discrepancyMode === 'unexplained' && !hasExpenses) {
+      setDiscrepancyMode('default-expense')
+      return
+    }
+
+    if (!canCreateDefaultDiscrepancyExpense && discrepancyMode === 'default-expense') {
+      setDiscrepancyMode('unexplained')
+    }
+  }, [canCreateDefaultDiscrepancyExpense, discrepancyMode, hasExpenses])
 
   function toggleExpense(expenseId: number) {
     setSelectedExpenseIds((prev) =>
@@ -138,6 +191,24 @@ export default function PaymentFormPage() {
 
   function deselectAllExpenses() {
     setSelectedExpenseIds([])
+  }
+
+  function handleWalletSelect(walletId: string) {
+    if (walletId === form.wallet_id) {
+      setWalletPickerOpen(false)
+      return
+    }
+
+    setForm((prev) => ({ ...prev, wallet_id: walletId }))
+    setLinkedExpenses([])
+    setUnbilledExpenses([])
+    setSelectedExpenseIds([])
+    setNewExpenses([])
+    setDiscrepancyMode('unexplained')
+    if (!isEdit) {
+      setAmountMode('expenses-total')
+    }
+    setWalletPickerOpen(false)
   }
 
   function addNewExpense() {
@@ -198,14 +269,24 @@ export default function PaymentFormPage() {
     try {
       // Create new expenses first, collect their IDs
       const createdIds: number[] = []
-      for (const ne of newExpenses) {
-        if (!ne.expense_type_id || !ne.amount) continue
+      for (const ne of validNewExpenses) {
         const created = await expenseAPI.create({
           expense_type_id: Number(ne.expense_type_id),
           wallet_id: Number(form.wallet_id),
           amount: Number(ne.amount),
           date: form.date,
           note: ne.note || undefined,
+        })
+        createdIds.push(created.id)
+      }
+
+      if (canCreateDefaultDiscrepancyExpense && discrepancyMode === 'default-expense' && selectedWallet?.default_expense_type_id) {
+        const created = await expenseAPI.create({
+          expense_type_id: selectedWallet.default_expense_type_id,
+          wallet_id: Number(form.wallet_id),
+          amount: discrepancy,
+          date: form.date,
+          note: form.note || undefined,
         })
         createdIds.push(created.id)
       }
@@ -217,13 +298,14 @@ export default function PaymentFormPage() {
         date: form.date,
         note: form.note || undefined,
         expense_ids: allExpenseIds.length > 0 ? allExpenseIds : undefined,
+        auto_create_default_expense: false,
       }
       if (isEdit && id) {
         await paymentAPI.update(Number(id), payload)
       } else {
         await paymentAPI.create(payload)
       }
-      navigate('/payments')
+      navigate(returnTo, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save payment')
     } finally {
@@ -233,6 +315,10 @@ export default function PaymentFormPage() {
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleReturn(): void {
+    navigate(returnTo, { replace: true })
   }
 
   if (initialLoading) {
@@ -255,17 +341,10 @@ export default function PaymentFormPage() {
       )
     : null
 
-  const linkedTotal = allExpenses
-    .filter((e) => selectedExpenseIds.includes(e.id))
-    .reduce((s, e) => s + e.amount, 0)
-  const newTotal = newExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
-  const expenseGrandTotal = linkedTotal + newTotal
-  const hasExpenses = selectedExpenseIds.length > 0 || newExpenses.length > 0
-
   return (
     <div className="page">
       <div className="page__header page__header--with-back">
-        <button className="back-button" onClick={() => navigate('/payments')}>
+        <button className="back-button" onClick={handleReturn}>
           <ArrowLeftIcon />
         </button>
         <div>
@@ -279,27 +358,54 @@ export default function PaymentFormPage() {
 
         {/* Wallet */}
         <div className="field">
-          <label className="field__label">Wallet *</label>
-          <div className="wallet-select-grid">
-            {wallets.map((w) => (
+          <div className="field__label-row">
+            <label className="field__label">Wallet *</label>
+            {selectedWallet && !walletPickerOpen && (
+              <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
+                Select other
+              </button>
+            )}
+          </div>
+          {selectedWallet && !walletPickerOpen ? (
+            <div className="wallet-select-grid">
               <button
-                key={w.id}
                 type="button"
-                className={`wallet-select-item${form.wallet_id === w.id.toString() ? ' wallet-select-item--active' : ''}`}
-                onClick={() => set('wallet_id', w.id.toString())}
+                className="wallet-select-item wallet-select-item--active"
+                onClick={() => setWalletPickerOpen(true)}
               >
-                <span className="wallet-select-item__icon" style={{ background: w.color || '#577590' }}>
-                  {w.icon || w.name.charAt(0).toUpperCase()}
+                <span className="wallet-select-item__icon" style={{ background: selectedWallet.color || '#577590' }}>
+                  {selectedWallet.icon || selectedWallet.name.charAt(0).toUpperCase()}
                 </span>
-                <span className="wallet-select-item__name">{w.name}</span>
-                {(w.is_credit || w.is_cash) && (
+                <span className="wallet-select-item__name">{selectedWallet.name}</span>
+                {(selectedWallet.is_credit || selectedWallet.is_cash) && (
                   <span className="wallet-select-item__badge">
-                    {w.is_credit ? 'Credit' : 'Cash'}
+                    {selectedWallet.is_credit ? 'Credit' : 'Cash'}
                   </span>
                 )}
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="wallet-select-grid">
+              {wallets.map((w) => (
+                <button
+                  key={w.id}
+                  type="button"
+                  className={`wallet-select-item${form.wallet_id === w.id.toString() ? ' wallet-select-item--active' : ''}`}
+                  onClick={() => handleWalletSelect(w.id.toString())}
+                >
+                  <span className="wallet-select-item__icon" style={{ background: w.color || '#577590' }}>
+                    {w.icon || w.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="wallet-select-item__name">{w.name}</span>
+                  {(w.is_credit || w.is_cash) && (
+                    <span className="wallet-select-item__badge">
+                      {w.is_credit ? 'Credit' : 'Cash'}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="field-hint">Choose the wallet this payment belongs to</p>
         </div>
 
@@ -316,17 +422,37 @@ export default function PaymentFormPage() {
             />
           </div>
           <div className="field field--flex1">
-            <label className="field__label">Amount *</label>
+            <div className="field__label-row">
+              <label className="field__label">Amount *</label>
+              {hasExpenses && amountMode === 'manual' && (
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => setAmountMode('expenses-total')}
+                >
+                  Use expenses total
+                </button>
+              )}
+            </div>
             <input
               className="field__input"
               type="number"
-              step="0.01"
+              step="1"
               min="0"
               required
               value={form.amount}
-              onChange={(e) => set('amount', e.target.value)}
-              placeholder="0.00"
+              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                setAmountMode('manual')
+                set('amount', normalizeAmountInput(e.currentTarget.value))
+              }}
+              placeholder="0"
             />
+            {hasExpenses && (
+              <p className="field-hint">
+                Expenses total {formatCurrency(expenseGrandTotal)}
+                {amountMode === 'expenses-total' ? ' · amount tracks expense changes' : ''}
+              </p>
+            )}
           </div>
         </div>
 
@@ -406,11 +532,11 @@ export default function PaymentFormPage() {
                   <input
                     className="field__input new-expense-row__amount"
                     type="number"
-                    step="0.01"
+                    step="1"
                     min="0"
                     placeholder="Amount"
                     value={ne.amount}
-                    onChange={(e) => updateNewExpense(ne.tempId, 'amount', e.target.value)}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => updateNewExpense(ne.tempId, 'amount', normalizeAmountInput(e.currentTarget.value))}
                   />
                   <input
                     className="field__input new-expense-row__note"
@@ -439,6 +565,46 @@ export default function PaymentFormPage() {
                   `${newExpenses.length} new`}
                 {' · '}Total: {formatCurrency(expenseGrandTotal)}
               </p>
+            )}
+
+            {form.amount && discrepancy !== 0 && (
+              <div className="alert alert--info">
+                <strong>
+                  {discrepancy > 0
+                    ? `Payment exceeds expenses by ${formatCurrency(discrepancy)}`
+                    : `Expenses exceed payment by ${formatCurrency(Math.abs(discrepancy))}`}
+                </strong>
+                {canCreateDefaultDiscrepancyExpense ? (
+                  <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
+                    <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                      <input
+                        type="radio"
+                        name="payment-discrepancy"
+                        checked={discrepancyMode === 'default-expense'}
+                        onChange={() => setDiscrepancyMode('default-expense')}
+                      />
+                      <span>
+                        Add {defaultExpenseType?.name ?? 'default expense'} for {formatCurrency(discrepancy)}
+                      </span>
+                    </label>
+                    <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                      <input
+                        type="radio"
+                        name="payment-discrepancy"
+                        checked={discrepancyMode === 'unexplained'}
+                        onChange={() => setDiscrepancyMode('unexplained')}
+                      />
+                      <span>Leave the discrepancy unexplained</span>
+                    </label>
+                  </div>
+                ) : (
+                  <p style={{ marginTop: '0.75rem' }}>
+                    {discrepancy > 0 && selectedWallet?.default_expense_type_id == null
+                      ? 'This wallet has no default expense type, so the difference will stay unexplained.'
+                      : 'This difference will stay unexplained unless you adjust the payment amount or expense list.'}
+                  </p>
+                )}
+              </div>
             )}
 
             {!hasExpenses && allExpenses.length === 0 && (
@@ -538,7 +704,7 @@ export default function PaymentFormPage() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => navigate('/payments')}
+            onClick={handleReturn}
           >
             Cancel
           </button>

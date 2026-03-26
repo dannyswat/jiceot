@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  EllipsisVerticalIcon,
   ExclamationTriangleIcon,
   PencilIcon,
   PlusIcon,
-  TrashIcon,
   WalletIcon,
 } from '@heroicons/react/24/outline'
 
@@ -20,6 +20,7 @@ export default function WalletsPage() {
   const [includeStopped, setIncludeStopped] = useState(false)
   const [togglingId, setTogglingId] = useState<number | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Wallet | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<number | null>(null)
 
   const loadWallets = useCallback(async () => {
     setLoading(true)
@@ -41,7 +42,19 @@ export default function WalletsPage() {
     void loadWallets()
   }, [loadWallets])
 
+  useEffect(() => {
+    if (menuOpenId === null) return
+
+    function handleWindowClick(): void {
+      setMenuOpenId(null)
+    }
+
+    window.addEventListener('click', handleWindowClick)
+    return () => window.removeEventListener('click', handleWindowClick)
+  }, [menuOpenId])
+
   async function handleToggle(wallet: Wallet): Promise<void> {
+    setMenuOpenId(null)
     setTogglingId(wallet.id)
     try {
       await walletAPI.toggle(wallet.id)
@@ -129,7 +142,7 @@ export default function WalletsPage() {
           {wallets.map((w) => (
             <div
               key={w.id}
-              className={`entity-card${w.stopped ? ' entity-card--stopped' : ''}`}
+              className={`entity-card${w.stopped ? ' entity-card--stopped' : ''}${menuOpenId === w.id ? ' entity-card--menu-open' : ''}`}
             >
               <div className="entity-card__header">
                 <div
@@ -165,24 +178,45 @@ export default function WalletsPage() {
               </div>
 
               <div className="entity-card__actions">
-                <button
-                  className="icon-button"
-                  disabled={togglingId === w.id}
-                  onClick={() => handleToggle(w)}
-                  title={w.stopped ? 'Resume' : 'Stop'}
-                >
-                  {w.stopped ? '▶' : '⏸'}
-                </button>
                 <Link to={`/wallets/${w.id}`} className="icon-button" title="Edit">
                   <PencilIcon />
                 </Link>
-                <button
-                  className="icon-button icon-button--danger"
-                  onClick={() => setDeleteTarget(w)}
-                  title="Delete"
+                <div
+                  className="wallet-card-menu"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <TrashIcon />
-                </button>
+                  <button
+                    className="icon-button"
+                    onClick={() => setMenuOpenId((prev) => (prev === w.id ? null : w.id))}
+                    title="More actions"
+                    aria-haspopup="menu"
+                    aria-expanded={menuOpenId === w.id}
+                  >
+                    <EllipsisVerticalIcon />
+                  </button>
+                  {menuOpenId === w.id && (
+                    <div className="wallet-card-menu__panel" role="menu">
+                      <button
+                        className="wallet-card-menu__item"
+                        disabled={togglingId === w.id}
+                        onClick={() => handleToggle(w)}
+                        role="menuitem"
+                      >
+                        {w.stopped ? 'Resume wallet' : 'Stop wallet'}
+                      </button>
+                      <button
+                        className="wallet-card-menu__item wallet-card-menu__item--danger"
+                        onClick={() => {
+                          setMenuOpenId(null)
+                          setDeleteTarget(w)
+                        }}
+                        role="menuitem"
+                      >
+                        Delete wallet
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}

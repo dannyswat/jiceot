@@ -20,10 +20,10 @@ import QuickAddButton from './QuickAddButton'
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/dashboard', icon: HomeIcon },
   { label: 'Due Items', path: '/due-items', icon: ClockIcon },
-  { label: 'Wallets', path: '/wallets', icon: CreditCardIcon },
   { label: 'Payments', path: '/payments', icon: BanknotesIcon },
-  { label: 'Expense Types', path: '/expense-types', icon: RectangleGroupIcon },
   { label: 'Expenses', path: '/expenses', icon: ReceiptPercentIcon },
+  { label: 'Wallets', path: '/wallets', icon: CreditCardIcon },
+  { label: 'Expense Types', path: '/expense-types', icon: RectangleGroupIcon },
   { label: 'Reports', path: '/reports', icon: ChartBarIcon },
   { label: 'Settings', path: '/settings', icon: Cog6ToothIcon },
 ] as const

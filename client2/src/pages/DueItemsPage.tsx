@@ -200,7 +200,11 @@ export default function DueItemsPage() {
                       {w.has_payment ? (
                         <span className="badge badge--green">Paid</span>
                       ) : (
-                        <Link to={`/payments/new?wallet_id=${w.id}`} className="btn btn--sm btn--primary">
+                        <Link
+                          to={`/payments/new?wallet_id=${w.id}`}
+                          state={{ returnTo: '/due-items' }}
+                          className="btn btn--sm btn--primary"
+                        >
                           Pay
                         </Link>
                       )}

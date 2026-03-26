@@ -25,6 +25,7 @@ export interface CreatePaymentRequest {
   date: string
   note?: string
   expense_ids?: number[]
+  auto_create_default_expense?: boolean
 }
 
 export type UpdatePaymentRequest = CreatePaymentRequest

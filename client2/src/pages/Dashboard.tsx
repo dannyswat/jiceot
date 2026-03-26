@@ -134,7 +134,7 @@ export default function Dashboard() {
           <PlusIcon />
           <span>Add Expense</span>
         </Link>
-        <Link to="/payments/new" className="btn btn--ghost">
+        <Link to="/payments/new" state={{ returnTo: '/dashboard' }} className="btn btn--ghost">
           <CreditCardIcon />
           <span>Record Payment</span>
         </Link>
@@ -225,7 +225,11 @@ function DueWalletList({ items }: { items: DueWallet[] }) {
             {w.has_payment ? (
               <span className="badge badge--green">Paid</span>
             ) : (
-              <Link to={`/payments/new?wallet_id=${w.id}`} className="btn btn--sm btn--primary">
+              <Link
+                to={`/payments/new?wallet_id=${w.id}`}
+                state={{ returnTo: '/dashboard' }}
+                className="btn btn--sm btn--primary"
+              >
                 Pay
               </Link>
             )}

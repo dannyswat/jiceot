@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type ChangeEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
@@ -11,6 +11,15 @@ import IconPicker from '../components/IconPicker'
 import ColorPicker from '../components/ColorPicker'
 import type { ExpenseType, RecurringPeriod, RecurringType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
+
+function normalizeAmountInput(value: string): string {
+  const digitsOnly = value.replace(/\D/g, '')
+  if (!digitsOnly) {
+    return ''
+  }
+
+  return digitsOnly.replace(/^0+(?=\d)/, '')
+}
 
 export default function ExpenseTypeFormPage() {
   const navigate = useNavigate()
@@ -193,7 +202,7 @@ export default function ExpenseTypeFormPage() {
               step="1"
               min="0"
               value={form.default_amount}
-              onChange={(e) => set('default_amount', e.target.value)}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => set('default_amount', normalizeAmountInput(e.currentTarget.value))}
               placeholder="0"
             />
           </div>

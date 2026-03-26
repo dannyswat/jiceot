@@ -31,7 +31,7 @@ export default function PaymentsPage() {
     walletAPI
       .list({ includeStopped: true })
       .then((r) => setWallets(r.wallets))
-      .catch(() => {})
+      .catch((err) => { setError(err instanceof Error ? err.message : 'Failed to load wallets') })
   }, [])
 
   const loadPayments = useCallback(async () => {
@@ -123,7 +123,7 @@ export default function PaymentsPage() {
             ))}
           </select>
         </div>
-        <Link to="/payments/new" className="btn btn--primary">
+        <Link to="/payments/new" state={{ returnTo: '/payments' }} className="btn btn--primary">
           <PlusIcon />
           <span>New Payment</span>
         </Link>
@@ -149,7 +149,7 @@ export default function PaymentsPage() {
         <div className="empty-state">
           <BanknotesIcon />
           <p>No payments found for this period</p>
-          <Link to="/payments/new" className="btn btn--primary">
+          <Link to="/payments/new" state={{ returnTo: '/payments' }} className="btn btn--primary">
             <PlusIcon />
             <span>Record a payment</span>
           </Link>

@@ -720,7 +720,7 @@ a.topbar__brand {
 .auth-card__logo {
   height: 3rem;
   width: auto;
-  margin-bottom: 6px;
+  margin-bottom: 10px;
 }
 
 .auth-card__header p {
@@ -2350,6 +2350,7 @@ select,
 }
 
 .entity-card {
+  position: relative;
   border: 1px solid rgba(148,163,184,0.30);
   background: rgba(255,255,255,0.90);
   backdrop-filter: blur(14px);
@@ -2358,6 +2359,10 @@ select,
   display: grid;
   gap: 10px;
   transition: border-color 140ms ease;
+}
+
+.entity-card--menu-open {
+  z-index: 30;
 }
 
 .entity-card:hover {
@@ -2442,6 +2447,52 @@ select,
   display: flex;
   gap: 4px;
   justify-content: flex-end;
+}
+
+.wallet-card-menu {
+  position: relative;
+}
+
+.wallet-card-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(148,163,184,0.22);
+  background: rgba(255,255,255,0.98);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+  z-index: 20;
+}
+
+.wallet-card-menu__item {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+}
+
+.wallet-card-menu__item:hover {
+  background: rgba(79,70,229,0.06);
+}
+
+.wallet-card-menu__item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.wallet-card-menu__item--danger {
+  color: var(--danger);
+}
+
+.wallet-card-menu__item--danger:hover {
+  background: rgba(217, 79, 61, 0.1);
 }
 
 /* ── Entity List (rows) ─────────────────────────── */
@@ -2558,6 +2609,12 @@ select,
   background: rgba(42, 157, 143, 0.14);
   border: 1px solid rgba(42, 157, 143, 0.3);
   color: #81d4c4;
+}
+
+.alert--info {
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.24);
+  color: #0f3a53;
 }
 
 /* ── Badges (extensions) ────────────────────────── */

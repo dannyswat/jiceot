@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
 import { walletAPI, expenseTypeAPI } from '../services/api'
@@ -7,6 +7,7 @@ import type { Wallet } from '../types/wallet'
 import type { ExpenseType } from '../types/expense'
 
 export default function QuickAddButton() {
+  const location = useLocation()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
   const [tab, setTab] = useState<'expenses' | 'wallets'>('expenses')
@@ -49,7 +50,9 @@ export default function QuickAddButton() {
 
   function selectWallet(wallet: Wallet): void {
     const today = new Date().toISOString().slice(0, 10)
-    navigate(`/payments/new?wallet_id=${wallet.id}&date=${today}`)
+    navigate(`/payments/new?wallet_id=${wallet.id}&date=${today}`, {
+      state: { returnTo: `${location.pathname}${location.search}` },
+    })
     setIsOpen(false)
   }
 
