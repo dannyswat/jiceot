@@ -2,9 +2,9 @@
 
 ## Executive Summary
 
-This document outlines the implementation plan for redesigning Jiceot from its current bill/expense tracking model to a wallet-centric financial management system. The redesign introduces **Wallets** as the core entity (replacing Bill Types), adds **expense type hierarchy** with periodic/flexible recurrence and a `next_due_day` field for custom postponement, **migrates from SQLite to PostgreSQL**, **removes the reminder feature**, and does a **full frontend rewrite** in a new `client2/` directory.
+This document outlines the implementation plan for redesigning Jiceot from its current bill/expense tracking model to a wallet-centric financial management system. The redesign introduces **Wallets** as the core entity (replacing Bill Types), adds **expense type hierarchy** with periodic/flexible recurrence and a `next_due_day` field for custom postponement, **migrates from SQLite to PostgreSQL**, **removes the reminder feature**, and does a **full frontend rewrite** in a new `client/` directory.
 
-**Overall Recommendation: Server — rewrite expenses package, refactor infra. Client — full rewrite in `client2/`. Remove `ios/` app.**
+**Overall Recommendation: Server — rewrite expenses package, refactor infra. Client — full rewrite in `client/`. Remove `ios/` app.**
 
 No data migration from the old schema is needed — this is a clean-slate deployment on PostgreSQL.
 
@@ -214,7 +214,7 @@ The entire reminder feature (model, service, handler, background goroutine, and 
 - `reminders.Reminder` and `notifications.UserNotificationSetting` from AutoMigrate
 - Background reminder goroutine startup and shutdown logic
 
-**Client removals (in old `client/`, not applicable to new `client2/`):**
+**Client removals (in old `client/`, not applicable to new `client/`):**
 - RemindersPage, ReminderFormPage
 - NotificationSettingsPage
 - Notification.tsx component (bell icon with reminder dropdown)
@@ -224,7 +224,7 @@ The entire reminder feature (model, service, handler, background goroutine, and 
 **Rationale:** Expense-related recurrence is now handled directly on ExpenseType via `recurring_type`, `recurring_period`, and `next_due_day`. The standalone reminder system added complexity without fitting the redesigned wallet/expense model.
 
 ### iOS App — Removed
-The entire `ios/` directory is being removed. The web app (served as the `client2/` build) is the sole frontend.
+The entire `ios/` directory is being removed. The web app (served as the `client/` build) is the sole frontend.
 
 ---
 
@@ -249,16 +249,16 @@ The entire `ios/` directory is being removed. The web app (served as the `client
 
 **Server verdict: Rewrite the expenses package; delete reminders/notifications; refactor infra.**
 
-### Client — Full Rewrite in `client2/`
+### Client — Full Rewrite in `client/`
 
-Rather than modifying the existing `client/` codebase file-by-file, the frontend will be **fully rewritten in a new `client2/` directory**. Reasons:
+Rather than modifying the existing `client/` codebase file-by-file, the frontend will be **fully rewritten in a new `client/` directory**. Reasons:
 - Nearly every page needs rewriting due to schema changes (date fields, numeric amounts, wallet booleans)
 - Removing reminders/notifications eliminates several pages and components
 - Clean separation allows running old and new clients side-by-side during development
 - Opportunity to adopt newer patterns (better component structure, cleaner types)
 - No risk of breaking the existing working app during development
 
-The new `client2/` will use the same tech stack:
+The new `client/` will use the same tech stack:
 - React 19 + TypeScript
 - Tailwind CSS v4
 - Vite
@@ -381,7 +381,7 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
    - Remove background reminder goroutine and shutdown logic
 4. Update `Dockerfile`:
    - Remove `RUN apk add --no-cache build-base` (no CGo)
-   - Update client build stage to use `client2/` instead of `client/`
+   - Update client build stage to use `client/` instead of `client/`
 5. Create `docker-compose.yml`:
    - `postgres:16-alpine` service with persistent volume
    - API service with `DATABASE_URL` env var
@@ -549,11 +549,11 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
 - `server/internal/expenses/expense_item_handler.go`
 
 ### Phase 3: Client Rewrite — Project Setup & Foundation
-**Scope:** Scaffold `client2/` and build core infrastructure
+**Scope:** Scaffold `client/` and build core infrastructure
 
 1. **Initialize project:**
    ```bash
-   npm create vite@latest client2 -- --template react-ts
+   npm create vite@latest client -- --template react-ts
    ```
 2. **Install dependencies** (same stack as current client):
    - `react`, `react-dom`, `react-router-dom`
@@ -600,7 +600,7 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
    - `authAPI` — login, register, me, logout, refresh, changePassword, deleteAccount
    - `deviceAPI` — list, delete, deleteAll
 
-**Files to create in `client2/`:**
+**Files to create in `client/`:**
 - `package.json`, `vite.config.ts`, `tsconfig.json`, `tailwind.config.ts`, etc.
 - `src/main.tsx`, `src/App.tsx`, `src/index.css`
 - `src/services/api.ts`
@@ -620,7 +620,7 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
 5. **Auth pages** — LoginPage, RegisterPage (adapt from current)
 6. **Settings pages** — SettingsPage, ChangePasswordPage, DevicesPage (adapt from current)
 
-**Files to create in `client2/src/`:**
+**Files to create in `client/src/`:**
 - `components/Layout.tsx`
 - `components/QuickAddButton.tsx`
 - `components/IconPicker.tsx`
@@ -643,7 +643,7 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
 8. **ExpenseFormPage** — Expense type, date picker, wallet, auto-fill from defaults
 9. **BatchCreateTypesPage** — Bulk create wallets + expense types
 
-**Files to create in `client2/src/pages/`:**
+**Files to create in `client/src/pages/`:**
 - `WalletsPage.tsx`, `WalletFormPage.tsx`
 - `PaymentsPage.tsx`, `PaymentFormPage.tsx`
 - `ExpenseTypesPage.tsx`, `ExpenseTypeFormPage.tsx`
@@ -671,7 +671,7 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
    - Hierarchical expense breakdown (parent groups with expandable children)
    - Wallet-type breakdown (credit vs cash vs normal)
 
-**Files to create in `client2/src/pages/`:**
+**Files to create in `client/src/pages/`:**
 - `Dashboard.tsx`
 - `DueItemsPage.tsx`
 - `ReportsPage.tsx`
@@ -684,9 +684,9 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
    - `/`, `/dashboard`, `/wallets/*`, `/payments/*`, `/expense-types/*`, `/expenses/*`
    - `/due-items`, `/reports`, `/settings/*`, `/change-password`
    - `/batch-create-types`
-2. **Dockerfile** update — Build from `client2/` instead of `client/`
-3. **build.sh** update — Point to `client2/`
-4. **Verify** static file serving in `cmd/api/main.go` serves `client2/dist/`
+2. **Dockerfile** update — Build from `client/` instead of `client/`
+3. **build.sh** update — Point to `client/`
+4. **Verify** static file serving in `cmd/api/main.go` serves `client/dist/`
 5. **Final testing** — End-to-end smoke test of all flows
 6. **Archive/remove** old `client/` directory (optional, can keep for reference)
 
@@ -706,8 +706,8 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
 | Credit card pay flow | Integration test: create unbilled expenses → pay → verify linkage |
 | Dashboard queries | Integration tests with seeded data, date-based queries |
 | Reports aggregation | Integration tests: hierarchical grouping, date range, wallet type breakdown |
-| Client2 API layer | Mock API tests with new types |
-| Client2 pages | Component tests for date pickers, wallet toggles, hierarchy display |
+| Client API layer | Mock API tests with new types |
+| Client pages | Component tests for date pickers, wallet toggles, hierarchy display |
 
 ---
 
@@ -719,7 +719,7 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
 | is_credit/is_cash confusion in UI | Low | Low | Clear labels, grouped display, constraint prevents invalid state |
 | next_due_day drift for flexible types | Medium | Low | Show last expense date alongside next_due_day; allow manual override |
 | Hierarchical expense types complexity | Low | Low | Limit depth to 2 levels (parent + child); flat fallback for reports |
-| client2 rewrite scope | Medium | Medium | Phase by page group; test each phase before moving on |
+| client rewrite scope | Medium | Medium | Phase by page group; test each phase before moving on |
 | Losing reminder functionality | Low | Low | Expense recurrence on ExpenseType covers the primary use case |
 
 ---
@@ -751,8 +751,8 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
 - `server/go.mod` — swap sqlite → postgres driver
 - `server/internal/config.go` — DatabaseURL
 - `server/cmd/api/main.go` — DB init, remove reminders/notifications, update models/services/routes
-- `Dockerfile` — remove build-base, update client path to client2
-- `build.sh` — update client path to client2
+- `Dockerfile` — remove build-base, update client path to client
+- `build.sh` — update client path to client
 
 ### Server — Files to Delete
 - `server/internal/reminders/` (entire directory)
@@ -767,10 +767,10 @@ PostgreSQL `NUMERIC(12,2)` replaces the string-encoded decimal hack:
 - `server/internal/expenses/expense_item_service.go`
 - `server/internal/expenses/expense_item_handler.go`
 
-### Client — Full Rewrite as `client2/`
-New directory `client2/` with the following structure:
+### Client — Full Rewrite as `client/`
+New directory `client/` with the following structure:
 ```
-client2/
+client/
 ├── package.json
 ├── vite.config.ts
 ├── tsconfig.json
@@ -823,7 +823,7 @@ client2/
 
 ### Directories to Delete
 - `ios/` (entire directory — iOS app removed)
-- `client/` (archive or delete after client2 is verified)
+- `client/` (archive or delete after client is verified)
 
 ### Unchanged
 - `server/internal/auth/*`
@@ -837,10 +837,10 @@ client2/
 Phase 0 (Postgres + Cleanup) ████░░░░░░░░░░░░░░░░  — DB swap, delete reminders/notifications/ios
 Phase 1 (Server Models)      ░░████░░░░░░░░░░░░░░  — New GORM models
 Phase 2 (Server Logic)       ░░░░░░████████░░░░░░  — Services, handlers, routes
-Phase 3 (Client2 Foundation) ░░░░░░░░████░░░░░░░░  — Scaffold, types, API, auth (can overlap Phase 2)
-Phase 4 (Client2 Components) ░░░░░░░░░░████░░░░░░  — Layout, shared components, auth pages
-Phase 5 (Client2 CRUD)       ░░░░░░░░░░░░████░░░░  — Wallet/Payment/Expense pages
-Phase 6 (Client2 Overview)   ░░░░░░░░░░░░░░████░░  — Dashboard, due items, reports
+Phase 3 (Client Foundation) ░░░░░░░░████░░░░░░░░  — Scaffold, types, API, auth (can overlap Phase 2)
+Phase 4 (Client Components) ░░░░░░░░░░████░░░░░░  — Layout, shared components, auth pages
+Phase 5 (Client CRUD)       ░░░░░░░░░░░░████░░░░  — Wallet/Payment/Expense pages
+Phase 6 (Client Overview)   ░░░░░░░░░░░░░░████░░  — Dashboard, due items, reports
 Phase 7 (Integration)        ░░░░░░░░░░░░░░░░████  — Routing, Dockerfile, build, final test
 ```
 

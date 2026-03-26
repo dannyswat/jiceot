@@ -19,13 +19,13 @@ RUN CGO_ENABLED=0 GOOS=linux go build -v -o /app/jiceot-server -ldflags="-s -w" 
 # Stage 2: Build React client
 FROM node:24-alpine AS builder-client
 
-WORKDIR /app/client2
+WORKDIR /app/
 
-COPY client2/package.json client2/package-lock.json* ./
+COPY client/package.json client/package-lock.json* ./
 
 RUN npm install
 
-COPY client2/. .
+COPY client/. .
 
 RUN npm run build:docker
 
@@ -42,7 +42,7 @@ WORKDIR /app
 
 COPY --from=builder-go /app/jiceot-server .
 
-COPY --from=builder-client /app/client2/dist ./client
+COPY --from=builder-client /app/dist ./client
 
 # Create necessary directories and set permissions
 RUN mkdir -p data && \
