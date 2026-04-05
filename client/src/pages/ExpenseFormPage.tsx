@@ -1,20 +1,13 @@
-import { useState, useEffect, type ChangeEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeftIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
+import AmountInput from '../components/AmountInput'
+import ExpenseTypePicker from '../components/ExpenseTypePicker'
 import { expenseAPI, expenseTypeAPI, walletAPI } from '../services/api'
 import { toDateInputValue } from '../common/date'
 import type { ExpenseType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
-
-function normalizeAmountInput(value: string): string {
-  const digitsOnly = value.replace(/\D/g, '')
-  if (!digitsOnly) {
-    return ''
-  }
-
-  return digitsOnly.replace(/^0+(?=\d)/, '')
-}
 
 export default function ExpenseFormPage() {
   const navigate = useNavigate()
@@ -34,8 +27,7 @@ export default function ExpenseFormPage() {
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(isEdit)
   const [error, setError] = useState('')
-  const [typePickerOpen, setTypePickerOpen] = useState(false)
-  const [typeSearch, setTypeSearch] = useState('')
+  const [walletPickerOpen, setWalletPickerOpen] = useState(!isEdit)
 
   useEffect(() => {
     expenseTypeAPI
@@ -56,12 +48,14 @@ export default function ExpenseFormPage() {
     const date = searchParams.get('date')
 
     if (typeId) {
-      // Defer to after expenseTypes are loaded so handleExpenseTypeSelect can apply defaults
       if (expenseTypes.length > 0) {
         handleExpenseTypeSelect(typeId)
       }
     }
-    if (walletId) set('wallet_id', walletId)
+    if (walletId) {
+      set('wallet_id', walletId)
+      setWalletPickerOpen(false)
+    }
     if (date) set('date', date)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEdit, searchParams, expenseTypes]) // re-run when expenseTypes load
@@ -79,6 +73,7 @@ export default function ExpenseFormPage() {
           date: toDateInputValue(exp.date),
           note: exp.note,
         })
+        setWalletPickerOpen(false)
       })
       .catch(() => setError('Failed to load expense'))
       .finally(() => setInitialLoading(false))
@@ -86,8 +81,6 @@ export default function ExpenseFormPage() {
 
   function handleExpenseTypeSelect(typeId: string) {
     set('expense_type_id', typeId)
-    setTypePickerOpen(false)
-    setTypeSearch('')
     if (isEdit || !typeId) return
     const et = expenseTypes.find((t) => t.id === Number(typeId))
     if (!et) return
@@ -96,7 +89,13 @@ export default function ExpenseFormPage() {
     }
     if (et.default_wallet_id && !form.wallet_id) {
       set('wallet_id', et.default_wallet_id.toString())
+      setWalletPickerOpen(false)
     }
+  }
+
+  function handleWalletSelect(walletId: string) {
+    set('wallet_id', walletId)
+    setWalletPickerOpen(false)
   }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -137,14 +136,7 @@ export default function ExpenseFormPage() {
   }
 
   const selectedType = expenseTypes.find((et) => et.id === Number(form.expense_type_id))
-
-  // Group expense types by parent
-  const topLevel = expenseTypes.filter((et) => !et.parent_id)
-  const filteredTypes = typeSearch
-    ? expenseTypes.filter((et) =>
-        et.name.toLowerCase().includes(typeSearch.toLowerCase())
-      )
-    : null
+  const selectedWallet = wallets.find((wallet) => wallet.id === Number(form.wallet_id))
 
   return (
     <div className="page">
@@ -164,103 +156,13 @@ export default function ExpenseFormPage() {
         {/* Expense Type - popup trigger */}
         <div className="field">
           <label className="field__label">Expense Type *</label>
-          <button
-            type="button"
-            className="field__input type-picker-trigger"
-            onClick={() => setTypePickerOpen(true)}
-          >
-            {selectedType ? (
-              <span className="type-picker-trigger__value">
-                <span className="type-picker-trigger__icon" style={{ background: selectedType.color || '#577590' }}>
-                  {selectedType.icon || selectedType.name.charAt(0).toUpperCase()}
-                </span>
-                {selectedType.name}
-                {selectedType.parent ? ` (${selectedType.parent.name})` : ''}
-              </span>
-            ) : (
-              <span className="type-picker-trigger__placeholder">Select a type…</span>
-            )}
-          </button>
+          <ExpenseTypePicker
+            expenseTypes={expenseTypes}
+            selectedTypeId={form.expense_type_id}
+            onSelect={handleExpenseTypeSelect}
+            title="Select Expense Type"
+          />
         </div>
-
-        {/* Expense Type Picker Modal */}
-        {typePickerOpen && (
-          <>
-            <div className="modal-backdrop" onClick={() => { setTypePickerOpen(false); setTypeSearch('') }} />
-            <div className="modal-wrap">
-              <div className="modal type-picker__modal">
-                <div className="modal__header">
-                  <h3>Select Expense Type</h3>
-                  <button type="button" onClick={() => { setTypePickerOpen(false); setTypeSearch('') }}>
-                    <XMarkIcon />
-                  </button>
-                </div>
-                <div className="type-picker__search">
-                  <MagnifyingGlassIcon />
-                  <input
-                    type="text"
-                    value={typeSearch}
-                    onChange={(e) => setTypeSearch(e.target.value)}
-                    placeholder="Search types…"
-                  />
-                </div>
-                <div className="type-picker__list">
-                  {filteredTypes ? (
-                    filteredTypes.length > 0 ? (
-                      filteredTypes.map((et) => (
-                        <button
-                          key={et.id}
-                          type="button"
-                          className={`type-picker__item${form.expense_type_id === et.id.toString() ? ' type-picker__item--active' : ''}`}
-                          onClick={() => handleExpenseTypeSelect(et.id.toString())}
-                        >
-                          <span className="type-picker__item-icon" style={{ background: et.color || '#577590' }}>
-                            {et.icon || et.name.charAt(0).toUpperCase()}
-                          </span>
-                          <span className="type-picker__item-name">{et.name}</span>
-                          {et.parent && <span className="type-picker__item-parent">{et.parent.name}</span>}
-                        </button>
-                      ))
-                    ) : (
-                      <p className="type-picker__empty">No types match "{typeSearch}"</p>
-                    )
-                  ) : (
-                    topLevel.map((parent) => {
-                      const children = expenseTypes.filter((et) => et.parent_id === parent.id)
-                      return (
-                        <div key={parent.id} className="type-picker__group">
-                          <button
-                            type="button"
-                            className={`type-picker__item${form.expense_type_id === parent.id.toString() ? ' type-picker__item--active' : ''}`}
-                            onClick={() => handleExpenseTypeSelect(parent.id.toString())}
-                          >
-                            <span className="type-picker__item-icon" style={{ background: parent.color || '#577590' }}>
-                              {parent.icon || parent.name.charAt(0).toUpperCase()}
-                            </span>
-                            <span className="type-picker__item-name">{parent.name}</span>
-                          </button>
-                          {children.map((child) => (
-                            <button
-                              key={child.id}
-                              type="button"
-                              className={`type-picker__item type-picker__item--child${form.expense_type_id === child.id.toString() ? ' type-picker__item--active' : ''}`}
-                              onClick={() => handleExpenseTypeSelect(child.id.toString())}
-                            >
-                              <span className="type-picker__item-icon" style={{ background: child.color || '#577590' }}>
-                                {child.icon || child.name.charAt(0).toUpperCase()}
-                              </span>
-                              <span className="type-picker__item-name">{child.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
-        )}
 
         {/* Date & Amount */}
         <div className="field-row">
@@ -276,50 +178,73 @@ export default function ExpenseFormPage() {
           </div>
           <div className="field field--flex1">
             <label className="field__label">Amount *</label>
-            <input
-              className="field__input"
-              type="number"
-              step="1"
-              min="0"
-              required
+            <AmountInput
               value={form.amount}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => set('amount', normalizeAmountInput(e.currentTarget.value))}
+              onChange={(value) => set('amount', value)}
               placeholder={selectedType?.default_amount ? `Default: ${Math.round(selectedType.default_amount)}` : '0'}
+              title="Expense amount"
             />
           </div>
         </div>
 
         {/* Wallet - visual grid */}
         <div className="field">
-          <label className="field__label">Wallet</label>
-          <div className="wallet-select-grid">
-            <button
-              type="button"
-              className={`wallet-select-item${form.wallet_id === '' ? ' wallet-select-item--active' : ''}`}
-              onClick={() => set('wallet_id', '')}
-            >
-              <span className="wallet-select-item__icon" style={{ background: '#3d405b' }}>—</span>
-              <span className="wallet-select-item__name">None</span>
-            </button>
-            {wallets.map((w) => (
+          <div className="field__label-row">
+            <label className="field__label">Wallet</label>
+            {selectedWallet && !walletPickerOpen && (
+              <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
+                Select other
+              </button>
+            )}
+          </div>
+          {selectedWallet && !walletPickerOpen ? (
+            <div className="wallet-select-grid">
               <button
-                key={w.id}
                 type="button"
-                className={`wallet-select-item${form.wallet_id === w.id.toString() ? ' wallet-select-item--active' : ''}`}
-                onClick={() => set('wallet_id', w.id.toString())}
+                className="wallet-select-item wallet-select-item--active"
+                onClick={() => setWalletPickerOpen(true)}
               >
-                <span className="wallet-select-item__icon" style={{ background: w.color || '#577590' }}>
-                  {w.icon || w.name.charAt(0).toUpperCase()}
+                <span className="wallet-select-item__icon" style={{ background: selectedWallet.color || '#577590' }}>
+                  {selectedWallet.icon || selectedWallet.name.charAt(0).toUpperCase()}
                 </span>
-                <span className="wallet-select-item__name">{w.name}</span>
-                {(w.is_credit || w.is_cash) && (
+                <span className="wallet-select-item__name">{selectedWallet.name}</span>
+                {(selectedWallet.is_credit || selectedWallet.is_cash) && (
                   <span className="wallet-select-item__badge">
-                    {w.is_credit ? 'Credit' : 'Cash'}
+                    {selectedWallet.is_credit ? 'Credit' : 'Cash'}
                   </span>
                 )}
               </button>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="wallet-select-grid">
+              <button
+                type="button"
+                className={`wallet-select-item${form.wallet_id === '' ? ' wallet-select-item--active' : ''}`}
+                onClick={() => handleWalletSelect('')}
+              >
+                <span className="wallet-select-item__icon" style={{ background: '#3d405b' }}>—</span>
+                <span className="wallet-select-item__name">None</span>
+              </button>
+              {wallets.map((wallet) => (
+                <button
+                  key={wallet.id}
+                  type="button"
+                  className={`wallet-select-item${form.wallet_id === wallet.id.toString() ? ' wallet-select-item--active' : ''}`}
+                  onClick={() => handleWalletSelect(wallet.id.toString())}
+                >
+                  <span className="wallet-select-item__icon" style={{ background: wallet.color || '#577590' }}>
+                    {wallet.icon || wallet.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="wallet-select-item__name">{wallet.name}</span>
+                  {(wallet.is_credit || wallet.is_cash) && (
+                    <span className="wallet-select-item__badge">
+                      {wallet.is_credit ? 'Credit' : 'Cash'}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="field-hint">Link this expense to a wallet for billing tracking</p>
         </div>
 

@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  Bars3BottomLeftIcon,
   ChevronDownIcon,
   ChevronRightIcon,
+  EllipsisVerticalIcon,
   PencilIcon,
   PlusIcon,
+  Squares2X2Icon,
   TagIcon,
-  TrashIcon,
 } from '@heroicons/react/24/outline'
 
 import { expenseTypeAPI } from '../services/api'
@@ -14,18 +16,18 @@ import { daysUntil, formatDate } from '../common/date'
 import { RECURRING_TYPE_OPTIONS, RECURRING_PERIOD_OPTIONS } from '../common/constants'
 import type { ExpenseType, ExpenseTypeTreeNode } from '../types/expense'
 
+type ViewMode = 'hierarchy' | 'list'
+
 export default function ExpenseTypesPage() {
   const [tree, setTree] = useState<ExpenseTypeTreeNode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [includeStopped, setIncludeStopped] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
+  const [menuOpenId, setMenuOpenId] = useState<number | null>(null)
+  const [viewMode, setViewMode] = useState<ViewMode>('hierarchy')
 
-  useEffect(() => {
-    void loadTree()
-  }, [includeStopped])
-
-  async function loadTree() {
+  const loadTree = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -36,7 +38,22 @@ export default function ExpenseTypesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [includeStopped])
+
+  useEffect(() => {
+    void loadTree()
+  }, [loadTree])
+
+  useEffect(() => {
+    if (menuOpenId === null) return
+
+    function handleWindowClick(): void {
+      setMenuOpenId(null)
+    }
+
+    window.addEventListener('click', handleWindowClick)
+    return () => window.removeEventListener('click', handleWindowClick)
+  }, [menuOpenId])
 
   function toggleExpand(id: number) {
     setExpandedIds((prev) => {
@@ -63,6 +80,7 @@ export default function ExpenseTypesPage() {
 
   async function handleToggle(et: ExpenseType): Promise<void> {
     try {
+      setMenuOpenId(null)
       await expenseTypeAPI.toggle(et.id)
       await loadTree()
     } catch (err) {
@@ -71,6 +89,7 @@ export default function ExpenseTypesPage() {
   }
 
   async function handleDelete(et: ExpenseType): Promise<void> {
+    setMenuOpenId(null)
     if (!window.confirm(`Delete "${et.name}"? This cannot be undone.`)) return
     try {
       await expenseTypeAPI.delete(et.id)
@@ -95,9 +114,13 @@ export default function ExpenseTypesPage() {
     return { label: `In ${days}d`, cls: 'badge--dim' }
   }
 
-  function renderExpenseType(et: ExpenseType, isChild = false) {
+  const flatTypes = tree.flatMap((node) => [node.expense_type, ...node.children])
+
+  function renderExpenseType(et: ExpenseType, options?: { isChild?: boolean; showParent?: boolean }) {
     const status = dueStatus(et)
     const recurring = recurringLabel(et)
+    const isChild = options?.isChild ?? false
+    const showParent = options?.showParent ?? false
 
     return (
       <div
@@ -114,6 +137,7 @@ export default function ExpenseTypesPage() {
           <div className="tree-item__info">
             <span className="tree-item__name">{et.name}</span>
             <div className="tree-item__badges">
+              {showParent && et.parent && <span className="badge badge--dim">{et.parent.name}</span>}
               {recurring && <span className="badge badge--blue">{recurring}</span>}
               {et.stopped && <span className="badge badge--dim">Stopped</span>}
               {status && <span className={`badge ${status.cls}`}>{status.label}</span>}
@@ -144,13 +168,38 @@ export default function ExpenseTypesPage() {
             <Link to={`/expense-types/${et.id}`} className="icon-button" title="Edit">
               <PencilIcon />
             </Link>
-            <button
-              className="icon-button icon-button--danger"
-              onClick={() => handleDelete(et)}
-              title="Delete"
+            <div
+              className="wallet-card-menu"
+              onClick={(e) => e.stopPropagation()}
             >
-              <TrashIcon />
-            </button>
+              <button
+                className="icon-button"
+                onClick={() => setMenuOpenId((prev) => (prev === et.id ? null : et.id))}
+                title="More actions"
+                aria-haspopup="menu"
+                aria-expanded={menuOpenId === et.id}
+              >
+                <EllipsisVerticalIcon />
+              </button>
+              {menuOpenId === et.id && (
+                <div className="wallet-card-menu__panel" role="menu">
+                  <button
+                    className="wallet-card-menu__item"
+                    onClick={() => handleToggle(et)}
+                    role="menuitem"
+                  >
+                    {et.stopped ? 'Resume type' : 'Stop type'}
+                  </button>
+                  <button
+                    className="wallet-card-menu__item wallet-card-menu__item--danger"
+                    onClick={() => handleDelete(et)}
+                    role="menuitem"
+                  >
+                    Delete type
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -174,6 +223,28 @@ export default function ExpenseTypesPage() {
             />
             <span>Show stopped</span>
           </label>
+          <div className="report-view-toggle" role="tablist" aria-label="Expense type view mode">
+            <button
+              type="button"
+              className={viewMode === 'hierarchy' ? 'active' : ''}
+              onClick={() => setViewMode('hierarchy')}
+              role="tab"
+              aria-selected={viewMode === 'hierarchy'}
+            >
+              <Squares2X2Icon />
+              <span>Hierarchy</span>
+            </button>
+            <button
+              type="button"
+              className={viewMode === 'list' ? 'active' : ''}
+              onClick={() => setViewMode('list')}
+              role="tab"
+              aria-selected={viewMode === 'list'}
+            >
+              <Bars3BottomLeftIcon />
+              <span>List</span>
+            </button>
+          </div>
         </div>
         <Link to="/expense-types/new" className="btn btn--primary">
           <PlusIcon />
@@ -198,7 +269,7 @@ export default function ExpenseTypesPage() {
         </div>
       )}
 
-      {!loading && tree.length > 0 && (
+      {!loading && tree.length > 0 && viewMode === 'hierarchy' && (
         <div className="tree-list">
           {tree.map((node) => (
             <div key={node.expense_type.id} className="tree-group">
@@ -216,9 +287,15 @@ export default function ExpenseTypesPage() {
               )}
               {renderExpenseType(node.expense_type)}
               {expandedIds.has(node.expense_type.id) &&
-                node.children.map((child) => renderExpenseType(child, true))}
+                node.children.map((child) => renderExpenseType(child, { isChild: true }))}
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && tree.length > 0 && viewMode === 'list' && (
+        <div className="tree-list tree-list--flat">
+          {flatTypes.map((expenseType) => renderExpenseType(expenseType, { showParent: true }))}
         </div>
       )}
     </div>

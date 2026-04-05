@@ -1,7 +1,9 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeftIcon, PlusIcon, TrashIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 
+import AmountInput from '../components/AmountInput'
+import ExpenseTypePicker from '../components/ExpenseTypePicker'
 import { paymentAPI, walletAPI, expenseAPI, expenseTypeAPI } from '../services/api'
 import { formatCurrency } from '../common/currency'
 import { toDateInputValue, formatDate } from '../common/date'
@@ -36,15 +38,6 @@ function formatAmountInput(amount: number): string {
   return Math.round(amount).toString()
 }
 
-function normalizeAmountInput(value: string): string {
-  const digitsOnly = value.replace(/\D/g, '')
-  if (!digitsOnly) {
-    return ''
-  }
-
-  return digitsOnly.replace(/^0+(?=\d)/, '')
-}
-
 export default function PaymentFormPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -74,11 +67,6 @@ export default function PaymentFormPage() {
   const [walletPickerOpen, setWalletPickerOpen] = useState(!isEdit)
   const [amountMode, setAmountMode] = useState<AmountMode>(isEdit ? 'manual' : 'expenses-total')
   const [discrepancyMode, setDiscrepancyMode] = useState<DiscrepancyMode>('unexplained')
-
-  // Type picker state for new expense
-  const [typePickerOpen, setTypePickerOpen] = useState(false)
-  const [typePickerTarget, setTypePickerTarget] = useState<number | null>(null)
-  const [typeSearch, setTypeSearch] = useState('')
 
   const selectedWallet = wallets.find((w) => w.id === Number(form.wallet_id))
   const allExpenses = mergeExpenses(linkedExpenses, unbilledExpenses)
@@ -239,27 +227,13 @@ export default function PaymentFormPage() {
     setNewExpenses((prev) => prev.filter((e) => e.tempId !== tempId))
   }
 
-  function openTypePicker(tempId: number) {
-    setTypePickerTarget(tempId)
-    setTypePickerOpen(true)
-    setTypeSearch('')
-  }
-
-  function handleTypeSelect(typeId: string) {
-    if (typePickerTarget !== null) {
-      updateNewExpense(typePickerTarget, 'expense_type_id', typeId)
-      // Auto-fill amount from default
-      const et = expenseTypes.find((t) => t.id === Number(typeId))
-      if (et?.default_amount) {
-        const entry = newExpenses.find((e) => e.tempId === typePickerTarget)
-        if (entry && !entry.amount) {
-          updateNewExpense(typePickerTarget, 'amount', Math.round(et.default_amount).toString())
-        }
-      }
+  function handleTypeSelect(tempId: number, typeId: string) {
+    updateNewExpense(tempId, 'expense_type_id', typeId)
+    const expenseType = expenseTypes.find((type) => type.id === Number(typeId))
+    const entry = newExpenses.find((item) => item.tempId === tempId)
+    if (expenseType?.default_amount && entry && !entry.amount) {
+      updateNewExpense(tempId, 'amount', Math.round(expenseType.default_amount).toString())
     }
-    setTypePickerOpen(false)
-    setTypePickerTarget(null)
-    setTypeSearch('')
   }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -328,18 +302,6 @@ export default function PaymentFormPage() {
       </div>
     )
   }
-
-  const selectedType = (tempId: number) => {
-    const entry = newExpenses.find((e) => e.tempId === tempId)
-    return entry ? expenseTypes.find((et) => et.id === Number(entry.expense_type_id)) : undefined
-  }
-
-  const topLevel = expenseTypes.filter((et) => !et.parent_id)
-  const filteredTypes = typeSearch
-    ? expenseTypes.filter((et) =>
-        et.name.toLowerCase().includes(typeSearch.toLowerCase())
-      )
-    : null
 
   return (
     <div className="page">
@@ -434,18 +396,15 @@ export default function PaymentFormPage() {
                 </button>
               )}
             </div>
-            <input
-              className="field__input"
-              type="number"
-              step="1"
-              min="0"
-              required
+            <AmountInput
               value={form.amount}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              onChange={(value) => {
                 setAmountMode('manual')
-                set('amount', normalizeAmountInput(e.currentTarget.value))
+                set('amount', value)
               }}
               placeholder="0"
+              title="Payment amount"
+              hint={hasExpenses ? `Expenses total ${formatCurrency(expenseGrandTotal)}` : undefined}
             />
             {hasExpenses && (
               <p className="field-hint">
@@ -510,33 +469,22 @@ export default function PaymentFormPage() {
 
             {/* New expense entries */}
             {newExpenses.map((ne) => {
-              const et = selectedType(ne.tempId)
               return (
                 <div key={ne.tempId} className="new-expense-row">
-                  <button
-                    type="button"
-                    className="field__input type-picker-trigger new-expense-row__type"
-                    onClick={() => openTypePicker(ne.tempId)}
-                  >
-                    {et ? (
-                      <span className="type-picker-trigger__value">
-                        <span className="type-picker-trigger__icon" style={{ background: et.color || '#577590' }}>
-                          {et.icon || et.name.charAt(0).toUpperCase()}
-                        </span>
-                        {et.name}
-                      </span>
-                    ) : (
-                      <span className="type-picker-trigger__placeholder">Type…</span>
-                    )}
-                  </button>
-                  <input
-                    className="field__input new-expense-row__amount"
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder="Amount"
+                  <ExpenseTypePicker
+                    expenseTypes={expenseTypes}
+                    selectedTypeId={ne.expense_type_id}
+                    onSelect={(typeId) => handleTypeSelect(ne.tempId, typeId)}
+                    placeholder="Type…"
+                    title="Select Expense Type"
+                    triggerClassName="new-expense-row__type"
+                  />
+                  <AmountInput
+                    triggerClassName="new-expense-row__amount"
                     value={ne.amount}
-                    onChange={(e: ChangeEvent<HTMLInputElement>) => updateNewExpense(ne.tempId, 'amount', normalizeAmountInput(e.currentTarget.value))}
+                    onChange={(value) => updateNewExpense(ne.tempId, 'amount', value)}
+                    placeholder="Amount"
+                    title="Expense amount"
                   />
                   <input
                     className="field__input new-expense-row__note"
@@ -611,85 +559,6 @@ export default function PaymentFormPage() {
               <p className="field-hint">No unbilled expenses for this wallet. Add new ones above.</p>
             )}
           </div>
-        )}
-
-        {/* Type Picker Modal */}
-        {typePickerOpen && (
-          <>
-            <div className="modal-backdrop" onClick={() => { setTypePickerOpen(false); setTypeSearch('') }} />
-            <div className="modal-wrap">
-              <div className="modal type-picker__modal">
-                <div className="modal__header">
-                  <h3>Select Expense Type</h3>
-                  <button type="button" onClick={() => { setTypePickerOpen(false); setTypeSearch('') }}>
-                    <XMarkIcon />
-                  </button>
-                </div>
-                <div className="type-picker__search">
-                  <MagnifyingGlassIcon />
-                  <input
-                    type="text"
-                    value={typeSearch}
-                    onChange={(e) => setTypeSearch(e.target.value)}
-                    placeholder="Search types…"
-                  />
-                </div>
-                <div className="type-picker__list">
-                  {filteredTypes ? (
-                    filteredTypes.length > 0 ? (
-                      filteredTypes.map((et) => (
-                        <button
-                          key={et.id}
-                          type="button"
-                          className={`type-picker__item${typePickerTarget !== null && newExpenses.find((e) => e.tempId === typePickerTarget)?.expense_type_id === et.id.toString() ? ' type-picker__item--active' : ''}`}
-                          onClick={() => handleTypeSelect(et.id.toString())}
-                        >
-                          <span className="type-picker__item-icon" style={{ background: et.color || '#577590' }}>
-                            {et.icon || et.name.charAt(0).toUpperCase()}
-                          </span>
-                          <span className="type-picker__item-name">{et.name}</span>
-                          {et.parent && <span className="type-picker__item-parent">{et.parent.name}</span>}
-                        </button>
-                      ))
-                    ) : (
-                      <p className="type-picker__empty">No types match "{typeSearch}"</p>
-                    )
-                  ) : (
-                    topLevel.map((parent) => {
-                      const children = expenseTypes.filter((et) => et.parent_id === parent.id)
-                      return (
-                        <div key={parent.id} className="type-picker__group">
-                          <button
-                            type="button"
-                            className={`type-picker__item${typePickerTarget !== null && newExpenses.find((e) => e.tempId === typePickerTarget)?.expense_type_id === parent.id.toString() ? ' type-picker__item--active' : ''}`}
-                            onClick={() => handleTypeSelect(parent.id.toString())}
-                          >
-                            <span className="type-picker__item-icon" style={{ background: parent.color || '#577590' }}>
-                              {parent.icon || parent.name.charAt(0).toUpperCase()}
-                            </span>
-                            <span className="type-picker__item-name">{parent.name}</span>
-                          </button>
-                          {children.map((child) => (
-                            <button
-                              key={child.id}
-                              type="button"
-                              className={`type-picker__item type-picker__item--child${typePickerTarget !== null && newExpenses.find((e) => e.tempId === typePickerTarget)?.expense_type_id === child.id.toString() ? ' type-picker__item--active' : ''}`}
-                              onClick={() => handleTypeSelect(child.id.toString())}
-                            >
-                              <span className="type-picker__item-icon" style={{ background: child.color || '#577590' }}>
-                                {child.icon || child.name.charAt(0).toUpperCase()}
-                              </span>
-                              <span className="type-picker__item-name">{child.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-              </div>
-            </div>
-          </>
         )}
 
         {/* Actions */}

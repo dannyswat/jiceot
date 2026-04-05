@@ -1,7 +1,8 @@
-import { useState, useEffect, type ChangeEvent } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
+import AmountInput from '../components/AmountInput'
 import { expenseTypeAPI, walletAPI } from '../services/api'
 import {
   RECURRING_TYPE_OPTIONS,
@@ -11,15 +12,6 @@ import IconPicker from '../components/IconPicker'
 import ColorPicker from '../components/ColorPicker'
 import type { ExpenseType, RecurringPeriod, RecurringType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
-
-function normalizeAmountInput(value: string): string {
-  const digitsOnly = value.replace(/\D/g, '')
-  if (!digitsOnly) {
-    return ''
-  }
-
-  return digitsOnly.replace(/^0+(?=\d)/, '')
-}
 
 export default function ExpenseTypeFormPage() {
   const navigate = useNavigate()
@@ -196,14 +188,11 @@ export default function ExpenseTypeFormPage() {
         <div className="field-row">
           <div className="field field--flex1">
             <label className="field__label">Default Amount</label>
-            <input
-              className="field__input"
-              type="number"
-              step="1"
-              min="0"
+            <AmountInput
               value={form.default_amount}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => set('default_amount', normalizeAmountInput(e.currentTarget.value))}
+              onChange={(value) => set('default_amount', value)}
               placeholder="0"
+              title="Default amount"
             />
           </div>
           <div className="field field--flex1">

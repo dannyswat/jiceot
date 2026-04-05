@@ -98,6 +98,7 @@ h4,
 .auth-card__header h1 {
   font-family: 'Fraunces', 'Georgia', serif;
   letter-spacing: -0.02em;
+  color: var(--text-main);
 }
 
 .copy {
@@ -402,20 +403,25 @@ a.topbar__brand {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
-  border-bottom: 1px solid rgba(148,163,184,0.22);
+  padding: 12px 14px;
+  border: 1px solid rgba(148,163,184,0.18);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.82);
+  flex-wrap: wrap;
 }
 
 .due-list li:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
+  padding-bottom: 12px;
 }
 
 .stat-card {
   display: grid;
   gap: 10px;
   min-height: 136px;
-  align-content: space-between;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  padding: 18px 16px;
 }
 
 .stat-card p {
@@ -1277,6 +1283,165 @@ a.topbar__brand {
   flex: 1;
 }
 
+/* ── Amount input ─────────────────────────────── */
+
+.amount-input__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.amount-input__trigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.amount-input__trigger-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.amount-input__trigger-value--placeholder {
+  color: var(--text-soft);
+}
+
+.amount-input__trigger-badge {
+  flex-shrink: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.12);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.amount-input__modal {
+  max-width: 440px;
+  max-height: min(80vh, 680px);
+}
+
+.amount-input__body {
+  display: grid;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.amount-input__display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(148,163,184,0.3);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.96);
+  color: var(--text-main);
+}
+
+.amount-input__display-prefix {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+}
+
+.amount-input__display input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-main);
+  caret-color: var(--accent-strong);
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.amount-input__display input::placeholder {
+  color: var(--text-soft);
+}
+
+.amount-input__result {
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.amount-input__result--neutral {
+  background: rgba(148,163,184,0.14);
+  color: #d7e0ee;
+}
+
+.amount-input__result--valid {
+  background: rgba(16, 185, 129, 0.18);
+  color: #dcfce7;
+}
+
+.amount-input__result--invalid {
+  background: rgba(217, 79, 61, 0.18);
+  color: #ffe1db;
+}
+
+.amount-input__keypad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.amount-input__key {
+  min-height: 52px;
+  border: 1px solid rgba(148,163,184,0.22);
+  border-radius: 16px;
+  background: rgba(255,255,255,0.88);
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.amount-input__key:hover {
+  transform: translateY(-1px);
+  border-color: rgba(14, 165, 233, 0.45);
+  background: rgba(255,255,255,0.96);
+}
+
+.amount-input__key--accent {
+  background: rgba(14, 165, 233, 0.22);
+  color: #0c4a6e;
+}
+
+.amount-input__key--equals {
+  background: linear-gradient(135deg, #0284c7, #0f9f6e);
+  color: #ffffff;
+}
+
+.amount-input__key--muted {
+  background: rgba(226,232,240,0.9);
+  color: #334155;
+}
+
+.amount-input__key--muted svg {
+  width: 20px;
+  height: 20px;
+  margin: 0 auto;
+}
+
+.amount-input__modal .modal__actions {
+  position: sticky;
+  bottom: 0;
+  background: rgba(18, 22, 30, 0.98);
+  backdrop-filter: blur(20px);
+  z-index: 1;
+}
+
 /* ── Quick Add ──────────────────────────────────── */
 
 .quick-add-fab {
@@ -1628,6 +1793,25 @@ a.topbar__brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+}
+
+.type-picker-trigger__text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.type-picker-trigger__text span,
+.type-picker-trigger__text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.type-picker-trigger__text small {
+  color: var(--text-soft);
+  font-size: 0.74rem;
 }
 
 .type-picker-trigger__icon {
@@ -1734,6 +1918,48 @@ a.topbar__brand {
   padding: 28px 0;
   color: 0.4;
   font-size: 0.88rem;
+}
+
+.expense-type-picker__modal {
+  max-width: 560px;
+}
+
+.expense-type-picker__search {
+  border-bottom: 1px solid rgba(148,163,184,0.16);
+}
+
+.expense-type-picker__grid {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+}
+
+.expense-type-picker__item {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.expense-type-picker__item--active {
+  border-color: rgba(14, 165, 233, 0.4);
+  background: rgba(14, 165, 233, 0.08);
+}
+
+.expense-type-picker__icon {
+  color: inherit;
+}
+
+.expense-type-picker__name {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.expense-type-picker__meta {
+  width: 100%;
+  font-size: 0.72rem;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ── Wallet Select Grid ─────────────────────────── */
@@ -2862,6 +3088,10 @@ select,
   gap: 2px;
 }
 
+.tree-list--flat {
+  gap: 8px;
+}
+
 .tree-group {
   position: relative;
 }
@@ -2933,6 +3163,11 @@ select,
   display: flex;
   gap: 2px;
   flex-shrink: 0;
+}
+
+.report-view-toggle button svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* ── Batch create ───────────────────────────────── */
@@ -3023,6 +3258,39 @@ select,
 @media (max-width: 768px) {
   .dash-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-card {
+    min-height: 110px;
+    padding: 14px;
+    gap: 8px;
+  }
+
+  .stat-card p {
+    font-size: 0.82rem;
+  }
+
+  .stat-card strong {
+    font-size: clamp(1.25rem, 5vw, 1.9rem);
+  }
+
+  .dash-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .dash-actions .btn {
+    min-width: 0;
+    min-height: 44px;
+    padding: 10px 8px;
+    font-size: 0.76rem;
+    gap: 4px;
+  }
+
+  .dash-actions .btn svg {
+    width: 15px;
+    height: 15px;
   }
 }
 
@@ -3124,6 +3392,23 @@ select,
 .due-item__meta {
   font-size: 0.78rem;
   color: var(--text-soft);
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.due-list .due-item__leading {
+  width: 100%;
+}
+
+.due-list .due-item__name {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: initial;
+}
+
+.due-list .due-item__trailing {
+  width: 100%;
+  justify-content: flex-end;
 }
 
 .due-item__trailing {
@@ -3339,9 +3624,37 @@ select,
     gap: 0;
   }
 
-  /* Dashboard stats → single column */
   .dash-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .stat-card {
+    min-height: 92px;
+    padding: 12px;
+  }
+
+  .amount-input__modal {
+    max-width: 100%;
+    max-height: calc(100vh - 12px);
+    border-radius: 22px 22px 0 0;
+    align-self: end;
+  }
+
+  .amount-input__body {
+    gap: 10px;
+  }
+
+  .amount-input__keypad {
+    gap: 8px;
+  }
+
+  .amount-input__key {
+    min-height: 46px;
+  }
+
+  .amount-input__modal .modal__actions {
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
   }
 
   /* Entity toolbar → stack filters above action button */
@@ -3500,6 +3813,15 @@ select,
 
 /* Mid-size tablets: keep 2-column dash stats but fix other issues */
 @media (max-width: 640px) {
+
+  .field-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .field__input[type="date"] {
+    min-width: 0;
+  }
 
   /* Entity toolbar filters → fill width */
   .entity-filters select {

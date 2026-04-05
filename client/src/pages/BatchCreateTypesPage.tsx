@@ -1,19 +1,11 @@
-import { useState, type ChangeEvent } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 
+import AmountInput from '../components/AmountInput'
 import { walletAPI, expenseTypeAPI } from '../services/api'
 import { PRESET_COLORS, BILL_PERIOD_OPTIONS } from '../common/constants'
 import type { RecurringType, RecurringPeriod } from '../types/expense'
-
-function normalizeAmountInput(value: string): string {
-  const digitsOnly = value.replace(/\D/g, '')
-  if (!digitsOnly) {
-    return ''
-  }
-
-  return digitsOnly.replace(/^0+(?=\d)/, '')
-}
 
 interface WalletRow {
   key: number
@@ -319,14 +311,12 @@ export default function BatchCreateTypesPage() {
                   <option value="quarterly">Quarterly</option>
                   <option value="annually">Annually</option>
                 </select>
-                <input
-                  className="field__input field__input--compact"
-                  type="number"
-                  step="1"
-                  min="0"
+                <AmountInput
                   value={row.default_amount}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) => updateExpenseType(idx, 'default_amount', normalizeAmountInput(e.currentTarget.value))}
+                  onChange={(value) => updateExpenseType(idx, 'default_amount', value)}
                   placeholder="0"
+                  title="Default amount"
+                  triggerClassName="field__input--compact"
                 />
                 <button
                   type="button"

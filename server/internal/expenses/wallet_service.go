@@ -65,7 +65,7 @@ func (s *WalletService) CreateWallet(userID uint, req CreateWalletRequest) (*Wal
 	if err == nil {
 		return nil, ErrWalletNameExists
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check wallet name: %w", err)
 	}
 
@@ -119,7 +119,7 @@ func (s *WalletService) UpdateWallet(userID, walletID uint, req UpdateWalletRequ
 	if err == nil {
 		return nil, ErrWalletNameExists
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check wallet name: %w", err)
 	}
 

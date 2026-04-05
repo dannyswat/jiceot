@@ -242,7 +242,7 @@ func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, exp
 	if err == nil {
 		return nil, ErrExpenseTypeNameExists
 	}
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, fmt.Errorf("failed to check expense type name: %w", err)
 	}
 	if parentID != nil {
