@@ -93,9 +93,13 @@ export default function DueItemsPage() {
     if (!item.next_due_date) return
     setPostponingId(item.id)
     try {
-      const current = new Date(item.next_due_date)
-      current.setDate(current.getDate() + daysToAdd)
-      const newDate = current.toISOString().slice(0, 10)
+      const today = new Date()
+      today.setDate(today.getDate() + daysToAdd)
+      const newDate = [
+        String(today.getFullYear()),
+        String(today.getMonth() + 1).padStart(2, '0'),
+        String(today.getDate()).padStart(2, '0'),
+      ].join('-')
       await expenseTypeAPI.postpone(item.id, { next_due_day: newDate })
       await loadData()
     } catch (err) {
