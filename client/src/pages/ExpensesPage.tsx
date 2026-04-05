@@ -34,11 +34,11 @@ export default function ExpensesPage() {
     expenseTypeAPI
       .list({ includeStopped: true })
       .then((r) => setExpenseTypes(r.expense_types))
-      .catch(() => {})
+      .catch(() => undefined)
     walletAPI
       .list({ includeStopped: true })
       .then((r) => setWallets(r.wallets))
-      .catch(() => {})
+      .catch(() => undefined)
   }, [])
 
   const loadExpenses = useCallback(async () => {
@@ -204,16 +204,18 @@ export default function ExpensesPage() {
               </div>
               <div className="entity-row__trailing">
                 <span className="entity-row__amount">{formatCurrency(exp.amount)}</span>
-                <Link to={`/expenses/${exp.id}`} className="icon-button" title="Edit">
-                  <PencilIcon />
-                </Link>
-                <button
-                  className="icon-button icon-button--danger"
-                  onClick={() => handleDelete(exp)}
-                  title="Delete"
-                >
-                  <TrashIcon />
-                </button>
+                <div className="entity-row__buttons">
+                  <Link to={`/expenses/${exp.id}`} className="icon-button" title="Edit">
+                    <PencilIcon />
+                  </Link>
+                  <button
+                    className="icon-button icon-button--danger"
+                    onClick={() => handleDelete(exp)}
+                    title="Delete"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

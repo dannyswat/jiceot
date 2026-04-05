@@ -161,7 +161,7 @@ function sanitizeDraftInput(value: string): string {
   return value.replace(/[^\d+\-*/\s]/g, '')
 }
 
-function joinClassNames(...values: Array<string | undefined>): string {
+function joinClassNames(...values: (string | undefined)[]): string {
   return values.filter(Boolean).join(' ')
 }
 

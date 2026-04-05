@@ -7,7 +7,6 @@ import {
   EllipsisVerticalIcon,
   PencilIcon,
   PlusIcon,
-  Squares2X2Icon,
   TagIcon,
 } from '@heroicons/react/24/outline'
 
@@ -17,6 +16,23 @@ import { RECURRING_TYPE_OPTIONS, RECURRING_PERIOD_OPTIONS } from '../common/cons
 import type { ExpenseType, ExpenseTypeTreeNode } from '../types/expense'
 
 type ViewMode = 'hierarchy' | 'list'
+
+function HierarchyIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <circle cx="5" cy="5" r="2.25" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="15" cy="9.5" r="2.25" stroke="currentColor" strokeWidth="1.5" />
+      <circle cx="15" cy="15" r="2.25" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M7.25 5H10c1.243 0 2.25 1.007 2.25 2.25v5.5M12.25 7.5h.5"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
 
 export default function ExpenseTypesPage() {
   const [tree, setTree] = useState<ExpenseTypeTreeNode[]>([])
@@ -125,7 +141,7 @@ export default function ExpenseTypesPage() {
     return (
       <div
         key={et.id}
-        className={`tree-item${isChild ? ' tree-item--child' : ''}${et.stopped ? ' tree-item--stopped' : ''}`}
+        className={`tree-item${isChild ? ' tree-item--child' : ''}${et.stopped ? ' tree-item--stopped' : ''}${menuOpenId === et.id ? ' tree-item--menu-open' : ''}`}
       >
         <div className="tree-item__main">
           <div
@@ -151,6 +167,7 @@ export default function ExpenseTypesPage() {
           <div className="tree-item__actions">
             {et.recurring_type === 'flexible' && et.next_due_day && (
               <button
+                type="button"
                 className="icon-button"
                 onClick={() => handlePostpone(et)}
                 title="Postpone 7 days"
@@ -158,13 +175,6 @@ export default function ExpenseTypesPage() {
                 ⏭
               </button>
             )}
-            <button
-              className="icon-button"
-              onClick={() => handleToggle(et)}
-              title={et.stopped ? 'Resume' : 'Stop'}
-            >
-              {et.stopped ? '▶' : '⏸'}
-            </button>
             <Link to={`/expense-types/${et.id}`} className="icon-button" title="Edit">
               <PencilIcon />
             </Link>
@@ -173,6 +183,7 @@ export default function ExpenseTypesPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <button
+                type="button"
                 className="icon-button"
                 onClick={() => setMenuOpenId((prev) => (prev === et.id ? null : et.id))}
                 title="More actions"
@@ -223,26 +234,28 @@ export default function ExpenseTypesPage() {
             />
             <span>Show stopped</span>
           </label>
-          <div className="report-view-toggle" role="tablist" aria-label="Expense type view mode">
+          <div className="report-view-toggle expense-type-view-toggle" role="tablist" aria-label="Expense type view mode">
             <button
               type="button"
-              className={viewMode === 'hierarchy' ? 'active' : ''}
+              className={`filter-chip expense-type-view-toggle__button${viewMode === 'hierarchy' ? ' filter-chip--active' : ''}`}
               onClick={() => setViewMode('hierarchy')}
               role="tab"
               aria-selected={viewMode === 'hierarchy'}
+              aria-label="Hierarchy view"
+              title="Hierarchy view"
             >
-              <Squares2X2Icon />
-              <span>Hierarchy</span>
+              <HierarchyIcon />
             </button>
             <button
               type="button"
-              className={viewMode === 'list' ? 'active' : ''}
+              className={`filter-chip expense-type-view-toggle__button${viewMode === 'list' ? ' filter-chip--active' : ''}`}
               onClick={() => setViewMode('list')}
               role="tab"
               aria-selected={viewMode === 'list'}
+              aria-label="List view"
+              title="List view"
             >
               <Bars3BottomLeftIcon />
-              <span>List</span>
             </button>
           </div>
         </div>

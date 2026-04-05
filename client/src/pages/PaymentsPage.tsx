@@ -179,16 +179,18 @@ export default function PaymentsPage() {
               </div>
               <div className="entity-row__trailing">
                 <span className="entity-row__amount">{formatCurrency(p.amount)}</span>
-                <Link to={`/payments/${p.id}`} className="icon-button" title="Edit">
-                  <PencilIcon />
-                </Link>
-                <button
-                  className="icon-button icon-button--danger"
-                  onClick={() => handleDelete(p)}
-                  title="Delete"
-                >
-                  <TrashIcon />
-                </button>
+                <div className="entity-row__buttons">
+                  <Link to={`/payments/${p.id}`} className="icon-button" title="Edit">
+                    <PencilIcon />
+                  </Link>
+                  <button
+                    className="icon-button icon-button--danger"
+                    onClick={() => handleDelete(p)}
+                    title="Delete"
+                  >
+                    <TrashIcon />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

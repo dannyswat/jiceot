@@ -603,6 +603,12 @@ a.topbar__brand {
   gap: 10px;
 }
 
+.sidebar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .sidebar__user {
   flex: 1;
   min-width: 0;
@@ -664,6 +670,12 @@ a.topbar__brand {
   z-index: 40;
 }
 
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .topbar__brand {
   font-weight: 700;
   font-size: 1.1rem;
@@ -676,6 +688,7 @@ a.topbar__brand {
 }
 
 .topbar__menu-btn,
+.notification-button,
 .topbar__logout-btn {
   background: none;
   border: none;
@@ -685,9 +698,151 @@ a.topbar__brand {
 }
 
 .topbar__menu-btn svg,
+.notification-button svg,
 .topbar__logout-btn svg {
   width: 22px;
   height: 22px;
+}
+
+.notification-shell {
+  position: relative;
+}
+
+.notification-button,
+.sidebar__logout,
+.topbar__logout-btn {
+  position: relative;
+  border-radius: 10px;
+  transition: color 140ms ease, background 140ms ease;
+}
+
+.notification-button:hover {
+  color: var(--accent-strong);
+  background: rgba(14, 165, 233, 0.12);
+}
+
+.notification-button__badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #d94f3d;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+.notification-panel {
+  width: min(320px, calc(100vw - 24px));
+  display: grid;
+  gap: 8px;
+}
+
+.notification-panel__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 6px 2px;
+}
+
+.notification-panel__header strong {
+  font-size: 0.9rem;
+}
+
+.notification-panel__header span,
+.notification-panel__empty,
+.notification-panel__meta,
+.notification-panel__date {
+  color: var(--text-muted);
+}
+
+.notification-panel__header span {
+  font-size: 0.76rem;
+}
+
+.notification-panel__empty {
+  padding: 8px 6px 4px;
+  font-size: 0.84rem;
+}
+
+.notification-panel__list {
+  display: grid;
+  gap: 4px;
+}
+
+.notification-panel__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  color: inherit;
+}
+
+.notification-panel__item:hover {
+  background: rgba(79,70,229,0.06);
+}
+
+.notification-panel__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.notification-panel__content {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.notification-panel__title,
+.notification-panel__status {
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.notification-panel__title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-panel__meta,
+.notification-panel__date {
+  font-size: 0.74rem;
+}
+
+.notification-panel__side {
+  text-align: right;
+  display: grid;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.notification-panel__status {
+  color: var(--accent-strong);
+}
+
+.notification-panel__cta {
+  width: 100%;
+  justify-content: center;
+}
+
+.notification-panel.wallet-card-menu__panel {
+  top: calc(100% + 6px);
+  right: 0;
 }
 
 .layout__content {
@@ -1440,6 +1595,17 @@ a.topbar__brand {
   background: rgba(18, 22, 30, 0.98);
   backdrop-filter: blur(20px);
   z-index: 1;
+}
+
+.amount-input__modal .btn--ghost {
+  border-color: rgba(148,163,184,0.42);
+  background: rgba(255,255,255,0.12);
+  color: #f8fafc;
+}
+
+.amount-input__modal .btn--ghost:hover {
+  background: rgba(255,255,255,0.2);
+  color: #ffffff;
 }
 
 /* ── Quick Add ──────────────────────────────────── */
@@ -2445,6 +2611,12 @@ select,
     display: none;
   }
 
+  .sidebar__actions .notification-panel.wallet-card-menu__panel {
+    top: auto;
+    right: 0;
+    bottom: calc(100% + 8px);
+  }
+
   .layout__content {
     padding: 28px 32px;
   }
@@ -2792,6 +2964,12 @@ select,
   flex-shrink: 0;
 }
 
+.entity-row__buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .entity-row__amount {
   font-weight: 600;
   font-size: 0.95rem;
@@ -3113,10 +3291,19 @@ select,
 }
 
 .tree-item {
+  position: relative;
   padding: 10px 14px;
   border: 1px solid rgba(148,163,184,0.22);
   background: rgba(255,255,255,0.90);
   border-radius: 14px;
+}
+
+.tree-item--menu-open {
+  z-index: 30;
+}
+
+.tree-item--menu-open .wallet-card-menu__panel {
+  z-index: 40;
 }
 
 .tree-item--child {
@@ -3163,6 +3350,36 @@ select,
   display: flex;
   gap: 2px;
   flex-shrink: 0;
+}
+
+.expense-type-view-toggle {
+  gap: 0;
+  padding: 3px;
+  border: 1px solid rgba(148,163,184,0.3);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.expense-type-view-toggle__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+}
+
+.expense-type-view-toggle__button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.expense-type-view-toggle__button.filter-chip--active {
+  box-shadow: 0 8px 18px rgba(14, 165, 233, 0.14);
 }
 
 .report-view-toggle button svg {
@@ -3683,6 +3900,10 @@ select,
     padding-top: 4px;
   }
 
+  .entity-row__buttons {
+    margin-left: auto;
+  }
+
   .entity-row__amount {
     min-width: 0;
   }
@@ -3696,6 +3917,11 @@ select,
     width: 100%;
     justify-content: flex-end;
     padding-top: 4px;
+  }
+
+  .expense-type-view-toggle__button {
+    width: 36px;
+    height: 36px;
   }
 
   /* Tree expand → inside the flow instead of absolute */
@@ -3809,6 +4035,9 @@ select,
     left: 50%;
     transform: translateX(-50%);
   }
+  .notification-panel {
+    width: min(320px, calc(100vw - 32px));
+  }
 }
 
 /* Mid-size tablets: keep 2-column dash stats but fix other issues */
@@ -3847,6 +4076,13 @@ select,
   /* Form preview → wrap */
   .form-preview {
     flex-wrap: wrap;
+    .notification-panel__item {
+      align-items: flex-start;
+    }
+
+    .notification-panel__side {
+      max-width: 92px;
+    }
   }
 
   /* Batch table → smaller font */
