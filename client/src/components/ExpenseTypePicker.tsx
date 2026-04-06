@@ -8,6 +8,7 @@ interface ExpenseTypePickerProps {
   expenseTypes: ExpenseType[]
   selectedTypeId: string
   onSelect: (typeId: string) => void
+  onCreateNew?: () => void
   placeholder?: string
   title?: string
   triggerClassName?: string
@@ -21,6 +22,7 @@ export default function ExpenseTypePicker({
   expenseTypes,
   selectedTypeId,
   onSelect,
+  onCreateNew,
   placeholder = 'Select a type…',
   title = 'Select Expense Type',
   triggerClassName,
@@ -53,6 +55,11 @@ export default function ExpenseTypePicker({
   function handleSelect(typeId: string) {
     onSelect(typeId)
     handleClose()
+  }
+
+  function handleCreateNew() {
+    handleClose()
+    onCreateNew?.()
   }
 
   return (
@@ -100,9 +107,24 @@ export default function ExpenseTypePicker({
                 />
               </div>
 
+              {onCreateNew && (
+                <div className="expense-type-picker__actions">
+                  <button type="button" className="link-button" onClick={handleCreateNew}>
+                    Add new expense type
+                  </button>
+                </div>
+              )}
+
               <div className="quick-add__body">
                 {filteredTypes.length === 0 ? (
-                  <p className="type-picker__empty">No types match "{search}"</p>
+                  <div className="type-picker__empty expense-type-picker__empty">
+                    <p>No types match "{search}"</p>
+                    {onCreateNew && (
+                      <button type="button" className="link-button" onClick={handleCreateNew}>
+                        Create it instead
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <div className="quick-add__grid expense-type-picker__grid">
                     {filteredTypes.map((type) => (

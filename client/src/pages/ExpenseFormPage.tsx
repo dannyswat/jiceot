@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 import AmountInput from '../components/AmountInput'
@@ -9,11 +9,27 @@ import { toDateInputValue } from '../common/date'
 import type { ExpenseType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
+interface ExpenseDraftFormState {
+  expense_type_id: string
+  wallet_id: string
+  amount: string
+  date: string
+  note: string
+}
+
+interface ExpenseFormLocationState {
+  expenseDraft?: ExpenseDraftFormState
+  createdExpenseTypeId?: number
+}
+
 export default function ExpenseFormPage() {
+  const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
   const isEdit = Boolean(id)
+  const navigationState = location.state as ExpenseFormLocationState | null
+  const returnTo = `${location.pathname}${location.search}`
 
   const [form, setForm] = useState({
     expense_type_id: '' as string,
@@ -40,9 +56,19 @@ export default function ExpenseFormPage() {
       .catch((err) => { console.error(err) })
   }, [])
 
+  useEffect(() => {
+    if (!navigationState?.expenseDraft) return
+
+    setForm(navigationState.expenseDraft)
+    setWalletPickerOpen(!navigationState.expenseDraft.wallet_id)
+    if (isEdit) {
+      setInitialLoading(false)
+    }
+  }, [isEdit, navigationState])
+
   // Apply query params for preselection (expense_type_id, wallet_id, date)
   useEffect(() => {
-    if (isEdit) return
+    if (isEdit || navigationState?.expenseDraft) return
     const typeId = searchParams.get('expense_type_id')
     const walletId = searchParams.get('wallet_id')
     const date = searchParams.get('date')
@@ -58,10 +84,10 @@ export default function ExpenseFormPage() {
     }
     if (date) set('date', date)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isEdit, searchParams, expenseTypes]) // re-run when expenseTypes load
+  }, [isEdit, searchParams, expenseTypes, navigationState]) // re-run when expenseTypes load
 
   useEffect(() => {
-    if (!isEdit || !id) return
+    if (!isEdit || !id || navigationState?.expenseDraft) return
     setInitialLoading(true)
     expenseAPI
       .get(Number(id))
@@ -77,7 +103,7 @@ export default function ExpenseFormPage() {
       })
       .catch(() => setError('Failed to load expense'))
       .finally(() => setInitialLoading(false))
-  }, [isEdit, id])
+  }, [isEdit, id, navigationState])
 
   function handleExpenseTypeSelect(typeId: string) {
     set('expense_type_id', typeId)
@@ -96,6 +122,24 @@ export default function ExpenseFormPage() {
   function handleWalletSelect(walletId: string) {
     set('wallet_id', walletId)
     setWalletPickerOpen(false)
+  }
+
+  function handleCreateExpenseType() {
+    navigate('/expense-types/new', {
+      state: {
+        returnTo,
+        expenseDraft: form,
+      },
+    })
+  }
+
+  function handleCreateWallet() {
+    navigate('/wallets/new', {
+      state: {
+        returnTo,
+        expenseDraft: form,
+      },
+    })
   }
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
@@ -160,6 +204,7 @@ export default function ExpenseFormPage() {
             expenseTypes={expenseTypes}
             selectedTypeId={form.expense_type_id}
             onSelect={handleExpenseTypeSelect}
+            onCreateNew={!isEdit ? handleCreateExpenseType : undefined}
             title="Select Expense Type"
           />
         </div>
@@ -191,11 +236,16 @@ export default function ExpenseFormPage() {
         <div className="field">
           <div className="field__label-row">
             <label className="field__label">Wallet</label>
-            {selectedWallet && !walletPickerOpen && (
-              <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
-                Select other
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {selectedWallet && !walletPickerOpen && (
+                <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
+                  Select other
+                </button>
+              )}
+              <button type="button" className="link-button" onClick={handleCreateWallet}>
+                Add new wallet
               </button>
-            )}
+            </div>
           </div>
           {selectedWallet && !walletPickerOpen ? (
             <div className="wallet-select-grid">

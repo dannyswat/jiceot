@@ -2094,6 +2094,12 @@ a.topbar__brand {
   border-bottom: 1px solid rgba(148,163,184,0.16);
 }
 
+.expense-type-picker__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px 0;
+}
+
 .expense-type-picker__grid {
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 }
@@ -2126,6 +2132,10 @@ a.topbar__brand {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.expense-type-picker__empty {
+  justify-items: center;
 }
 
 /* ── Wallet Select Grid ─────────────────────────── */
@@ -3962,6 +3972,10 @@ select,
   /* Wallet select grid → 2 columns min */
   .wallet-select-grid {
     grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  }
+
+  .expense-type-picker__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   /* Summary bar → stack */

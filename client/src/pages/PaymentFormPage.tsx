@@ -17,6 +17,26 @@ interface NewExpenseEntry {
   note: string
 }
 
+interface PaymentDraftFormState {
+  wallet_id: string
+  amount: string
+  date: string
+  note: string
+}
+
+interface PaymentDraftState {
+  form: PaymentDraftFormState
+  selectedExpenseIds: number[]
+  newExpenses: NewExpenseEntry[]
+  amountMode: AmountMode
+  discrepancyMode: DiscrepancyMode
+}
+
+interface PaymentFormLocationState {
+  returnTo?: string
+  paymentDraft?: PaymentDraftState
+}
+
 type AmountMode = 'expenses-total' | 'manual'
 type DiscrepancyMode = 'default-expense' | 'unexplained'
 
@@ -46,8 +66,9 @@ export default function PaymentFormPage() {
   const isEdit = Boolean(id)
   const presetWalletId = searchParams.get('wallet_id') ?? ''
   const presetDate = searchParams.get('date') ?? ''
-  const navigationState = location.state as { returnTo?: string } | null
+  const navigationState = location.state as PaymentFormLocationState | null
   const returnTo = !isEdit ? navigationState?.returnTo ?? '/payments' : '/payments'
+  const returnPath = `${location.pathname}${location.search}`
 
   const [form, setForm] = useState({
     wallet_id: '' as string,
@@ -85,6 +106,20 @@ export default function PaymentFormPage() {
     : undefined
 
   useEffect(() => {
+    if (!navigationState?.paymentDraft) return
+
+    setForm(navigationState.paymentDraft.form)
+    setSelectedExpenseIds(navigationState.paymentDraft.selectedExpenseIds)
+    setNewExpenses(navigationState.paymentDraft.newExpenses)
+    setAmountMode(navigationState.paymentDraft.amountMode)
+    setDiscrepancyMode(navigationState.paymentDraft.discrepancyMode)
+    setWalletPickerOpen(!navigationState.paymentDraft.form.wallet_id)
+    if (isEdit) {
+      setInitialLoading(false)
+    }
+  }, [isEdit, navigationState])
+
+  useEffect(() => {
     walletAPI
       .list({ includeStopped: false })
       .then((r) => setWallets(r.wallets))
@@ -96,7 +131,7 @@ export default function PaymentFormPage() {
   }, [])
 
   useEffect(() => {
-    if (isEdit) return
+    if (isEdit || navigationState?.paymentDraft) return
     setForm((prev) => ({
       ...prev,
       wallet_id: presetWalletId || prev.wallet_id,
@@ -105,7 +140,7 @@ export default function PaymentFormPage() {
     if (presetWalletId) {
       setWalletPickerOpen(false)
     }
-  }, [isEdit, presetDate, presetWalletId])
+  }, [isEdit, navigationState, presetDate, presetWalletId])
 
   // Load unbilled expenses when wallet selected
   useEffect(() => {
@@ -121,7 +156,7 @@ export default function PaymentFormPage() {
   }, [selectedWallet])
 
   useEffect(() => {
-    if (!isEdit || !id) return
+    if (!isEdit || !id || navigationState?.paymentDraft) return
     setInitialLoading(true)
     paymentAPI
       .get(Number(id))
@@ -145,7 +180,7 @@ export default function PaymentFormPage() {
       })
       .catch(() => setError('Failed to load payment'))
       .finally(() => setInitialLoading(false))
-  }, [isEdit, id])
+  }, [isEdit, id, navigationState])
 
   useEffect(() => {
     if (amountMode !== 'expenses-total') {
@@ -197,6 +232,23 @@ export default function PaymentFormPage() {
       setAmountMode('expenses-total')
     }
     setWalletPickerOpen(false)
+  }
+
+  function handleCreateWallet() {
+    navigate('/wallets/new', {
+      state: {
+        returnTo: returnPath,
+        paymentReturnTo: returnTo,
+        paymentIsEdit: isEdit,
+        paymentDraft: {
+          form,
+          selectedExpenseIds,
+          newExpenses,
+          amountMode,
+          discrepancyMode,
+        },
+      },
+    })
   }
 
   function addNewExpense() {
@@ -322,11 +374,16 @@ export default function PaymentFormPage() {
         <div className="field">
           <div className="field__label-row">
             <label className="field__label">Wallet *</label>
-            {selectedWallet && !walletPickerOpen && (
-              <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
-                Select other
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              {selectedWallet && !walletPickerOpen && (
+                <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
+                  Select other
+                </button>
+              )}
+              <button type="button" className="link-button" onClick={handleCreateWallet}>
+                Add new wallet
               </button>
-            )}
+            </div>
           </div>
           {selectedWallet && !walletPickerOpen ? (
             <div className="wallet-select-grid">

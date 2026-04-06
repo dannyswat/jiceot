@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 import { walletAPI, expenseTypeAPI } from '../services/api'
@@ -8,10 +8,54 @@ import IconPicker from '../components/IconPicker'
 import ColorPicker from '../components/ColorPicker'
 import type { ExpenseType } from '../types/expense'
 
+interface ExpenseDraftFormState {
+  expense_type_id: string
+  wallet_id: string
+  amount: string
+  date: string
+  note: string
+}
+
+interface NewExpenseEntry {
+  tempId: number
+  expense_type_id: string
+  amount: string
+  note: string
+}
+
+type AmountMode = 'expenses-total' | 'manual'
+type DiscrepancyMode = 'default-expense' | 'unexplained'
+
+interface PaymentDraftFormState {
+  wallet_id: string
+  amount: string
+  date: string
+  note: string
+}
+
+interface PaymentDraftState {
+  form: PaymentDraftFormState
+  selectedExpenseIds: number[]
+  newExpenses: NewExpenseEntry[]
+  amountMode: AmountMode
+  discrepancyMode: DiscrepancyMode
+}
+
+interface WalletFormLocationState {
+  returnTo?: string
+  expenseDraft?: ExpenseDraftFormState
+  paymentDraft?: PaymentDraftState
+  paymentReturnTo?: string
+  paymentIsEdit?: boolean
+}
+
 export default function WalletFormPage() {
+  const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = Boolean(id)
+  const navigationState = location.state as WalletFormLocationState | null
+  const returnTo = !isEdit ? navigationState?.returnTo : undefined
 
   const [form, setForm] = useState({
     name: '',
@@ -82,7 +126,37 @@ export default function WalletFormPage() {
       if (isEdit && id) {
         await walletAPI.update(Number(id), payload)
       } else {
-        await walletAPI.create(payload)
+        const createdWallet = await walletAPI.create(payload)
+        if (returnTo) {
+          if (navigationState?.paymentDraft) {
+            navigate(returnTo, {
+              state: {
+                returnTo: navigationState.paymentReturnTo,
+                paymentDraft: {
+                  form: {
+                    ...navigationState.paymentDraft.form,
+                    wallet_id: createdWallet.id.toString(),
+                  },
+                  selectedExpenseIds: [],
+                  newExpenses: [],
+                  amountMode: navigationState.paymentIsEdit ? navigationState.paymentDraft.amountMode : 'expenses-total',
+                  discrepancyMode: 'unexplained',
+                },
+              },
+            })
+            return
+          }
+
+          navigate(returnTo, {
+            state: {
+              expenseDraft: {
+                ...navigationState?.expenseDraft,
+                wallet_id: createdWallet.id.toString(),
+              },
+            },
+          })
+          return
+        }
       }
       navigate('/wallets')
     } catch (err) {
@@ -94,6 +168,29 @@ export default function WalletFormPage() {
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function handleClose() {
+    if (returnTo) {
+      if (navigationState?.paymentDraft) {
+        navigate(returnTo, {
+          state: {
+            returnTo: navigationState.paymentReturnTo,
+            paymentDraft: navigationState.paymentDraft,
+          },
+        })
+        return
+      }
+
+      navigate(returnTo, {
+        state: {
+          expenseDraft: navigationState?.expenseDraft,
+        },
+      })
+      return
+    }
+
+    navigate('/wallets')
   }
 
   if (initialLoading) {
@@ -109,7 +206,7 @@ export default function WalletFormPage() {
   return (
     <div className="page">
       <div className="page__header page__header--with-back">
-        <button className="back-button" onClick={() => navigate('/wallets')}>
+        <button className="back-button" onClick={handleClose}>
           <ArrowLeftIcon />
         </button>
         <div>
@@ -276,7 +373,7 @@ export default function WalletFormPage() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => navigate('/wallets')}
+            onClick={handleClose}
           >
             Cancel
           </button>

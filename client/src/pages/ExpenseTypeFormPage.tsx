@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
 import AmountInput from '../components/AmountInput'
@@ -13,10 +13,24 @@ import ColorPicker from '../components/ColorPicker'
 import type { ExpenseType, RecurringPeriod, RecurringType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
+interface ExpenseTypeFormLocationState {
+  returnTo?: string
+  expenseDraft?: {
+    expense_type_id: string
+    wallet_id: string
+    amount: string
+    date: string
+    note: string
+  }
+}
+
 export default function ExpenseTypeFormPage() {
+  const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
   const isEdit = Boolean(id)
+  const navigationState = location.state as ExpenseTypeFormLocationState | null
+  const returnTo = !isEdit ? navigationState?.returnTo : undefined
 
   const [form, setForm] = useState({
     parent_id: '' as string,
@@ -93,7 +107,19 @@ export default function ExpenseTypeFormPage() {
       if (isEdit && id) {
         await expenseTypeAPI.update(Number(id), payload)
       } else {
-        await expenseTypeAPI.create(payload)
+        const createdExpenseType = await expenseTypeAPI.create(payload)
+        if (navigationState?.returnTo) {
+          navigate(navigationState.returnTo, {
+            state: {
+              expenseDraft: {
+                ...navigationState.expenseDraft,
+                expense_type_id: createdExpenseType.id.toString(),
+              },
+              createdExpenseTypeId: createdExpenseType.id,
+            },
+          })
+          return
+        }
       }
       navigate('/expense-types')
     } catch (err) {
@@ -107,6 +133,19 @@ export default function ExpenseTypeFormPage() {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  function handleClose() {
+    if (returnTo) {
+      navigate(returnTo, {
+        state: {
+          expenseDraft: navigationState?.expenseDraft,
+        },
+      })
+      return
+    }
+
+    navigate('/expense-types')
+  }
+
   if (initialLoading) {
     return (
       <div className="page">
@@ -118,7 +157,7 @@ export default function ExpenseTypeFormPage() {
   return (
     <div className="page">
       <div className="page__header page__header--with-back">
-        <button className="back-button" onClick={() => navigate('/expense-types')}>
+        <button className="back-button" onClick={handleClose}>
           <ArrowLeftIcon />
         </button>
         <div>
@@ -310,7 +349,7 @@ export default function ExpenseTypeFormPage() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => navigate('/expense-types')}
+            onClick={handleClose}
           >
             Cancel
           </button>
