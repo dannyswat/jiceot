@@ -1,9 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ClockIcon,
-  CreditCardIcon,
-  PlusIcon,
   RectangleGroupIcon,
   WalletIcon,
 } from '@heroicons/react/24/outline'
@@ -126,22 +123,6 @@ export default function Dashboard() {
           <p>Pending Expenses</p>
           <strong>{stats.pending_expenses}</strong>
         </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="dash-actions">
-        <Link to="/expenses/new" className="btn btn--primary">
-          <PlusIcon />
-          <span>Add Expense</span>
-        </Link>
-        <Link to="/payments/new" state={{ returnTo: '/dashboard' }} className="btn btn--ghost">
-          <CreditCardIcon />
-          <span>Record Payment</span>
-        </Link>
-        <Link to="/due-items" className="btn btn--ghost">
-          <ClockIcon />
-          <span>View Due Items</span>
-        </Link>
       </div>
 
       {/* Due Items Summary */}

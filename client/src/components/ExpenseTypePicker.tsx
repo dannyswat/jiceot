@@ -103,7 +103,6 @@ export default function ExpenseTypePicker({
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search expense types…"
-                  autoFocus
                 />
               </div>
 

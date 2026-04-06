@@ -93,7 +93,7 @@ export default function QuickAddButton() {
                   className={tab === 'wallets' ? 'active' : ''}
                   onClick={() => setTab('wallets')}
                 >
-                  Wallets
+                  Payment
                 </button>
               </div>
 
