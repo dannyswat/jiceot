@@ -15,7 +15,7 @@
   --bg-panel: rgba(255, 255, 255, 0.88);
   --bg-panel-strong: rgba(255, 255, 255, 0.96);
   --bg-panel-soft: rgba(246, 248, 255, 0.82);
-  --bg-sidebar: rgba(248, 250, 255, 0.96);
+  --bg-sidebar: #ffffff;
   --bg-muted: rgba(79, 70, 229, 0.06);
   --border: rgba(148, 163, 184, 0.24);
   --border-strong: rgba(99, 102, 241, 0.18);
@@ -509,7 +509,7 @@ a.topbar__brand {
   width: 240px;
   display: flex;
   flex-direction: column;
-  background: rgba(248,250,255,0.97);
+  background: #ffffff;
   border-right: 1px solid rgba(148,163,184,0.22);
   backdrop-filter: blur(18px);
   transform: translateX(-100%);
