@@ -26,6 +26,7 @@ import type {
 import type { Payment, PaymentListResponse, PaymentMonthlyTotalResponse, CreatePaymentRequest, UpdatePaymentRequest } from '../types/payment'
 import type { MonthlyReport, YearlyReport } from '../types/report'
 import type { CreateWalletRequest, UpdateWalletRequest, Wallet, WalletListResponse } from '../types/wallet'
+import type { NotificationSetting, UpdateNotificationSettingRequest } from '../types/notification'
 
 export interface ApiError extends Error {
 	status?: number
@@ -266,6 +267,15 @@ export const reportsAPI = {
 	monthly: async (year: number, month: number): Promise<MonthlyReport> =>
 		(await api.get<MonthlyReport>(`/reports/monthly${queryString({ year, month })}`)).data,
 	yearly: async (year: number): Promise<YearlyReport> => (await api.get<YearlyReport>(`/reports/yearly${queryString({ year })}`)).data,
+}
+
+export const notificationAPI = {
+	getSettings: async (): Promise<NotificationSetting> =>
+		(await api.get<NotificationSetting>('/notification-settings')).data,
+	updateSettings: async (payload: UpdateNotificationSettingRequest): Promise<NotificationSetting> =>
+		(await api.put<NotificationSetting>('/notification-settings', payload)).data,
+	test: async (): Promise<MessageResponse> =>
+		(await api.post<MessageResponse>('/notification-settings/test')).data,
 }
 
 const storedToken = getStoredToken()

@@ -20,6 +20,7 @@ import BatchCreateTypesPage from './pages/BatchCreateTypesPage'
 import Dashboard from './pages/Dashboard'
 import DueItemsPage from './pages/DueItemsPage'
 import ReportsPage from './pages/ReportsPage'
+import NotificationSettingsPage from './pages/NotificationSettingsPage'
 
 export default function App() {
   return (
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/devices" element={<DevicesPage />} />
+        <Route path="/settings/notifications" element={<NotificationSettingsPage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         <Route path="/batch-create-types" element={<BatchCreateTypesPage />} />
       </Route>

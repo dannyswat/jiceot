@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   ChevronRightIcon,
+  BellAlertIcon,
   ComputerDesktopIcon,
   ExclamationTriangleIcon,
   KeyIcon,
@@ -19,6 +20,17 @@ const SETTINGS_SECTIONS = [
         description: 'Update your account password',
         icon: KeyIcon,
         href: '/change-password',
+      },
+    ],
+  },
+  {
+    title: 'Notifications',
+    items: [
+      {
+        name: 'Push Notifications',
+        description: 'Daily reminders for due items via Bark',
+        icon: BellAlertIcon,
+        href: '/settings/notifications',
       },
     ],
   },

@@ -81,6 +81,7 @@ temp/
 *.dll
 *.so
 *.dylib
+server/api
 
 # Test binary, built with `go test -c`
 *.test

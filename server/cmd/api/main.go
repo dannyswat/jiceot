@@ -10,6 +10,7 @@ import (
 	"dannyswat/jiceot/internal/auth"
 	"dannyswat/jiceot/internal/dashboard"
 	"dannyswat/jiceot/internal/expenses"
+	"dannyswat/jiceot/internal/notifications"
 	"dannyswat/jiceot/internal/reports"
 	"dannyswat/jiceot/internal/users"
 
@@ -53,6 +54,7 @@ func main() {
 	expenseService := expenses.NewExpenseService(db)
 	dashboardService := dashboard.NewDashboardService(db)
 	reportsService := reports.NewReportsService(db)
+	notificationSettingService := notifications.NewNotificationSettingService(db)
 
 	// Initialize handlers
 	authHandler := auth.NewAuthHandler(userService, userDeviceService, config, auth.NewRateLimiter(5, 1))
@@ -64,6 +66,7 @@ func main() {
 	expenseHandler := expenses.NewExpenseHandler(expenseService)
 	dashboardHandler := dashboard.NewDashboardHandler(dashboardService)
 	reportsHandler := reports.NewReportsHandler(reportsService)
+	notificationSettingHandler := notifications.NewNotificationSettingHandler(notificationSettingService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -118,6 +121,11 @@ func main() {
 	protected.DELETE("/devices/:id", userDeviceHandler.DeleteDevice)
 	protected.DELETE("/devices", userDeviceHandler.DeleteAllDevices)
 
+	// Notification settings routes
+	protected.GET("/notification-settings", notificationSettingHandler.GetSettings)
+	protected.PUT("/notification-settings", notificationSettingHandler.UpdateSettings)
+	protected.POST("/notification-settings/test", notificationSettingHandler.TestBark)
+
 	// Dashboard routes
 	protected.GET("/dashboard/stats", dashboardHandler.GetDashboardStats)
 	protected.GET("/dashboard/due-wallets", dashboardHandler.GetDueWallets)
@@ -163,6 +171,11 @@ func main() {
 	protected.PUT("/expenses/:id", expenseHandler.UpdateExpense)
 	protected.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
 
+	// Start background notifier
+	notifier := notifications.NewNotifier(db)
+	notifier.Start()
+	defer notifier.Stop()
+
 	// Start server
 	e.GET("*", func(c echo.Context) error {
 		c.Response().Header().Set(echo.HeaderCacheControl, "no-cache, no-store, must-revalidate")
@@ -181,6 +194,7 @@ func migrateSchema(db *gorm.DB) error {
 		&expenses.ExpenseType{},
 		&expenses.Payment{},
 		&expenses.Expense{},
+		&notifications.NotificationSetting{},
 	); err != nil {
 		return err
 	}
