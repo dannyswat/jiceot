@@ -103,6 +103,11 @@ func (s *PaymentService) GetPayment(userID, paymentID uint) (*Payment, error) {
 		}
 		return nil, fmt.Errorf("failed to get payment: %w", err)
 	}
+	payments := []Payment{payment}
+	if err := s.attachExpenseSummaries(userID, payments); err != nil {
+		return nil, err
+	}
+	payment = payments[0]
 	return &payment, nil
 }
 
@@ -186,8 +191,65 @@ func (s *PaymentService) ListPayments(userID uint, req PaymentListRequest) (*Pay
 	if err := query.Preload("Wallet").Order("date DESC, created_at DESC").Limit(req.Limit).Offset(req.Offset).Find(&payments).Error; err != nil {
 		return nil, fmt.Errorf("failed to list payments: %w", err)
 	}
+	if err := s.attachExpenseSummaries(userID, payments); err != nil {
+		return nil, err
+	}
 
 	return &PaymentListResponse{Payments: payments, Total: total}, nil
+}
+
+func (s *PaymentService) attachExpenseSummaries(userID uint, payments []Payment) error {
+	if len(payments) == 0 {
+		return nil
+	}
+
+	paymentIDs := make([]uint, 0, len(payments))
+	paymentsByID := make(map[uint]*Payment, len(payments))
+	for index := range payments {
+		paymentIDs = append(paymentIDs, payments[index].ID)
+		paymentsByID[payments[index].ID] = &payments[index]
+	}
+
+	type paymentExpenseSummaryRow struct {
+		ID               uint
+		PaymentID        uint
+		ExpenseTypeID    uint
+		Amount           float64
+		ExpenseTypeName  string
+		ExpenseTypeIcon  string
+		ExpenseTypeColor string
+	}
+
+	var rows []paymentExpenseSummaryRow
+	if err := s.db.Table("expenses").
+		Select("expenses.id, expenses.payment_id, expenses.expense_type_id, expenses.amount, expense_types.name AS expense_type_name, expense_types.icon AS expense_type_icon, expense_types.color AS expense_type_color").
+		Joins("JOIN expense_types ON expense_types.id = expenses.expense_type_id").
+		Where("expenses.user_id = ? AND expenses.payment_id IN ?", userID, paymentIDs).
+		Order("expenses.date DESC, expenses.created_at DESC").
+		Scan(&rows).Error; err != nil {
+		return fmt.Errorf("failed to load payment expense summaries: %w", err)
+	}
+
+	for _, row := range rows {
+		payment := paymentsByID[row.PaymentID]
+		if payment == nil {
+			continue
+		}
+		payment.Expenses = append(payment.Expenses, PaymentExpenseSummary{
+			ID:            row.ID,
+			PaymentID:     row.PaymentID,
+			ExpenseTypeID: row.ExpenseTypeID,
+			Amount:        row.Amount,
+			ExpenseType: PaymentExpenseTypeSummary{
+				ID:    row.ExpenseTypeID,
+				Name:  row.ExpenseTypeName,
+				Icon:  row.ExpenseTypeIcon,
+				Color: row.ExpenseTypeColor,
+			},
+		})
+	}
+
+	return nil
 }
 
 func (s *PaymentService) GetMonthlyTotal(userID uint, from, to time.Time) (float64, error) {

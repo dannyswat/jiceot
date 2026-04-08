@@ -17,5 +17,21 @@ type Payment struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 
-	Wallet Wallet `json:"wallet,omitempty" gorm:"foreignKey:WalletID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Wallet   Wallet                  `json:"wallet,omitempty" gorm:"foreignKey:WalletID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
+	Expenses []PaymentExpenseSummary `json:"expenses,omitempty" gorm:"-"`
+}
+
+type PaymentExpenseTypeSummary struct {
+	ID    uint   `json:"id"`
+	Name  string `json:"name"`
+	Icon  string `json:"icon"`
+	Color string `json:"color"`
+}
+
+type PaymentExpenseSummary struct {
+	ID            uint                      `json:"id"`
+	PaymentID     uint                      `json:"payment_id"`
+	ExpenseTypeID uint                      `json:"expense_type_id"`
+	Amount        float64                   `json:"amount"`
+	ExpenseType   PaymentExpenseTypeSummary `json:"expense_type"`
 }

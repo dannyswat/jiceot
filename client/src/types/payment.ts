@@ -7,6 +7,21 @@ export interface PaymentWalletSummary {
   is_cash: boolean
 }
 
+export interface PaymentExpenseTypeSummary {
+  id: number
+  name: string
+  icon: string
+  color: string
+}
+
+export interface PaymentExpenseSummary {
+  id: number
+  payment_id: number
+  expense_type_id: number
+  amount: number
+  expense_type: PaymentExpenseTypeSummary
+}
+
 export interface Payment {
   id: number
   wallet_id: number
@@ -17,6 +32,7 @@ export interface Payment {
   created_at: string
   updated_at: string
   wallet?: PaymentWalletSummary | null
+  expenses?: PaymentExpenseSummary[]
 }
 
 export interface CreatePaymentRequest {

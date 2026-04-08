@@ -100,11 +100,6 @@ export default function Dashboard() {
 
   return (
     <div className="page">
-      <div className="page__header">
-        <h1>Dashboard</h1>
-        <p>Overview of your financial activity and upcoming obligations</p>
-      </div>
-
       {/* Stats */}
       <div className="dash-stats">
         <div className="stat-card stat-card--warm">

@@ -14,6 +14,28 @@ import { formatDate, startOfMonth, endOfMonth } from '../common/date'
 import type { Payment } from '../types/payment'
 import type { Wallet } from '../types/wallet'
 
+function formatLinkedExpenseSummary(payment: Payment): string | null {
+  if (!payment.wallet || payment.wallet.is_cash || payment.wallet.is_credit) {
+    return null
+  }
+
+  if (!payment.expenses || payment.expenses.length === 0) {
+    return null
+  }
+
+  const visibleSummaries = payment.expenses.slice(0, 2).map((expense) => {
+    const label = expense.expense_type?.name ?? 'Expense'
+    const icon = expense.expense_type?.icon ? `${expense.expense_type.icon} ` : ''
+    return `${icon}${label} ${formatCurrency(expense.amount)}`
+  })
+
+  if (payment.expenses.length > 2) {
+    visibleSummaries.push(`+${payment.expenses.length - 2} more`)
+  }
+
+  return visibleSummaries.join(' · ')
+}
+
 const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
 
@@ -158,42 +180,51 @@ export default function PaymentsPage() {
 
       {!loading && payments.length > 0 && (
         <div className="entity-list">
-          {payments.map((p) => (
-            <div key={p.id} className="entity-row">
-              <div className="entity-row__leading">
-                {p.wallet && (
-                  <div
-                    className="entity-row__dot"
-                    style={{ background: p.wallet.color || '#577590' }}
-                  />
-                )}
-                <div className="entity-row__info">
-                  <span className="entity-row__primary">
-                    {p.wallet?.icon} {p.wallet?.name ?? 'Unknown Wallet'}
-                  </span>
-                  <span className="entity-row__secondary">
-                    {formatDate(p.date)}
-                    {p.note && ` · ${p.note}`}
-                  </span>
+          {payments.map((p) => {
+            const secondaryParts = [formatDate(p.date)]
+            const linkedExpenseSummary = formatLinkedExpenseSummary(p)
+
+            if (linkedExpenseSummary) {
+              secondaryParts.push(linkedExpenseSummary)
+            }
+            if (p.note) {
+              secondaryParts.push(p.note)
+            }
+
+            return (
+              <div key={p.id} className="entity-row">
+                <div className="entity-row__leading">
+                  {p.wallet && (
+                    <div
+                      className="entity-row__dot"
+                      style={{ background: p.wallet.color || '#577590' }}
+                    />
+                  )}
+                  <div className="entity-row__info">
+                    <span className="entity-row__primary">
+                      {p.wallet?.icon} {p.wallet?.name ?? 'Unknown Wallet'}
+                    </span>
+                    <span className="entity-row__secondary">{secondaryParts.join(' · ')}</span>
+                  </div>
+                </div>
+                <div className="entity-row__trailing">
+                  <span className="entity-row__amount">{formatCurrency(p.amount)}</span>
+                  <div className="entity-row__buttons">
+                    <Link to={`/payments/${p.id}`} className="icon-button" title="Edit">
+                      <PencilIcon />
+                    </Link>
+                    <button
+                      className="icon-button icon-button--danger"
+                      onClick={() => handleDelete(p)}
+                      title="Delete"
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="entity-row__trailing">
-                <span className="entity-row__amount">{formatCurrency(p.amount)}</span>
-                <div className="entity-row__buttons">
-                  <Link to={`/payments/${p.id}`} className="icon-button" title="Edit">
-                    <PencilIcon />
-                  </Link>
-                  <button
-                    className="icon-button icon-button--danger"
-                    onClick={() => handleDelete(p)}
-                    title="Delete"
-                  >
-                    <TrashIcon />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
