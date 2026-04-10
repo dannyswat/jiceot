@@ -49,10 +49,10 @@ export const PRESET_ICONS = [
 ] as const
 
 export const WALLET_TYPE_OPTIONS: { value: WalletTypeFilter; label: string }[] = [
-	{ value: 'all', label: 'All wallets' },
-	{ value: 'credit', label: 'Credit wallets' },
-	{ value: 'cash', label: 'Cash wallets' },
-	{ value: 'normal', label: 'Standard wallets' },
+	{ value: 'all', label: 'All' },
+	{ value: 'credit', label: 'Credit' },
+	{ value: 'cash', label: 'Cash' },
+	{ value: 'normal', label: 'Standard' },
 ]
 
 export const BILL_PERIOD_OPTIONS = [
