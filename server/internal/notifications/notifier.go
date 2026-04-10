@@ -123,30 +123,90 @@ func (n *Notifier) collectDueItems(userID uint, daysAhead int) []string {
 
 	var items []string
 
-	// 1. Due wallets (credit wallets with bill_due_day approaching)
+	// 1. Due wallets, using the same due-date logic as the dashboard but
+	// filtered by the notification lead-time window.
 	var wallets []expenses.Wallet
 	if err := n.db.Where("user_id = ? AND is_credit = ? AND stopped = ? AND bill_period <> ?",
 		userID, true, false, expenses.WalletPeriodNone).
 		Find(&wallets).Error; err == nil {
-		for _, w := range wallets {
-			nextDue := computeWalletNextDue(w, now)
-			if !nextDue.After(cutoff) {
-				days := dayDiff(now, nextDue)
-				items = append(items, fmt.Sprintf("💳 %s — %s", w.Name, dueLabel(days)))
+		var payments []expenses.Payment
+		if len(wallets) > 0 {
+			if err := n.db.Where("user_id = ? AND wallet_id IN ? AND date <= ?", userID, walletIDs(wallets), cutoff).Order("date DESC").Find(&payments).Error; err != nil {
+				payments = nil
 			}
+		}
+
+		lastPaymentByWallet := make(map[uint]expenses.Payment)
+		paidMonths := make(map[uint]map[string]bool)
+		for _, payment := range payments {
+			if _, ok := lastPaymentByWallet[payment.WalletID]; !ok {
+				lastPaymentByWallet[payment.WalletID] = payment
+			}
+			monthKey := payment.Date.Format("2006-01")
+			if _, ok := paidMonths[payment.WalletID]; !ok {
+				paidMonths[payment.WalletID] = make(map[string]bool)
+			}
+			paidMonths[payment.WalletID][monthKey] = true
+		}
+
+		for _, w := range wallets {
+			var lastPayment *expenses.Payment
+			if payment, ok := lastPaymentByWallet[w.ID]; ok {
+				lastPayment = &payment
+			}
+			nextDue := expenses.NextWalletDueDate(w, now, lastPayment)
+			if nextDue.After(cutoff) {
+				continue
+			}
+			monthKey := nextDue.Format("2006-01")
+			if paidMonths[w.ID][monthKey] {
+				continue
+			}
+			days := dayDiff(now, nextDue)
+			items = append(items, fmt.Sprintf("💳 %s — %s", w.Name, dueLabel(days)))
 		}
 	}
 
-	// 2. Due expense types (recurring with next_due_day approaching)
+	// 2. Due expense types, using the same computed next-due logic as the dashboard.
 	var expenseTypes []expenses.ExpenseType
-	if err := n.db.Where("user_id = ? AND stopped = ? AND recurring_type <> ? AND next_due_day IS NOT NULL AND next_due_day <= ?",
-		userID, false, expenses.RecurringTypeNone, cutoff).
+	if err := n.db.Where("user_id = ? AND stopped = ? AND recurring_type <> ?",
+		userID, false, expenses.RecurringTypeNone).
 		Find(&expenseTypes).Error; err == nil {
+		fixedTypeIDs := make([]uint, 0)
+		for _, expenseType := range expenseTypes {
+			if expenseType.RecurringType == expenses.RecurringTypeFixedDay {
+				fixedTypeIDs = append(fixedTypeIDs, expenseType.ID)
+			}
+		}
+
+		lastExpenseByType := make(map[uint]time.Time)
+		if len(fixedTypeIDs) > 0 {
+			type result struct {
+				ExpenseTypeID uint
+				LastDate      time.Time
+			}
+			var results []result
+			if err := n.db.Model(&expenses.Expense{}).
+				Select("expense_type_id, MAX(date) as last_date").
+				Where("user_id = ? AND expense_type_id IN ?", userID, fixedTypeIDs).
+				Group("expense_type_id").
+				Find(&results).Error; err == nil {
+				for _, result := range results {
+					lastExpenseByType[result.ExpenseTypeID] = result.LastDate
+				}
+			}
+		}
+
 		for _, et := range expenseTypes {
-			if et.NextDueDay == nil {
+			var lastExpenseDate *time.Time
+			if lastDate, ok := lastExpenseByType[et.ID]; ok {
+				lastExpenseDate = &lastDate
+			}
+			nextDue, err := expenses.NextExpenseTypeDueDate(et, now, lastExpenseDate)
+			if err != nil || nextDue == nil || nextDue.After(cutoff) {
 				continue
 			}
-			days := dayDiff(now, *et.NextDueDay)
+			days := dayDiff(now, *nextDue)
 			label := "📋"
 			if et.RecurringType == expenses.RecurringTypeFlexible {
 				label = "🔄"
@@ -158,20 +218,12 @@ func (n *Notifier) collectDueItems(userID uint, daysAhead int) []string {
 	return items
 }
 
-func computeWalletNextDue(wallet expenses.Wallet, now time.Time) time.Time {
-	dueDay := wallet.BillDueDay
-	if dueDay == 0 {
-		dueDay = expenses.EndOfMonth(now.Year(), int(now.Month())).Day()
+func walletIDs(wallets []expenses.Wallet) []uint {
+	ids := make([]uint, 0, len(wallets))
+	for _, wallet := range wallets {
+		ids = append(ids, wallet.ID)
 	}
-	lastDay := time.Date(now.Year(), now.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
-	if dueDay > lastDay {
-		dueDay = lastDay
-	}
-	due := time.Date(now.Year(), now.Month(), dueDay, 0, 0, 0, 0, time.UTC)
-	if due.Before(now) {
-		due = due.AddDate(0, 1, 0)
-	}
-	return due
+	return ids
 }
 
 func dayDiff(from, to time.Time) int {

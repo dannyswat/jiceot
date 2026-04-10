@@ -120,6 +120,55 @@ func AdvanceNextDueDayFrom(referenceDate time.Time, recurringType, recurringPeri
 	}
 }
 
+func NextWalletDueDate(wallet Wallet, reference time.Time, lastPayment *Payment) time.Time {
+	periodMonths := PeriodMonths(wallet.BillPeriod)
+	if periodMonths <= 0 {
+		periodMonths = 1
+	}
+	dueDay := wallet.BillDueDay
+	if dueDay == 0 {
+		dueDay = EndOfMonth(reference.Year(), int(reference.Month())).Day()
+	}
+	if lastPayment == nil || lastPayment.ID == 0 {
+		return WalletDueDate(reference, dueDay)
+	}
+	base := lastPayment.Date.AddDate(0, periodMonths, 0)
+	due := WalletDueDate(base, dueDay)
+	for due.Before(reference) {
+		base = base.AddDate(0, periodMonths, 0)
+		due = WalletDueDate(base, dueDay)
+	}
+	return due
+}
+
+func WalletDueDate(reference time.Time, dueDay int) time.Time {
+	lastDay := time.Date(reference.Year(), reference.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
+	if dueDay > lastDay {
+		dueDay = lastDay
+	}
+	return time.Date(reference.Year(), reference.Month(), dueDay, 0, 0, 0, 0, time.UTC)
+}
+
+func NextExpenseTypeDueDate(expenseType ExpenseType, reference time.Time, lastExpenseDate *time.Time) (*time.Time, error) {
+	switch expenseType.RecurringType {
+	case RecurringTypeNone, "":
+		return nil, nil
+	case RecurringTypeFlexible:
+		if expenseType.NextDueDay != nil {
+			nextDue := NormalizeDateOnly(*expenseType.NextDueDay)
+			return &nextDue, nil
+		}
+		return ComputeInitialNextDueDay(reference, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
+	case RecurringTypeFixedDay:
+		if lastExpenseDate != nil {
+			return AdvanceNextDueDayFrom(*lastExpenseDate, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
+		}
+		return ComputeInitialNextDueDay(reference, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
+	default:
+		return nil, fmt.Errorf("invalid recurring type")
+	}
+}
+
 func withClampedDay(year int, month time.Month, day int) time.Time {
 	if day < 1 {
 		day = 1

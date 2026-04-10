@@ -160,7 +160,11 @@ func (s *DashboardService) GetDueWallets(userID uint, year, month int) (*DueWall
 
 	dueWallets := make([]DueWallet, 0)
 	for _, wallet := range wallets {
-		nextDue := nextWalletDueDate(wallet, lastPaymentByWallet[wallet.ID], periodStart)
+		var lastPayment *expenses.Payment
+		if payment, ok := lastPaymentByWallet[wallet.ID]; ok {
+			lastPayment = &payment
+		}
+		nextDue := expenses.NextWalletDueDate(wallet, periodStart, lastPayment)
 		if nextDue.After(periodEnd) {
 			continue
 		}
@@ -237,25 +241,13 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 	fixedDue := make([]DueExpense, 0)
 	flexibleSuggested := make([]DueExpense, 0)
 	for _, expenseType := range expenseTypes {
-		var nextDue *time.Time
-
-		if expenseType.RecurringType == expenses.RecurringTypeFlexible {
-			// Flexible: use stored next_due_day
-			nextDue = expenseType.NextDueDay
-		} else {
-			// Fixed day: compute from last expense
-			if lastDate, ok := lastExpenseByType[expenseType.ID]; ok {
-				computed, err := expenses.AdvanceNextDueDayFrom(lastDate, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
-				if err == nil {
-					nextDue = computed
-				}
-			} else {
-				// No expense recorded yet — compute initial due date
-				computed, err := expenses.ComputeInitialNextDueDay(now, expenseType.RecurringType, expenseType.RecurringPeriod, expenseType.RecurringDueDay)
-				if err == nil {
-					nextDue = computed
-				}
-			}
+		var lastExpenseDate *time.Time
+		if lastDate, ok := lastExpenseByType[expenseType.ID]; ok {
+			lastExpenseDate = &lastDate
+		}
+		nextDue, err := expenses.NextExpenseTypeDueDate(expenseType, now, lastExpenseDate)
+		if err != nil {
+			continue
 		}
 
 		if nextDue == nil || nextDue.After(periodEnd) {
@@ -292,35 +284,6 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 	})
 
 	return &DueExpensesResponse{FixedDue: fixedDue, FlexibleSuggested: flexibleSuggested, Year: year, Month: month}, nil
-}
-
-func nextWalletDueDate(wallet expenses.Wallet, lastPayment expenses.Payment, reference time.Time) time.Time {
-	periodMonths := expenses.PeriodMonths(wallet.BillPeriod)
-	if periodMonths <= 0 {
-		periodMonths = 1
-	}
-	dueDay := wallet.BillDueDay
-	if dueDay == 0 {
-		dueDay = expenses.EndOfMonth(reference.Year(), int(reference.Month())).Day()
-	}
-	if lastPayment.ID == 0 {
-		return walletDueDate(reference, dueDay)
-	}
-	base := lastPayment.Date.AddDate(0, periodMonths, 0)
-	due := walletDueDate(base, dueDay)
-	for due.Before(reference) {
-		base = base.AddDate(0, periodMonths, 0)
-		due = walletDueDate(base, dueDay)
-	}
-	return due
-}
-
-func walletDueDate(reference time.Time, dueDay int) time.Time {
-	lastDay := time.Date(reference.Year(), reference.Month()+1, 0, 0, 0, 0, 0, time.UTC).Day()
-	if dueDay > lastDay {
-		dueDay = lastDay
-	}
-	return time.Date(reference.Year(), reference.Month(), dueDay, 0, 0, 0, 0, time.UTC)
 }
 
 func walletIDs(wallets []expenses.Wallet) []uint {
