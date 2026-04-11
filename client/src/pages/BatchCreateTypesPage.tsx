@@ -25,6 +25,7 @@ interface ExpenseTypeRow {
   color: string
   recurring_type: RecurringType
   recurring_period: RecurringPeriod
+  automatic: boolean
   default_amount: string
 }
 
@@ -51,6 +52,7 @@ function newExpenseTypeRow(): ExpenseTypeRow {
     color: PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)],
     recurring_type: 'none',
     recurring_period: 'none',
+    automatic: false,
     default_amount: '',
   }
 }
@@ -113,6 +115,7 @@ export default function BatchCreateTypesPage() {
           color: row.color || undefined,
           recurring_type: row.recurring_type,
           recurring_period: row.recurring_type !== 'none' ? row.recurring_period : undefined,
+          automatic: row.recurring_type !== 'none' ? row.automatic : false,
           default_amount: row.default_amount ? Number(row.default_amount) : undefined,
         })
         typesCreated++
@@ -263,6 +266,7 @@ export default function BatchCreateTypesPage() {
               <span>Color</span>
               <span>Recurring</span>
               <span>Period</span>
+              <span>Auto</span>
               <span>Amount</span>
               <span></span>
             </div>
@@ -311,6 +315,12 @@ export default function BatchCreateTypesPage() {
                   <option value="quarterly">Quarterly</option>
                   <option value="annually">Annually</option>
                 </select>
+                <input
+                  type="checkbox"
+                  checked={row.automatic}
+                  onChange={(e) => updateExpenseType(idx, 'automatic', e.target.checked)}
+                  disabled={row.recurring_type === 'none'}
+                />
                 <AmountInput
                   value={row.default_amount}
                   onChange={(value) => updateExpenseType(idx, 'default_amount', value)}

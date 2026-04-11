@@ -38,6 +38,7 @@ export interface ExpenseType {
   recurring_type: RecurringType
   recurring_period: RecurringPeriod
   recurring_due_day: number
+  automatic: boolean
   next_due_day?: string | null
   stopped: boolean
   user_id: number
@@ -58,6 +59,7 @@ export interface CreateExpenseTypeRequest {
   recurring_type?: RecurringType
   recurring_period?: RecurringPeriod
   recurring_due_day?: number
+  automatic?: boolean
   next_due_day?: string | null
   stopped?: boolean
 }

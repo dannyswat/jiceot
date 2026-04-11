@@ -38,6 +38,7 @@ type ExpenseType struct {
 	RecurringType   string         `json:"recurring_type" gorm:"type:varchar(20);not null;default:'none';check:chk_expense_type_recurring_type,recurring_type IN ('none','fixed_day','flexible')"`
 	RecurringPeriod string         `json:"recurring_period" gorm:"type:varchar(20);not null;default:'none';check:chk_expense_type_recurring_period,recurring_period IN ('none','weekly','biweekly','monthly','bimonthly','quarterly','fourmonths','semiannually','annually')"`
 	RecurringDueDay int            `json:"recurring_due_day" gorm:"not null;default:0"`
+	Automatic       bool           `json:"automatic" gorm:"not null;default:false"`
 	NextDueDay      *time.Time     `json:"next_due_day" gorm:"type:date;index"`
 	Stopped         bool           `json:"stopped" gorm:"not null;default:false"`
 	UserID          uint           `json:"user_id" gorm:"type:bigint;not null;index"`

@@ -200,7 +200,7 @@ export default function NotificationSettingsPage() {
             onChange={(e) => setDueDaysAhead(Math.max(1, Math.min(30, Number(e.target.value))))}
             disabled={!enabled}
           />
-          <small>Get notified about items due within this many days (1–30). Default: 3.</small>
+          <small>Get notified about items due within this many days (1–30). Automatic recurring expenses ignore this window and only notify on the due day or once overdue. Default: 3.</small>
         </div>
 
         {/* Actions */}

@@ -155,6 +155,7 @@ export default function ExpenseTypesPage() {
             <div className="tree-item__badges">
               {showParent && et.parent && <span className="badge badge--dim">{et.parent.name}</span>}
               {recurring && <span className="badge badge--blue">{recurring}</span>}
+              {et.automatic && <span className="badge badge--orange">Automatic</span>}
               {et.stopped && <span className="badge badge--dim">Stopped</span>}
               {status && <span className={`badge ${status.cls}`}>{status.label}</span>}
               {et.next_due_day && (

@@ -37,6 +37,7 @@ type CreateExpenseTypeRequest struct {
 	RecurringType   string  `json:"recurring_type"`
 	RecurringPeriod string  `json:"recurring_period"`
 	RecurringDueDay int     `json:"recurring_due_day"`
+	Automatic       bool    `json:"automatic"`
 	NextDueDay      *string `json:"next_due_day"`
 	Stopped         bool    `json:"stopped"`
 }
@@ -52,6 +53,7 @@ type UpdateExpenseTypeRequest struct {
 	RecurringType   string  `json:"recurring_type"`
 	RecurringPeriod string  `json:"recurring_period"`
 	RecurringDueDay int     `json:"recurring_due_day"`
+	Automatic       bool    `json:"automatic"`
 	NextDueDay      *string `json:"next_due_day"`
 	Stopped         bool    `json:"stopped"`
 }
@@ -75,7 +77,7 @@ func NewExpenseTypeService(db *gorm.DB) *ExpenseTypeService {
 }
 
 func (s *ExpenseTypeService) CreateExpenseType(userID uint, req CreateExpenseTypeRequest) (*ExpenseType, error) {
-	prepared, err := s.prepareExpenseType(userID, req.ParentID, 0, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.NextDueDay, req.Stopped, nil)
+	prepared, err := s.prepareExpenseType(userID, req.ParentID, 0, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.Automatic, req.NextDueDay, req.Stopped, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +106,7 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := s.prepareExpenseType(userID, req.ParentID, expenseTypeID, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.NextDueDay, req.Stopped, existing)
+	prepared, err := s.prepareExpenseType(userID, req.ParentID, expenseTypeID, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.Automatic, req.NextDueDay, req.Stopped, existing)
 	if err != nil {
 		return nil, err
 	}
@@ -118,6 +120,7 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	existing.RecurringType = prepared.RecurringType
 	existing.RecurringPeriod = prepared.RecurringPeriod
 	existing.RecurringDueDay = prepared.RecurringDueDay
+	existing.Automatic = prepared.Automatic
 	existing.NextDueDay = prepared.NextDueDay
 	existing.Stopped = prepared.Stopped
 	if err := s.db.Save(existing).Error; err != nil {
@@ -233,7 +236,7 @@ func (s *ExpenseTypeService) ToggleExpenseType(userID, expenseTypeID uint) (*Exp
 	return expenseType, nil
 }
 
-func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, expenseTypeID uint, name, icon, color, description string, defaultAmount float64, defaultWalletID *uint, recurringType, recurringPeriod string, recurringDueDay int, nextDueDay *string, stopped bool, existing *ExpenseType) (*ExpenseType, error) {
+func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, expenseTypeID uint, name, icon, color, description string, defaultAmount float64, defaultWalletID *uint, recurringType, recurringPeriod string, recurringDueDay int, automatic bool, nextDueDay *string, stopped bool, existing *ExpenseType) (*ExpenseType, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, ErrEmptyExpenseTypeName
 	}
@@ -274,6 +277,7 @@ func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, exp
 	if err := validateRecurring(recurringType, recurringPeriod, recurringDueDay); err != nil {
 		return nil, err
 	}
+	automatic = automatic && recurringType != RecurringTypeNone
 	prepared := &ExpenseType{
 		ParentID:        parentID,
 		Name:            strings.TrimSpace(name),
@@ -285,6 +289,7 @@ func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, exp
 		RecurringType:   recurringType,
 		RecurringPeriod: recurringPeriod,
 		RecurringDueDay: recurringDueDay,
+		Automatic:       automatic,
 		Stopped:         stopped,
 		UserID:          userID,
 	}

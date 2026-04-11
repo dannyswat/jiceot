@@ -373,7 +373,7 @@ export default function PaymentFormPage() {
         {/* Wallet */}
         <div className="field">
           <div className="field__label-row">
-            <label className="field__label">Target Wallet *</label>
+            <label className="field__label">Wallet *</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {selectedWallet && !walletPickerOpen && (
                 <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>

@@ -207,6 +207,9 @@ func (n *Notifier) collectDueItems(userID uint, daysAhead int) []string {
 				continue
 			}
 			days := dayDiff(now, *nextDue)
+			if et.Automatic && days > 0 {
+				continue
+			}
 			label := "📋"
 			if et.RecurringType == expenses.RecurringTypeFlexible {
 				label = "🔄"

@@ -43,6 +43,7 @@ export default function ExpenseTypeFormPage() {
     recurring_type: 'none' as RecurringType,
     recurring_period: 'none' as RecurringPeriod,
     recurring_due_day: 0,
+    automatic: false,
     stopped: false,
   })
   const [parentTypes, setParentTypes] = useState<ExpenseType[]>([])
@@ -79,6 +80,7 @@ export default function ExpenseTypeFormPage() {
           recurring_type: et.recurring_type,
           recurring_period: et.recurring_period,
           recurring_due_day: et.recurring_due_day,
+          automatic: et.automatic,
           stopped: et.stopped,
         })
       })
@@ -102,6 +104,7 @@ export default function ExpenseTypeFormPage() {
         recurring_type: form.recurring_type,
         recurring_period: form.recurring_type !== 'none' ? form.recurring_period : ('none' as RecurringPeriod),
         recurring_due_day: form.recurring_type === 'fixed_day' ? form.recurring_due_day : 0,
+        automatic: form.recurring_type !== 'none' ? form.automatic : false,
         ...(isEdit ? { stopped: form.stopped } : {}),
       }
       if (isEdit && id) {
@@ -302,6 +305,17 @@ export default function ExpenseTypeFormPage() {
                 </div>
               )}
             </div>
+            <label className="field-check">
+              <input
+                type="checkbox"
+                checked={form.automatic}
+                onChange={(e) => set('automatic', e.target.checked)}
+              />
+              <span>Automatic expense</span>
+            </label>
+            <small>
+              Automatic recurring expenses skip advance reminders and only notify on the due day or once overdue.
+            </small>
           </>
         )}
 
@@ -332,6 +346,7 @@ export default function ExpenseTypeFormPage() {
               {form.recurring_type !== 'none' &&
                 form.recurring_period !== 'none' &&
                 ` · ${RECURRING_PERIOD_OPTIONS.find((o) => o.value === form.recurring_period)?.label}`}
+              {form.recurring_type !== 'none' && form.automatic && ' · Automatic'}
               {form.default_amount && ` · $${form.default_amount}`}
             </span>
           </div>
