@@ -74,10 +74,17 @@ func (n *Notifier) checkAndNotify() {
 	now := time.Now().UTC()
 
 	for _, setting := range settings {
-		loc, err := time.LoadLocation(setting.Timezone)
+		loc, normalizedTimezone, err := loadNotificationLocation(setting.Timezone)
 		if err != nil {
 			log.Printf("[notifier] Invalid timezone %q for user %d: %v", setting.Timezone, setting.UserID, err)
 			continue
+		}
+		if normalizedTimezone != setting.Timezone {
+			if err := n.db.Model(&NotificationSetting{}).Where("id = ?", setting.ID).Update("timezone", normalizedTimezone).Error; err != nil {
+				log.Printf("[notifier] Failed to normalize timezone %q for user %d: %v", setting.Timezone, setting.UserID, err)
+			} else {
+				setting.Timezone = normalizedTimezone
+			}
 		}
 
 		localNow := now.In(loc)

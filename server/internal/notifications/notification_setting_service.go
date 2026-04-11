@@ -28,6 +28,15 @@ func (s *NotificationSettingService) GetByUserID(userID uint) (*NotificationSett
 	if err != nil {
 		return nil, err
 	}
+
+	normalizedTimezone := normalizeNotificationTimezone(setting.Timezone)
+	if normalizedTimezone != setting.Timezone {
+		if err := s.db.Model(&NotificationSetting{}).Where("id = ?", setting.ID).Update("timezone", normalizedTimezone).Error; err != nil {
+			return nil, err
+		}
+		setting.Timezone = normalizedTimezone
+	}
+
 	return &setting, nil
 }
 
@@ -67,7 +76,7 @@ func (s *NotificationSettingService) Update(userID uint, req UpdateNotificationS
 		setting.ReminderTime = *req.ReminderTime
 	}
 	if req.Timezone != nil {
-		setting.Timezone = *req.Timezone
+		setting.Timezone = normalizeNotificationTimezone(*req.Timezone)
 	}
 	if req.DueDaysAhead != nil {
 		days := *req.DueDaysAhead

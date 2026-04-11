@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	_ "time/tzdata"
 
 	"dannyswat/jiceot/internal"
 	"dannyswat/jiceot/internal/auth"
