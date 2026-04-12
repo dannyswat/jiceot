@@ -118,6 +118,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				setIsLoading(false)
 			}
 		},
+		updateLanguage: async (language: 'en' | 'zh-Hant' | 'zh-Hans') => {
+			setIsLoading(true)
+			try {
+				const updatedUser = await userAPI.updateLanguage({ language })
+				storeUser(updatedUser)
+				startTransition(() => setUser(updatedUser))
+			} finally {
+				setIsLoading(false)
+			}
+		},
 		deleteAccount: async () => {
 			setIsLoading(true)
 			try {

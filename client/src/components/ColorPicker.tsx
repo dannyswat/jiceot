@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SwatchIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { PRESET_COLORS } from '../common/constants'
+import { useI18n } from '../contexts/I18nContext'
 
 interface ColorPickerProps {
   value: string
@@ -8,6 +9,7 @@ interface ColorPickerProps {
 }
 
 export default function ColorPicker({ value, onChange }: ColorPickerProps) {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
 
   return (
@@ -18,7 +20,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
         onClick={() => setIsOpen(true)}
       >
         <span className="color-picker__preview" style={{ background: value }} />
-        <span className="color-picker__label">{value || 'Pick a color'}</span>
+        <span className="color-picker__label">{value || t('Pick a color')}</span>
         <SwatchIcon />
       </button>
 
@@ -28,7 +30,7 @@ export default function ColorPicker({ value, onChange }: ColorPickerProps) {
           <div className="modal-wrap">
             <div className="modal modal--narrow color-picker__modal">
               <div className="modal__header">
-                <h3>Select a Color</h3>
+                <h3>{t('Select a Color')}</h3>
                 <button type="button" onClick={() => setIsOpen(false)}>
                   <XMarkIcon />
                 </button>

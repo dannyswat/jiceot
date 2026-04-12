@@ -116,6 +116,7 @@ func main() {
 
 	// User routes
 	protected.PUT("/user/preferences/currency", userHandler.UpdateCurrencySymbol)
+	protected.PUT("/user/preferences/language", userHandler.UpdateLanguage)
 	protected.DELETE("/user/account", userHandler.DeleteUserAccount)
 
 	// Device management routes

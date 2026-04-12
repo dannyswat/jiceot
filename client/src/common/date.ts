@@ -1,13 +1,15 @@
+import { getLocaleForLanguage, getStoredLanguage } from '../contexts/I18nContext'
+
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
 
 export function formatDate(date: string | Date, locale = 'en-US'): string {
 	const resolved = typeof date === 'string' ? new Date(date) : date
-	return new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', year: 'numeric' }).format(resolved)
+	return new Intl.DateTimeFormat(locale === 'en-US' ? getLocaleForLanguage(getStoredLanguage()) : locale, { month: 'short', day: 'numeric', year: 'numeric' }).format(resolved)
 }
 
 export function formatMonthYear(date: string | Date, locale = 'en-US'): string {
 	const resolved = typeof date === 'string' ? new Date(date) : date
-	return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(resolved)
+	return new Intl.DateTimeFormat(locale === 'en-US' ? getLocaleForLanguage(getStoredLanguage()) : locale, { month: 'long', year: 'numeric' }).format(resolved)
 }
 
 export function toDateInputValue(date: string | Date): string {

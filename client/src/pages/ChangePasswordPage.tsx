@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../contexts/I18nContext'
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate()
   const { changePassword } = useAuth()
+  const { t } = useI18n()
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -22,15 +24,15 @@ export default function ChangePasswordPage() {
     setSuccess(false)
 
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match')
+      setError(t('New passwords do not match'))
       return
     }
     if (newPassword.length < 6) {
-      setError('New password must be at least 6 characters')
+      setError(t('New password must be at least 6 characters'))
       return
     }
     if (currentPassword === newPassword) {
-      setError('New password must differ from current password')
+      setError(t('New password must differ from current password'))
       return
     }
 
@@ -43,7 +45,7 @@ export default function ChangePasswordPage() {
       setConfirmPassword('')
       setTimeout(() => navigate('/settings'), 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to change password')
+      setError(err instanceof Error ? err.message : t('Failed to change password'))
     } finally {
       setIsLoading(false)
     }
@@ -56,18 +58,18 @@ export default function ChangePasswordPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>Change Password</h1>
-          <p>Update your account password</p>
+          <h1>{t('Change Password')}</h1>
+          <p>{t('Update your account password')}</p>
         </div>
       </div>
 
       <div className="form-card">
         <form className="auth-form" onSubmit={(e) => void handleSubmit(e)}>
           {error && <p className="form-error">{error}</p>}
-          {success && <p className="form-success">Password changed! Redirecting…</p>}
+          {success && <p className="form-success">{t('Password changed! Redirecting…')}</p>}
 
           <label>
-            <span>Current password</span>
+            <span>{t('Current password')}</span>
             <div className="input-with-toggle">
               <input
                 type={showCurrent ? 'text' : 'password'}
@@ -88,7 +90,7 @@ export default function ChangePasswordPage() {
           </label>
 
           <label>
-            <span>New password</span>
+            <span>{t('New password')}</span>
             <div className="input-with-toggle">
               <input
                 type={showNew ? 'text' : 'password'}
@@ -106,11 +108,11 @@ export default function ChangePasswordPage() {
                 {showNew ? <EyeSlashIcon /> : <EyeIcon />}
               </button>
             </div>
-            <small className="field-hint">At least 6 characters</small>
+            <small className="field-hint">{t('At least 6 characters')}</small>
           </label>
 
           <label>
-            <span>Confirm new password</span>
+            <span>{t('Confirm new password')}</span>
             <input
               type="password"
               value={confirmPassword}
@@ -123,13 +125,13 @@ export default function ChangePasswordPage() {
           {/* Requirements checklist */}
           <ul className="password-checks">
             <li className={newPassword.length >= 6 ? 'pass' : ''}>
-              {newPassword.length >= 6 ? '✓' : '•'} At least 6 characters
+              {newPassword.length >= 6 ? '✓' : '•'} {t('At least 6 characters')}
             </li>
             <li className={currentPassword !== newPassword && newPassword ? 'pass' : ''}>
-              {currentPassword !== newPassword && newPassword ? '✓' : '•'} Different from current
+              {currentPassword !== newPassword && newPassword ? '✓' : '•'} {t('Different from current')}
             </li>
             <li className={newPassword === confirmPassword && newPassword ? 'pass' : ''}>
-              {newPassword === confirmPassword && newPassword ? '✓' : '•'} Passwords match
+              {newPassword === confirmPassword && newPassword ? '✓' : '•'} {t('Passwords match')}
             </li>
           </ul>
 
@@ -139,14 +141,14 @@ export default function ChangePasswordPage() {
               type="submit"
               disabled={isLoading || success}
             >
-              {isLoading ? 'Changing…' : 'Change Password'}
+              {isLoading ? t('Changing…') : t('Change Password')}
             </button>
             <button
               className="ghost-button"
               type="button"
               onClick={() => navigate('/settings')}
             >
-              Cancel
+              {t('Cancel')}
             </button>
           </div>
         </form>

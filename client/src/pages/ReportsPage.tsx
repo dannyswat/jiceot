@@ -9,6 +9,7 @@ import {
 import { reportsAPI } from '../services/api'
 import { formatCurrency } from '../common/currency'
 import { formatMonthYear } from '../common/date'
+import { useI18n } from '../contexts/I18nContext'
 import type { MonthlyReport, YearlyReport, TypeBreakdownItem, WalletBreakdownItem } from '../types/report'
 
 const currentYear = new Date().getFullYear()
@@ -17,6 +18,7 @@ const currentMonth = new Date().getMonth() + 1
 type ViewMode = 'monthly' | 'yearly'
 
 export default function ReportsPage() {
+  const { locale, t } = useI18n()
   const [viewMode, setViewMode] = useState<ViewMode>('monthly')
   const [year, setYear] = useState(currentYear)
   const [month, setMonth] = useState(currentMonth)
@@ -38,11 +40,11 @@ export default function ReportsPage() {
         setYearlyReport(data)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load report')
+      setError(err instanceof Error ? err.message : t('Failed to load report'))
     } finally {
       setLoading(false)
     }
-  }, [viewMode, year, month])
+  }, [month, t, viewMode, year])
 
   useEffect(() => {
     void loadReport()
@@ -51,14 +53,14 @@ export default function ReportsPage() {
   const years = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i)
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
-    label: new Date(2000, i).toLocaleString('default', { month: 'long' }),
+    label: new Date(2000, i).toLocaleString(locale, { month: 'long' }),
   }))
 
   return (
     <div className="page">
       <div className="page__header">
-        <h1>Reports</h1>
-        <p>Monthly and yearly breakdowns by type and wallet</p>
+        <h1>{t('Reports')}</h1>
+        <p>{t('Monthly and yearly breakdowns by type and wallet')}</p>
       </div>
 
       {/* Controls */}
@@ -69,13 +71,13 @@ export default function ReportsPage() {
               className={`filter-chip${viewMode === 'monthly' ? ' filter-chip--active' : ''}`}
               onClick={() => setViewMode('monthly')}
             >
-              Monthly
+              {t('Monthly')}
             </button>
             <button
               className={`filter-chip${viewMode === 'yearly' ? ' filter-chip--active' : ''}`}
               onClick={() => setViewMode('yearly')}
             >
-              Yearly
+              {t('Yearly')}
             </button>
           </div>
           <CalendarDaysIcon className="filter-icon" />
@@ -109,11 +111,11 @@ export default function ReportsPage() {
       )}
 
       {!loading && viewMode === 'monthly' && monthlyReport && (
-        <MonthlyView report={monthlyReport} />
+        <MonthlyView report={monthlyReport} t={t} />
       )}
 
       {!loading && viewMode === 'yearly' && yearlyReport && (
-        <YearlyView report={yearlyReport} />
+        <YearlyView report={yearlyReport} t={t} />
       )}
     </div>
   )
@@ -121,7 +123,7 @@ export default function ReportsPage() {
 
 /* ── Monthly View ──────────────────────────────── */
 
-function MonthlyView({ report }: { report: MonthlyReport }) {
+function MonthlyView({ report, t }: { report: MonthlyReport; t: (key: string) => string }) {
   const expenseEntries = Object.entries(report.expense_type_breakdown)
   const parentEntries = Object.entries(report.parent_type_breakdown)
   const walletEntries = Object.entries(report.wallet_breakdown)
@@ -131,11 +133,11 @@ function MonthlyView({ report }: { report: MonthlyReport }) {
       {/* Summary cards */}
       <div className="dash-stats">
         <div className="stat-card stat-card--warm">
-          <p>Expenses</p>
+          <p>{t('Expenses')}</p>
           <strong>{formatCurrency(report.total_expenses)}</strong>
         </div>
         <div className="stat-card stat-card--teal">
-          <p>Payments</p>
+          <p>{t('Payments')}</p>
           <strong>{formatCurrency(report.total_payments)}</strong>
         </div>
       </div>
@@ -143,7 +145,7 @@ function MonthlyView({ report }: { report: MonthlyReport }) {
       {/* Parent group breakdown */}
       {parentEntries.length > 0 && (
         <div className="report-section">
-          <h2 className="report-section__title">By Category Group</h2>
+          <h2 className="report-section__title">{t('By Category Group')}</h2>
           <BreakdownBarList
             entries={parentEntries}
             total={report.total_expenses}
@@ -154,7 +156,7 @@ function MonthlyView({ report }: { report: MonthlyReport }) {
       {/* Detailed type breakdown */}
       {expenseEntries.length > 0 && (
         <div className="report-section">
-          <h2 className="report-section__title">By Expense Type</h2>
+          <h2 className="report-section__title">{t('By Expense Type')}</h2>
           <BreakdownBarList
             entries={expenseEntries}
             total={report.total_expenses}
@@ -165,10 +167,11 @@ function MonthlyView({ report }: { report: MonthlyReport }) {
       {/* Wallet breakdown */}
       {walletEntries.length > 0 && (
         <div className="report-section">
-          <h2 className="report-section__title">By Wallet</h2>
+          <h2 className="report-section__title">{t('By Wallet')}</h2>
           <WalletBreakdownList
             entries={walletEntries}
             total={report.total_expenses}
+            t={t}
           />
         </div>
       )}
@@ -176,7 +179,7 @@ function MonthlyView({ report }: { report: MonthlyReport }) {
       {expenseEntries.length === 0 && walletEntries.length === 0 && (
         <div className="empty-state">
           <ChartBarIcon />
-          <p>No data for this period</p>
+          <p>{t('No data for this period')}</p>
         </div>
       )}
     </>
@@ -185,7 +188,7 @@ function MonthlyView({ report }: { report: MonthlyReport }) {
 
 /* ── Yearly View ───────────────────────────────── */
 
-function YearlyView({ report }: { report: YearlyReport }) {
+function YearlyView({ report, t }: { report: YearlyReport; t: (key: string) => string }) {
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null)
 
   return (
@@ -193,26 +196,26 @@ function YearlyView({ report }: { report: YearlyReport }) {
       {/* Summary */}
       <div className="dash-stats">
         <div className="stat-card stat-card--warm">
-          <p>Year Total Expenses</p>
+          <p>{t('Year Total Expenses')}</p>
           <strong>{formatCurrency(report.summary.total_expenses)}</strong>
         </div>
         <div className="stat-card stat-card--teal">
-          <p>Year Total Payments</p>
+          <p>{t('Year Total Payments')}</p>
           <strong>{formatCurrency(report.summary.total_payments)}</strong>
         </div>
         <div className="stat-card stat-card--ink">
-          <p>Avg Monthly Expenses</p>
+          <p>{t('Avg Monthly Expenses')}</p>
           <strong>{formatCurrency(report.summary.average_monthly_expenses)}</strong>
         </div>
         <div className="stat-card stat-card--sand">
-          <p>Avg Monthly Payments</p>
+          <p>{t('Avg Monthly Payments')}</p>
           <strong>{formatCurrency(report.summary.average_monthly_payments)}</strong>
         </div>
       </div>
 
       {/* Monthly summary rows */}
       <div className="report-section">
-        <h2 className="report-section__title">Monthly Breakdown</h2>
+        <h2 className="report-section__title">{t('Monthly Breakdown')}</h2>
         <div className="report-months">
           {report.months.map((m) => {
             const isExpanded = expandedMonth === m.month
@@ -243,7 +246,7 @@ function YearlyView({ report }: { report: YearlyReport }) {
                   <div className="report-month__detail">
                     {expenseEntries.length > 0 && (
                       <div className="report-subsection">
-                        <h3>By Type</h3>
+                        <h3>{t('By Type')}</h3>
                         <BreakdownBarList
                           entries={expenseEntries}
                           total={m.total_expenses}
@@ -252,15 +255,16 @@ function YearlyView({ report }: { report: YearlyReport }) {
                     )}
                     {walletEntries.length > 0 && (
                       <div className="report-subsection">
-                        <h3>By Wallet</h3>
+                        <h3>{t('By Wallet')}</h3>
                         <WalletBreakdownList
                           entries={walletEntries}
                           total={m.total_expenses}
+                          t={t}
                         />
                       </div>
                     )}
                     {expenseEntries.length === 0 && (
-                      <p className="report-empty">No expenses this month</p>
+                      <p className="report-empty">{t('No expenses this month')}</p>
                     )}
                   </div>
                 )}
@@ -321,18 +325,20 @@ function BreakdownBarList({
   )
 }
 
-function walletTypeLabel(item: WalletBreakdownItem): string {
-  if (item.is_credit) return 'Credit'
-  if (item.is_cash) return 'Cash'
-  return 'Standard'
+function walletTypeLabel(item: WalletBreakdownItem, t: (key: string) => string): string {
+  if (item.is_credit) return t('Credit')
+  if (item.is_cash) return t('Cash')
+  return t('Standard')
 }
 
 function WalletBreakdownList({
   entries,
   total,
+  t,
 }: {
   entries: [string, WalletBreakdownItem][]
   total: number
+  t: (key: string) => string
 }) {
   const sorted = [...entries].sort((a, b) => b[1].amount - a[1].amount)
 
@@ -350,7 +356,7 @@ function WalletBreakdownList({
                 />
                 <span className="breakdown-row__icon">{item.icon}</span>
                 <span className="breakdown-row__name">{name}</span>
-                <span className="badge badge--dim">{walletTypeLabel(item)}</span>
+                <span className="badge badge--dim">{walletTypeLabel(item, t)}</span>
                 <span className="breakdown-row__count">{item.count}×</span>
               </div>
               <div className="breakdown-row__values">

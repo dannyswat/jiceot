@@ -18,6 +18,7 @@ import {
 import { formatCurrency } from '../common/currency'
 import { formatDate } from '../common/date'
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../contexts/I18nContext'
 import { dashboardAPI } from '../services/api'
 import type { DueExpense, DueWallet } from '../types/dashboard'
 import QuickAddButton from './QuickAddButton'
@@ -44,14 +45,17 @@ interface NotificationItem {
   detail: string
 }
 
-function dueLabel(daysUntilDue: number): string {
-  if (daysUntilDue < 0) return `${Math.abs(daysUntilDue)}d overdue`
-  if (daysUntilDue === 0) return 'Due today'
-  if (daysUntilDue === 1) return 'Due tomorrow'
-  return `Due in ${daysUntilDue} days`
+function dueLabel(daysUntilDue: number, t: (key: string, params?: Record<string, string | number>) => string): string {
+  if (daysUntilDue < 0) return t('{days}d overdue', { days: Math.abs(daysUntilDue) })
+  if (daysUntilDue === 0) return t('Due today')
+  if (daysUntilDue === 1) return t('Due tomorrow')
+  return t('Due in {days} days', { days: daysUntilDue })
 }
 
-function toNotificationItem(item: DueWallet | DueExpense): NotificationItem | null {
+function toNotificationItem(
+  item: DueWallet | DueExpense,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): NotificationItem | null {
   if (item.days_until_due > 3) return null
 
   if ('has_payment' in item) {
@@ -65,7 +69,7 @@ function toNotificationItem(item: DueWallet | DueExpense): NotificationItem | nu
       color: item.color,
       dueDate: item.next_due_date,
       daysUntilDue: item.days_until_due,
-      detail: `Credit bill · Day ${item.bill_due_day}`,
+      detail: `${t('Credit bill')} · ${t('Day')} ${item.bill_due_day}`,
     }
   }
 
@@ -77,12 +81,13 @@ function toNotificationItem(item: DueWallet | DueExpense): NotificationItem | nu
     color: item.color,
     dueDate: item.next_due_date,
     daysUntilDue: item.days_until_due,
-    detail: item.default_amount > 0 ? `Expense · ${formatCurrency(item.default_amount)}` : 'Expense due',
+    detail: item.default_amount > 0 ? `${t('Expense')} · ${formatCurrency(item.default_amount)}` : t('Expense due'),
   }
 }
 
 export default function Layout() {
   const { user, logout } = useAuth()
+  const { t } = useI18n()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notificationOpenPath, setNotificationOpenPath] = useState<string | null>(null)
@@ -103,7 +108,7 @@ export default function Layout() {
           ...(data.fixed_expenses ?? []),
           ...(data.flexible_expenses ?? []),
         ]
-          .map(toNotificationItem)
+          .map((item) => toNotificationItem(item, t))
           .filter((item): item is NotificationItem => item !== null)
           .sort((left, right) => left.daysUntilDue - right.daysUntilDue)
 
@@ -121,7 +126,7 @@ export default function Layout() {
     return () => {
       active = false
     }
-  }, [location.pathname])
+  }, [location.pathname, t])
 
   const isNotificationOpen = notificationOpenPath === location.pathname
 
@@ -137,10 +142,10 @@ export default function Layout() {
   }, [isNotificationOpen])
 
   const notificationLabel = notificationItems.length === 0
-    ? 'No due items in the next 3 days'
+    ? t('No due items in the next 3 days')
     : notificationItems.length === 1
-      ? '1 due item within 3 days'
-      : `${notificationItems.length} due items within 3 days`
+      ? t('1 due item within 3 days')
+      : t('{count} due items within 3 days', { count: notificationItems.length })
 
   function isActive(path: string): boolean {
     if (path === '/dashboard') return location.pathname === '/dashboard'
@@ -167,11 +172,11 @@ export default function Layout() {
         {isNotificationOpen && (
           <div className="notification-panel wallet-card-menu__panel" role="menu">
             <div className="notification-panel__header">
-              <strong>Due in 3 days</strong>
-              <span>{notificationItems.length === 0 ? 'All clear' : `${notificationItems.length} item${notificationItems.length === 1 ? '' : 's'}`}</span>
+              <strong>{t('Due in 3 days')}</strong>
+              <span>{notificationItems.length === 0 ? t('All clear') : t('{count} items', { count: notificationItems.length })}</span>
             </div>
             {notificationItems.length === 0 ? (
-              <div className="notification-panel__empty">Nothing due in the next 3 days.</div>
+              <div className="notification-panel__empty">{t('Nothing due in the next 3 days.')}</div>
             ) : (
               <div className="notification-panel__list">
                 {notificationItems.map((item) => (
@@ -189,7 +194,7 @@ export default function Layout() {
                       <span className="notification-panel__meta">{item.detail}</span>
                     </div>
                     <div className="notification-panel__side">
-                      <span className="notification-panel__status">{dueLabel(item.daysUntilDue)}</span>
+                      <span className="notification-panel__status">{dueLabel(item.daysUntilDue, t)}</span>
                       <span className="notification-panel__date">{formatDate(item.dueDate)}</span>
                     </div>
                   </Link>
@@ -197,7 +202,7 @@ export default function Layout() {
               </div>
             )}
             <Link to="/due-items" className="btn btn--sm btn--ghost notification-panel__cta" onClick={() => setNotificationOpenPath(null)}>
-              View due items
+              {t('View due items')}
             </Link>
           </div>
         )}
@@ -234,14 +239,14 @@ export default function Layout() {
               onClick={() => setSidebarOpen(false)}
             >
               <item.icon />
-              <span>{item.label}</span>
+              <span>{t(item.label)}</span>
             </Link>
           ))}
         </nav>
 
         <div className="sidebar__footer">
           <div className="sidebar__user">
-            <span className="sidebar__user-name">{user?.name ?? 'User'}</span>
+            <span className="sidebar__user-name">{user?.name ?? t('User')}</span>
             <span className="sidebar__user-email">{user?.email ?? ''}</span>
           </div>
           <div className="sidebar__actions">
@@ -250,7 +255,7 @@ export default function Layout() {
               className="sidebar__logout"
               type="button"
               onClick={() => void logout()}
-              title="Sign out"
+              title={t('Sign out')}
             >
               <ArrowRightStartOnRectangleIcon />
             </button>
@@ -278,7 +283,7 @@ export default function Layout() {
               className="topbar__logout-btn"
               type="button"
               onClick={() => void logout()}
-              title="Sign out"
+              title={t('Sign out')}
             >
               <ArrowRightStartOnRectangleIcon />
             </button>

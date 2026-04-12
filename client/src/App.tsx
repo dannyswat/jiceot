@@ -2,6 +2,7 @@ import { type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 
 import { useAuth } from './contexts/AuthContext'
+import { useI18n } from './contexts/I18nContext'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
@@ -65,9 +66,10 @@ function HomeRedirect() {
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
   const location = useLocation()
+  const { t } = useI18n()
 
   if (isLoading) {
-    return <LoadingScreen message="Restoring your session" />
+    return <LoadingScreen message={t('Restoring your session')} />
   }
 
   if (!isAuthenticated) {
@@ -79,8 +81,9 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
 function PublicOnlyRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth()
+  const { t } = useI18n()
   if (isLoading) {
-    return <LoadingScreen message="Preparing authentication" />
+    return <LoadingScreen message={t('Preparing authentication')} />
   }
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />

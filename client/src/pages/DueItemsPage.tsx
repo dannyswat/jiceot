@@ -10,6 +10,7 @@ import { dashboardAPI, expenseTypeAPI } from '../services/api'
 import { formatCurrency } from '../common/currency'
 import { formatDate } from '../common/date'
 import { RECURRING_PERIOD_OPTIONS } from '../common/constants'
+import { useI18n } from '../contexts/I18nContext'
 import type { DueExpense, DueWallet } from '../types/dashboard'
 
 const currentYear = new Date().getFullYear()
@@ -30,33 +31,34 @@ function statusColor(status: string): string {
   }
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string, t: (key: string) => string): string {
   switch (status) {
     case 'overdue':
-      return 'Overdue'
+      return t('Overdue')
     case 'due_soon':
-      return 'Due Soon'
+      return t('Due Soon')
     case 'upcoming':
-      return 'Upcoming'
+      return t('Upcoming')
     case 'suggested':
-      return 'Suggested'
+      return t('Suggested')
     default:
       return status
   }
 }
 
-function daysLabel(days: number): string {
-  if (days < 0) return `${Math.abs(days)}d overdue`
-  if (days === 0) return 'Due today'
-  if (days === 1) return 'Tomorrow'
-  return `In ${days} days`
+function daysLabel(days: number, t: (key: string, params?: Record<string, string | number>) => string): string {
+  if (days < 0) return t('{days}d overdue', { days: Math.abs(days) })
+  if (days === 0) return t('Due today')
+  if (days === 1) return t('Tomorrow')
+  return t('In {days} days', { days })
 }
 
-function periodLabel(period: string): string {
-  return RECURRING_PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period
+function periodLabel(period: string, t: (key: string) => string): string {
+  return t(RECURRING_PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period)
 }
 
 export default function DueItemsPage() {
+  const { locale, t } = useI18n()
   const [dueWallets, setDueWallets] = useState<DueWallet[]>([])
   const [fixedExpenses, setFixedExpenses] = useState<DueExpense[]>([])
   const [flexibleExpenses, setFlexibleExpenses] = useState<DueExpense[]>([])
@@ -79,11 +81,11 @@ export default function DueItemsPage() {
       setFixedExpenses(expenses.fixed_due ?? [])
       setFlexibleExpenses(expenses.flexible_suggested ?? [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load due items')
+      setError(err instanceof Error ? err.message : t('Failed to load due items'))
     } finally {
       setLoading(false)
     }
-  }, [filterYear, filterMonth])
+  }, [filterYear, filterMonth, t])
 
   useEffect(() => {
     void loadData()
@@ -103,7 +105,7 @@ export default function DueItemsPage() {
       await expenseTypeAPI.postpone(item.id, { next_due_day: newDate })
       await loadData()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to postpone')
+      setError(err instanceof Error ? err.message : t('Failed to postpone'))
     } finally {
       setPostponingId(null)
     }
@@ -112,7 +114,7 @@ export default function DueItemsPage() {
   const years = Array.from({ length: 6 }, (_, i) => currentYear - 2 + i)
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
-    label: new Date(2000, i).toLocaleString('default', { month: 'long' }),
+    label: new Date(2000, i).toLocaleString(locale, { month: 'long' }),
   }))
 
   const totalDueItems = dueWallets.length + fixedExpenses.length + flexibleExpenses.length
@@ -120,8 +122,8 @@ export default function DueItemsPage() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1>Due Items</h1>
-        <p>Fixed and flexible obligations lined up by urgency</p>
+        <h1>{t('Due Items')}</h1>
+        <p>{t('Fixed and flexible obligations lined up by urgency')}</p>
       </div>
 
       {/* Period filter */}
@@ -152,7 +154,7 @@ export default function DueItemsPage() {
       {error && <div className="alert alert--error">{error}</div>}
 
       <div className="summary-bar">
-        <span>{totalDueItems} due item{totalDueItems !== 1 ? 's' : ''}</span>
+        <span>{t('{count} due items', { count: totalDueItems })}</span>
       </div>
 
       {loading && (
@@ -162,7 +164,7 @@ export default function DueItemsPage() {
       {!loading && totalDueItems === 0 && (
         <div className="empty-state">
           <ClockIcon />
-          <p>No due items for this period</p>
+          <p>{t('No due items for this period')}</p>
         </div>
       )}
 
@@ -173,7 +175,7 @@ export default function DueItemsPage() {
             <section className="due-section">
               <h2 className="due-section__title">
                 <span className="due-section__dot" style={{ background: '#f48c06' }} />
-                Credit Bills
+                {t('Credit Bills')}
                 <span className="due-section__count">{dueWallets.length}</span>
               </h2>
               <div className="due-items-list">
@@ -186,8 +188,8 @@ export default function DueItemsPage() {
                       <div className="due-item__info">
                         <span className="due-item__name">{w.name}</span>
                         <span className="due-item__meta">
-                          Due day {w.bill_due_day} · {daysLabel(w.days_until_due)}
-                          {w.last_paid_at && ` · Last paid ${formatDate(w.last_paid_at)}`}
+                          {t('Due day')} {w.bill_due_day} · {daysLabel(w.days_until_due, t)}
+                          {w.last_paid_at && ` · ${t('Last paid')} ${formatDate(w.last_paid_at)}`}
                         </span>
                       </div>
                     </div>
@@ -199,17 +201,17 @@ export default function DueItemsPage() {
                           color: statusColor(w.status),
                         }}
                       >
-                        {statusLabel(w.status)}
+                        {statusLabel(w.status, t)}
                       </span>
                       {w.has_payment ? (
-                        <span className="badge badge--green">Paid</span>
+                        <span className="badge badge--green">{t('Paid')}</span>
                       ) : (
                         <Link
                           to={`/payments/new?wallet_id=${w.id}`}
                           state={{ returnTo: '/due-items' }}
                           className="btn btn--sm btn--primary"
                         >
-                          Pay
+                          {t('Pay')}
                         </Link>
                       )}
                     </div>
@@ -224,7 +226,7 @@ export default function DueItemsPage() {
             <section className="due-section">
               <h2 className="due-section__title">
                 <span className="due-section__dot" style={{ background: '#d94f3d' }} />
-                Recurring Expenses
+                {t('Recurring Expenses')}
                 <span className="due-section__count">{fixedExpenses.length}</span>
               </h2>
               <div className="due-items-list">
@@ -237,8 +239,8 @@ export default function DueItemsPage() {
                       <div className="due-item__info">
                         <span className="due-item__name">{e.name}</span>
                         <span className="due-item__meta">
-                          {periodLabel(e.recurring_period)} · {daysLabel(e.days_until_due)}
-                          {e.next_due_date && ` · Due ${formatDate(e.next_due_date)}`}
+                          {periodLabel(e.recurring_period, t)} · {daysLabel(e.days_until_due, t)}
+                          {e.next_due_date && ` · ${t('Due')} ${formatDate(e.next_due_date)}`}
                         </span>
                       </div>
                     </div>
@@ -253,10 +255,10 @@ export default function DueItemsPage() {
                           color: statusColor(e.status),
                         }}
                       >
-                        {statusLabel(e.status)}
+                        {statusLabel(e.status, t)}
                       </span>
                       <Link to={`/expenses/new?expense_type_id=${e.id}`} className="btn btn--sm btn--primary">
-                        Record
+                        {t('Record')}
                       </Link>
                     </div>
                   </div>
@@ -270,7 +272,7 @@ export default function DueItemsPage() {
             <section className="due-section">
               <h2 className="due-section__title">
                 <span className="due-section__dot" style={{ background: '#577590' }} />
-                Suggested Tasks
+                {t('Suggested Tasks')}
                 <span className="due-section__count">{flexibleExpenses.length}</span>
               </h2>
               <div className="due-items-list">
@@ -283,8 +285,8 @@ export default function DueItemsPage() {
                       <div className="due-item__info">
                         <span className="due-item__name">{e.name}</span>
                         <span className="due-item__meta">
-                          {periodLabel(e.recurring_period)} · {daysLabel(e.days_until_due)}
-                          {e.next_due_date && ` · Next ${formatDate(e.next_due_date)}`}
+                          {periodLabel(e.recurring_period, t)} · {daysLabel(e.days_until_due, t)}
+                          {e.next_due_date && ` · ${t('Next')} ${formatDate(e.next_due_date)}`}
                         </span>
                       </div>
                     </div>
@@ -299,7 +301,7 @@ export default function DueItemsPage() {
                           color: statusColor(e.status),
                         }}
                       >
-                        {statusLabel(e.status)}
+                        {statusLabel(e.status, t)}
                       </span>
                       {e.days_until_due <= 3 && (
                       <div className="due-item__postpone">
@@ -307,7 +309,7 @@ export default function DueItemsPage() {
                           className="btn btn--sm btn--ghost"
                           disabled={postponingId === e.id}
                           onClick={() => handlePostpone(e, 7)}
-                          title="Postpone 1 week"
+                          title={t('Postpone 1 week')}
                         >
                           <ForwardIcon />
                           <span>+7d</span>
@@ -316,7 +318,7 @@ export default function DueItemsPage() {
                           className="btn btn--sm btn--ghost"
                           disabled={postponingId === e.id}
                           onClick={() => handlePostpone(e, 30)}
-                          title="Postpone 1 month"
+                          title={t('Postpone 1 month')}
                         >
                           <ForwardIcon />
                           <span>+30d</span>
@@ -324,7 +326,7 @@ export default function DueItemsPage() {
                       </div>
                       )}
                       <Link to={`/expenses/new?expense_type_id=${e.id}`} className="btn btn--sm btn--primary">
-                        Record
+                        {t('Record')}
                       </Link>
                     </div>
                   </div>

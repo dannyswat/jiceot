@@ -9,11 +9,13 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline'
 
+import { useI18n } from '../contexts/I18nContext'
 import { deviceAPI } from '../services/api'
 import type { UserDevice } from '../types/auth'
 
 export default function DevicesPage() {
   const navigate = useNavigate()
+  const { locale, t } = useI18n()
   const [devices, setDevices] = useState<UserDevice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,7 +33,7 @@ export default function DevicesPage() {
       const res = await deviceAPI.list()
       setDevices(res.devices)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load devices')
+      setError(err instanceof Error ? err.message : t('Failed to load devices'))
     } finally {
       setLoading(false)
     }
@@ -43,7 +45,7 @@ export default function DevicesPage() {
       await deviceAPI.delete(id)
       await loadDevices()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove device')
+      setError(err instanceof Error ? err.message : t('Failed to remove device'))
     } finally {
       setDeletingId(null)
     }
@@ -56,7 +58,7 @@ export default function DevicesPage() {
       setShowDeleteAll(false)
       await loadDevices()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove devices')
+      setError(err instanceof Error ? err.message : t('Failed to remove devices'))
     } finally {
       setLoading(false)
     }
@@ -69,8 +71,8 @@ export default function DevicesPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>Devices</h1>
-          <p>Manage devices with access to your account</p>
+          <h1>{t('Devices')}</h1>
+          <p>{t('Manage devices with access to your account')}</p>
         </div>
         {devices.length > 1 && (
           <button
@@ -78,7 +80,7 @@ export default function DevicesPage() {
             className="danger-button danger-button--outline"
             onClick={() => setShowDeleteAll(true)}
           >
-            Sign Out All Others
+            {t('Sign Out All Others')}
           </button>
         )}
       </div>
@@ -94,7 +96,7 @@ export default function DevicesPage() {
       {!loading && devices.length === 0 && (
         <div className="empty-state">
           <ComputerDesktopIcon />
-          <p>No devices found</p>
+          <p>{t('No devices found')}</p>
         </div>
       )}
 
@@ -111,10 +113,10 @@ export default function DevicesPage() {
               <div className="device-card__info">
                 <div className="device-card__name">
                   <span>{device.device_name}</span>
-                  {device.is_current && <span className="badge badge--green">Current</span>}
+                  {device.is_current && <span className="badge badge--green">{t('Current')}</span>}
                 </div>
-                <small>Last active: {formatRelative(device.last_used_at)}</small>
-                {device.ip_address && <small>IP: {device.ip_address}</small>}
+                <small>{t('Last active:')} {formatRelative(device.last_used_at, locale, t)}</small>
+                {device.ip_address && <small>{t('IP:')} {device.ip_address}</small>}
               </div>
               {!device.is_current && (
                 <button
@@ -122,7 +124,7 @@ export default function DevicesPage() {
                   className="icon-button icon-button--danger"
                   onClick={() => void handleDelete(device.id)}
                   disabled={deletingId === device.id}
-                  title="Remove device"
+                  title={t('Remove device')}
                 >
                   {deletingId === device.id ? <ArrowPathIcon className="spin" /> : <TrashIcon />}
                 </button>
@@ -134,11 +136,11 @@ export default function DevicesPage() {
 
       {/* Info box */}
       <div className="info-box">
-        <h3>About Devices</h3>
+        <h3>{t('About Devices')}</h3>
         <ul>
-          <li>Each login creates a new device session</li>
-          <li>Sessions expire after 30 days of inactivity</li>
-          <li>Removing a device requires re-authentication on that device</li>
+          <li>{t('Each login creates a new device session')}</li>
+          <li>{t('Sessions expire after 30 days of inactivity')}</li>
+          <li>{t('Removing a device requires re-authentication on that device')}</li>
         </ul>
       </div>
 
@@ -149,10 +151,10 @@ export default function DevicesPage() {
           <div className="modal-wrap">
             <div className="modal modal--narrow">
               <div className="modal__header">
-                <h3>Sign Out All Other Devices?</h3>
+                <h3>{t('Sign Out All Other Devices?')}</h3>
               </div>
               <div className="modal__body">
-                <p>This removes all sessions except the current one. You'll need to log in again on those devices.</p>
+                <p>{t("This removes all sessions except the current one. You'll need to log in again on those devices.")}</p>
               </div>
               <div className="modal__actions">
                 <button
@@ -160,14 +162,14 @@ export default function DevicesPage() {
                   className="ghost-button"
                   onClick={() => setShowDeleteAll(false)}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button
                   type="button"
                   className="danger-button"
                   onClick={() => void handleDeleteAll()}
                 >
-                  Yes, Sign Out All
+                  {t('Yes, Sign Out All')}
                 </button>
               </div>
             </div>
@@ -190,7 +192,11 @@ function DeviceIconComponent({ type }: { type: string }) {
   }
 }
 
-function formatRelative(dateString: string): string {
+function formatRelative(
+  dateString: string,
+  locale: string,
+  t: (key: string) => string,
+): string {
   const date = new Date(dateString)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
@@ -198,12 +204,12 @@ function formatRelative(dateString: string): string {
   const diffHours = Math.floor(diffMs / 3_600_000)
   const diffDays = Math.floor(diffMs / 86_400_000)
 
-  if (diffMins < 1) return 'Just now'
+  if (diffMins < 1) return t('Just now')
   if (diffMins < 60) return `${diffMins}m ago`
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
 
-  return date.toLocaleDateString('en-US', {
+  return date.toLocaleDateString(locale, {
     month: 'short',
     day: 'numeric',
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,

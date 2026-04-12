@@ -10,9 +10,11 @@ import {
 
 import { walletAPI } from '../services/api'
 import { WALLET_TYPE_OPTIONS, BILL_PERIOD_OPTIONS } from '../common/constants'
+import { useI18n } from '../contexts/I18nContext'
 import type { Wallet, WalletTypeFilter } from '../types/wallet'
 
 export default function WalletsPage() {
+  const { t } = useI18n()
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -32,11 +34,11 @@ export default function WalletsPage() {
       })
       setWallets(res.wallets)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load wallets')
+      setError(err instanceof Error ? err.message : t('Failed to load wallets'))
     } finally {
       setLoading(false)
     }
-  }, [typeFilter, includeStopped])
+  }, [includeStopped, t, typeFilter])
 
   useEffect(() => {
     void loadWallets()
@@ -60,7 +62,7 @@ export default function WalletsPage() {
       await walletAPI.toggle(wallet.id)
       await loadWallets()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to toggle wallet')
+      setError(err instanceof Error ? err.message : t('Failed to toggle wallet'))
     } finally {
       setTogglingId(null)
     }
@@ -73,18 +75,18 @@ export default function WalletsPage() {
       setDeleteTarget(null)
       await loadWallets()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete wallet')
+      setError(err instanceof Error ? err.message : t('Failed to delete wallet'))
     }
   }
 
   const periodLabel = (period: string) =>
-    BILL_PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period
+    t(BILL_PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period)
 
   return (
     <div className="page">
       <div className="page__header">
-        <h1>Wallets</h1>
-        <p>Credit, cash, and standard money sources</p>
+        <h1>{t('Wallets')}</h1>
+        <p>{t('Credit, cash, and standard money sources')}</p>
       </div>
 
       {/* Toolbar */}
@@ -96,7 +98,7 @@ export default function WalletsPage() {
               className={`filter-chip${typeFilter === opt.value ? ' filter-chip--active' : ''}`}
               onClick={() => setTypeFilter(opt.value)}
             >
-              {opt.label}
+              {t(opt.label)}
             </button>
           ))}
           <label className="filter-toggle">
@@ -105,12 +107,12 @@ export default function WalletsPage() {
               checked={includeStopped}
               onChange={(e) => setIncludeStopped(e.target.checked)}
             />
-            <span>Show stopped</span>
+            <span>{t('Show stopped')}</span>
           </label>
         </div>
         <Link to="/wallets/new" className="btn btn--primary">
           <PlusIcon />
-          <span>New Wallet</span>
+          <span>{t('New Wallet')}</span>
         </Link>
       </div>
 
@@ -128,10 +130,10 @@ export default function WalletsPage() {
       {!loading && wallets.length === 0 && (
         <div className="empty-state">
           <WalletIcon />
-          <p>No wallets found</p>
+          <p>{t('No wallets found')}</p>
           <Link to="/wallets/new" className="btn btn--primary">
             <PlusIcon />
-            <span>Add your first wallet</span>
+            <span>{t('Add your first wallet')}</span>
           </Link>
         </div>
       )}
@@ -154,9 +156,9 @@ export default function WalletsPage() {
                 <div className="entity-card__title">
                   <span>{w.name}</span>
                   <div className="entity-card__badges">
-                    {w.is_credit && <span className="badge badge--blue">Credit</span>}
-                    {w.is_cash && <span className="badge badge--green">Cash</span>}
-                    {w.stopped && <span className="badge badge--dim">Stopped</span>}
+                    {w.is_credit && <span className="badge badge--blue">{t('Credit')}</span>}
+                    {w.is_cash && <span className="badge badge--green">{t('Cash')}</span>}
+                    {w.stopped && <span className="badge badge--dim">{t('Stopped')}</span>}
                   </div>
                 </div>
               </div>
@@ -169,7 +171,7 @@ export default function WalletsPage() {
                 {w.bill_period && w.bill_period !== 'none' && (
                   <span>{periodLabel(w.bill_period)}</span>
                 )}
-                {w.bill_due_day > 0 && <span>Due day {w.bill_due_day}</span>}
+                {w.bill_due_day > 0 && <span>{t('Due day')} {w.bill_due_day}</span>}
                 {w.default_expense_type && (
                   <span>
                     {w.default_expense_type.icon} {w.default_expense_type.name}
@@ -178,7 +180,7 @@ export default function WalletsPage() {
               </div>
 
               <div className="entity-card__actions">
-                <Link to={`/wallets/${w.id}`} className="icon-button" title="Edit">
+                <Link to={`/wallets/${w.id}`} className="icon-button" title={t('Edit')}>
                   <PencilIcon />
                 </Link>
                 <div
@@ -188,7 +190,7 @@ export default function WalletsPage() {
                   <button
                     className="icon-button"
                     onClick={() => setMenuOpenId((prev) => (prev === w.id ? null : w.id))}
-                    title="More actions"
+                    title={t('More actions')}
                     aria-haspopup="menu"
                     aria-expanded={menuOpenId === w.id}
                   >
@@ -202,7 +204,7 @@ export default function WalletsPage() {
                         onClick={() => handleToggle(w)}
                         role="menuitem"
                       >
-                        {w.stopped ? 'Resume wallet' : 'Stop wallet'}
+                        {w.stopped ? t('Resume wallet') : t('Stop wallet')}
                       </button>
                       <button
                         className="wallet-card-menu__item wallet-card-menu__item--danger"
@@ -212,7 +214,7 @@ export default function WalletsPage() {
                         }}
                         role="menuitem"
                       >
-                        Delete wallet
+                        {t('Delete wallet')}
                       </button>
                     </div>
                   )}
@@ -234,9 +236,9 @@ export default function WalletsPage() {
                   <ExclamationTriangleIcon />
                 </div>
                 <div>
-                  <h3>Delete Wallet</h3>
+                  <h3>{t('Delete Wallet')}</h3>
                   <p>
-                    Delete <strong>{deleteTarget.name}</strong>? This cannot be undone.
+                    {t('Delete {name}? This cannot be undone.', { name: deleteTarget.name })}
                   </p>
                 </div>
               </div>
@@ -245,10 +247,10 @@ export default function WalletsPage() {
                   className="btn btn--ghost"
                   onClick={() => setDeleteTarget(null)}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button className="danger-button" onClick={handleDelete}>
-                  Delete
+                  {t('Delete')}
                 </button>
               </div>
             </div>

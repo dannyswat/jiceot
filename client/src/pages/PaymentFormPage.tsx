@@ -7,6 +7,7 @@ import ExpenseTypePicker from '../components/ExpenseTypePicker'
 import { paymentAPI, walletAPI, expenseAPI, expenseTypeAPI } from '../services/api'
 import { formatCurrency } from '../common/currency'
 import { toDateInputValue, formatDate } from '../common/date'
+import { useI18n } from '../contexts/I18nContext'
 import type { Wallet } from '../types/wallet'
 import type { Expense, ExpenseType } from '../types/expense'
 
@@ -59,6 +60,7 @@ function formatAmountInput(amount: number): string {
 }
 
 export default function PaymentFormPage() {
+  const { t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
@@ -178,9 +180,9 @@ export default function PaymentFormPage() {
           setSelectedExpenseIds(r.expenses.map((e) => e.id))
         }
       })
-      .catch(() => setError('Failed to load payment'))
+        .catch(() => setError(t('Failed to load payment')))
       .finally(() => setInitialLoading(false))
-  }, [isEdit, id, navigationState])
+      }, [id, isEdit, navigationState, t])
 
   useEffect(() => {
     if (amountMode !== 'expenses-total') {
@@ -333,7 +335,7 @@ export default function PaymentFormPage() {
       }
       navigate(returnTo, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save payment')
+      setError(err instanceof Error ? err.message : t('Failed to save payment'))
     } finally {
       setLoading(false)
     }
@@ -362,8 +364,8 @@ export default function PaymentFormPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>{isEdit ? 'Edit Payment' : 'New Payment'}</h1>
-          <p>{isEdit ? 'Update payment details' : 'Record a wallet payment'}</p>
+          <h1>{isEdit ? t('Edit Payment') : t('New Payment')}</h1>
+          <p>{isEdit ? t('Update payment details') : t('Record a wallet payment')}</p>
         </div>
       </div>
 
@@ -373,15 +375,15 @@ export default function PaymentFormPage() {
         {/* Wallet */}
         <div className="field">
           <div className="field__label-row">
-            <label className="field__label">Wallet *</label>
+            <label className="field__label">{t('Wallet')} *</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {selectedWallet && !walletPickerOpen && (
                 <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
-                  Select other
+                  {t('Select other')}
                 </button>
               )}
               <button type="button" className="link-button" onClick={handleCreateWallet}>
-                Add new wallet
+                {t('Add new wallet')}
               </button>
             </div>
           </div>
@@ -398,7 +400,7 @@ export default function PaymentFormPage() {
                 <span className="wallet-select-item__name">{selectedWallet.name}</span>
                 {(selectedWallet.is_credit || selectedWallet.is_cash) && (
                   <span className="wallet-select-item__badge">
-                    {selectedWallet.is_credit ? 'Credit' : 'Cash'}
+                    {selectedWallet.is_credit ? t('Credit') : t('Cash')}
                   </span>
                 )}
               </button>
@@ -418,20 +420,20 @@ export default function PaymentFormPage() {
                   <span className="wallet-select-item__name">{w.name}</span>
                   {(w.is_credit || w.is_cash) && (
                     <span className="wallet-select-item__badge">
-                      {w.is_credit ? 'Credit' : 'Cash'}
+                      {w.is_credit ? t('Credit') : t('Cash')}
                     </span>
                   )}
                 </button>
               ))}
             </div>
           )}
-          <p className="field-hint">Choose the wallet this payment belongs to</p>
+          <p className="field-hint">{t('Choose the wallet this payment belongs to')}</p>
         </div>
 
         {/* Date & Amount */}
         <div className="field-row">
           <div className="field field--flex1">
-            <label className="field__label">Date *</label>
+            <label className="field__label">{t('Date')} *</label>
             <input
               className="field__input"
               type="date"
@@ -442,14 +444,14 @@ export default function PaymentFormPage() {
           </div>
           <div className="field field--flex1">
             <div className="field__label-row">
-              <label className="field__label">Amount *</label>
+              <label className="field__label">{t('Amount')} *</label>
               {hasExpenses && amountMode === 'manual' && (
                 <button
                   type="button"
                   className="link-button"
                   onClick={() => setAmountMode('expenses-total')}
                 >
-                  Use expenses total
+                  {t('Use expenses total')}
                 </button>
               )}
             </div>
@@ -461,12 +463,12 @@ export default function PaymentFormPage() {
               }}
               placeholder="0"
               title="Payment amount"
-              hint={hasExpenses ? `Expenses total ${formatCurrency(expenseGrandTotal)}` : undefined}
+              hint={hasExpenses ? t('Expenses total {amount}', { amount: formatCurrency(expenseGrandTotal) }) : undefined}
             />
             {hasExpenses && (
               <p className="field-hint">
-                Expenses total {formatCurrency(expenseGrandTotal)}
-                {amountMode === 'expenses-total' ? ' · amount tracks expense changes' : ''}
+                {t('Expenses total {amount}', { amount: formatCurrency(expenseGrandTotal) })}
+                {amountMode === 'expenses-total' ? ` · ${t('amount tracks expense changes')}` : ''}
               </p>
             )}
           </div>
@@ -474,12 +476,12 @@ export default function PaymentFormPage() {
 
         {/* Note */}
         <div className="field">
-          <label className="field__label">Note</label>
+          <label className="field__label">{t('Note')}</label>
           <input
             className="field__input"
             value={form.note}
             onChange={(e) => set('note', e.target.value)}
-            placeholder="Optional note"
+            placeholder={t('Optional note')}
           />
         </div>
 
@@ -487,7 +489,7 @@ export default function PaymentFormPage() {
         {selectedWallet && (
           <div className="field">
             <div className="field__label-row">
-              <label className="field__label">Expenses</label>
+              <label className="field__label">{t('Expenses')}</label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 {allExpenses.length > 0 && (
                   <button
@@ -495,11 +497,11 @@ export default function PaymentFormPage() {
                     className="link-button"
                     onClick={selectedExpenseIds.length === allExpenses.length ? deselectAllExpenses : selectAllExpenses}
                   >
-                    {selectedExpenseIds.length === allExpenses.length ? 'Deselect all' : 'Select all'}
+                    {selectedExpenseIds.length === allExpenses.length ? t('Deselect all') : t('Select all')}
                   </button>
                 )}
                 <button type="button" className="link-button" onClick={addNewExpense}>
-                  <PlusIcon style={{ width: '0.875rem', height: '0.875rem' }} /> Add new
+                  <PlusIcon style={{ width: '0.875rem', height: '0.875rem' }} /> {t('Add new')}
                 </button>
               </div>
             </div>
@@ -515,7 +517,7 @@ export default function PaymentFormPage() {
                       onChange={() => toggleExpense(exp.id)}
                     />
                     <span className="expense-checklist__info">
-                      <span>{exp.expense_type?.icon} {exp.expense_type?.name ?? 'Expense'}</span>
+                      <span>{exp.expense_type?.icon} {exp.expense_type?.name ?? t('Expense')}</span>
                       <small>{formatDate(exp.date)}{exp.note ? ` · ${exp.note}` : ''}</small>
                     </span>
                     <span className="expense-checklist__amount">{formatCurrency(exp.amount)}</span>
@@ -532,7 +534,7 @@ export default function PaymentFormPage() {
                     expenseTypes={expenseTypes}
                     selectedTypeId={ne.expense_type_id}
                     onSelect={(typeId) => handleTypeSelect(ne.tempId, typeId)}
-                    placeholder="Type…"
+                    placeholder="Expense Type"
                     title="Select Expense Type"
                     triggerClassName="new-expense-row__type"
                   />
@@ -540,12 +542,12 @@ export default function PaymentFormPage() {
                     triggerClassName="new-expense-row__amount"
                     value={ne.amount}
                     onChange={(value) => updateNewExpense(ne.tempId, 'amount', value)}
-                    placeholder="Amount"
+                    placeholder={t('Amount')}
                     title="Expense amount"
                   />
                   <input
                     className="field__input new-expense-row__note"
-                    placeholder="Note"
+                    placeholder={t('Note')}
                     value={ne.note}
                     onChange={(e) => updateNewExpense(ne.tempId, 'note', e.target.value)}
                   />
@@ -553,7 +555,7 @@ export default function PaymentFormPage() {
                     type="button"
                     className="btn btn--icon btn--ghost"
                     onClick={() => removeNewExpense(ne.tempId)}
-                    title="Remove"
+                    title={t('Remove')}
                   >
                     <TrashIcon />
                   </button>
@@ -564,11 +566,11 @@ export default function PaymentFormPage() {
             {hasExpenses && (
               <p className="field-hint">
                 {selectedExpenseIds.length > 0 &&
-                  `${selectedExpenseIds.length} linked`}
+                  t('{count} linked', { count: selectedExpenseIds.length })}
                 {selectedExpenseIds.length > 0 && newExpenses.length > 0 && ' + '}
                 {newExpenses.length > 0 &&
-                  `${newExpenses.length} new`}
-                {' · '}Total: {formatCurrency(expenseGrandTotal)}
+                  t('{count} new', { count: newExpenses.length })}
+                {' · '}{t('Total:')} {formatCurrency(expenseGrandTotal)}
               </p>
             )}
 
@@ -576,8 +578,8 @@ export default function PaymentFormPage() {
               <div className="alert alert--info">
                 <strong>
                   {discrepancy > 0
-                    ? `Payment exceeds expenses by ${formatCurrency(discrepancy)}`
-                    : `Expenses exceed payment by ${formatCurrency(Math.abs(discrepancy))}`}
+                    ? t('Payment exceeds expenses by {amount}', { amount: formatCurrency(discrepancy) })
+                    : t('Expenses exceed payment by {amount}', { amount: formatCurrency(Math.abs(discrepancy)) })}
                 </strong>
                 {canCreateDefaultDiscrepancyExpense ? (
                   <div style={{ marginTop: '0.75rem', display: 'grid', gap: '0.5rem' }}>
@@ -589,7 +591,7 @@ export default function PaymentFormPage() {
                         onChange={() => setDiscrepancyMode('default-expense')}
                       />
                       <span>
-                        Add {defaultExpenseType?.name ?? 'default expense'} for {formatCurrency(discrepancy)}
+                        {t('Add {name} for {amount}', { name: defaultExpenseType?.name ?? t('default expense'), amount: formatCurrency(discrepancy) })}
                       </span>
                     </label>
                     <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -599,21 +601,21 @@ export default function PaymentFormPage() {
                         checked={discrepancyMode === 'unexplained'}
                         onChange={() => setDiscrepancyMode('unexplained')}
                       />
-                      <span>Leave the discrepancy unexplained</span>
+                      <span>{t('Leave the discrepancy unexplained')}</span>
                     </label>
                   </div>
                 ) : (
                   <p style={{ marginTop: '0.75rem' }}>
                     {discrepancy > 0 && selectedWallet?.default_expense_type_id == null
-                      ? 'This wallet has no default expense type, so the difference will stay unexplained.'
-                      : 'This difference will stay unexplained unless you adjust the payment amount or expense list.'}
+                      ? t('This wallet has no default expense type, so the difference will stay unexplained.')
+                      : t('This difference will stay unexplained unless you adjust the payment amount or expense list.')}
                   </p>
                 )}
               </div>
             )}
 
             {!hasExpenses && allExpenses.length === 0 && (
-              <p className="field-hint">No unbilled expenses for this wallet. Add new ones above.</p>
+              <p className="field-hint">{t('No unbilled expenses for this wallet. Add new ones above.')}</p>
             )}
           </div>
         )}
@@ -625,14 +627,14 @@ export default function PaymentFormPage() {
             className="btn btn--primary"
             disabled={loading || !form.wallet_id || !form.amount}
           >
-            {loading ? 'Saving…' : isEdit ? 'Update Payment' : 'Create Payment'}
+            {loading ? t('Saving…') : isEdit ? t('Update Payment') : t('Create Payment')}
           </button>
           <button
             type="button"
             className="btn btn--ghost"
             onClick={handleReturn}
           >
-            Cancel
+            {t('Cancel')}
           </button>
         </div>
       </form>

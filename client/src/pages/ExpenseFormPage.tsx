@@ -6,6 +6,7 @@ import AmountInput from '../components/AmountInput'
 import ExpenseTypePicker from '../components/ExpenseTypePicker'
 import { expenseAPI, expenseTypeAPI, walletAPI } from '../services/api'
 import { toDateInputValue } from '../common/date'
+import { useI18n } from '../contexts/I18nContext'
 import type { ExpenseType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
@@ -23,6 +24,7 @@ interface ExpenseFormLocationState {
 }
 
 export default function ExpenseFormPage() {
+  const { t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
@@ -101,9 +103,9 @@ export default function ExpenseFormPage() {
         })
         setWalletPickerOpen(false)
       })
-      .catch(() => setError('Failed to load expense'))
+        .catch(() => setError(t('Failed to load expense')))
       .finally(() => setInitialLoading(false))
-  }, [isEdit, id, navigationState])
+      }, [id, isEdit, navigationState, t])
 
   function handleExpenseTypeSelect(typeId: string) {
     set('expense_type_id', typeId)
@@ -161,7 +163,7 @@ export default function ExpenseFormPage() {
       }
       navigate('/expenses')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save expense')
+      setError(err instanceof Error ? err.message : t('Failed to save expense'))
     } finally {
       setLoading(false)
     }
@@ -189,8 +191,8 @@ export default function ExpenseFormPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>{isEdit ? 'Edit Expense' : 'New Expense'}</h1>
-          <p>{isEdit ? 'Update expense details' : 'Record a new expense'}</p>
+          <h1>{isEdit ? t('Edit Expense') : t('New Expense')}</h1>
+          <p>{isEdit ? t('Update expense details') : t('Record a new expense')}</p>
         </div>
       </div>
 
@@ -199,7 +201,7 @@ export default function ExpenseFormPage() {
 
         {/* Expense Type - popup trigger */}
         <div className="field">
-          <label className="field__label">Expense Type *</label>
+          <label className="field__label">{t('Expense Type')} *</label>
           <ExpenseTypePicker
             expenseTypes={expenseTypes}
             selectedTypeId={form.expense_type_id}
@@ -212,7 +214,7 @@ export default function ExpenseFormPage() {
         {/* Date & Amount */}
         <div className="field-row">
           <div className="field field--flex1">
-            <label className="field__label">Date *</label>
+            <label className="field__label">{t('Date')} *</label>
             <input
               className="field__input"
               type="date"
@@ -222,11 +224,11 @@ export default function ExpenseFormPage() {
             />
           </div>
           <div className="field field--flex1">
-            <label className="field__label">Amount *</label>
+            <label className="field__label">{t('Amount')} *</label>
             <AmountInput
               value={form.amount}
               onChange={(value) => set('amount', value)}
-              placeholder={selectedType?.default_amount ? `Default: ${Math.round(selectedType.default_amount)}` : '0'}
+              placeholder={selectedType?.default_amount ? t('Default: {amount}', { amount: Math.round(selectedType.default_amount) }) : '0'}
               title="Expense amount"
             />
           </div>
@@ -235,15 +237,15 @@ export default function ExpenseFormPage() {
         {/* Wallet - visual grid */}
         <div className="field">
           <div className="field__label-row">
-            <label className="field__label">Wallet</label>
+            <label className="field__label">{t('Wallet')}</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               {selectedWallet && !walletPickerOpen && (
                 <button type="button" className="link-button" onClick={() => setWalletPickerOpen(true)}>
-                  Select other
+                  {t('Select other')}
                 </button>
               )}
               <button type="button" className="link-button" onClick={handleCreateWallet}>
-                Add new wallet
+                {t('Add new wallet')}
               </button>
             </div>
           </div>
@@ -260,7 +262,7 @@ export default function ExpenseFormPage() {
                 <span className="wallet-select-item__name">{selectedWallet.name}</span>
                 {(selectedWallet.is_credit || selectedWallet.is_cash) && (
                   <span className="wallet-select-item__badge">
-                    {selectedWallet.is_credit ? 'Credit' : 'Cash'}
+                    {selectedWallet.is_credit ? t('Credit') : t('Cash')}
                   </span>
                 )}
               </button>
@@ -273,7 +275,7 @@ export default function ExpenseFormPage() {
                 onClick={() => handleWalletSelect('')}
               >
                 <span className="wallet-select-item__icon" style={{ background: '#3d405b' }}>—</span>
-                <span className="wallet-select-item__name">None</span>
+                <span className="wallet-select-item__name">{t('None')}</span>
               </button>
               {wallets.map((wallet) => (
                 <button
@@ -288,24 +290,24 @@ export default function ExpenseFormPage() {
                   <span className="wallet-select-item__name">{wallet.name}</span>
                   {(wallet.is_credit || wallet.is_cash) && (
                     <span className="wallet-select-item__badge">
-                      {wallet.is_credit ? 'Credit' : 'Cash'}
+                      {wallet.is_credit ? t('Credit') : t('Cash')}
                     </span>
                   )}
                 </button>
               ))}
             </div>
           )}
-          <p className="field-hint">Link this expense to a wallet for billing tracking</p>
+          <p className="field-hint">{t('Link this expense to a wallet for billing tracking')}</p>
         </div>
 
         {/* Note */}
         <div className="field">
-          <label className="field__label">Note</label>
+          <label className="field__label">{t('Note')}</label>
           <input
             className="field__input"
             value={form.note}
             onChange={(e) => set('note', e.target.value)}
-            placeholder="Optional note"
+            placeholder={t('Optional note')}
           />
         </div>
 
@@ -321,7 +323,7 @@ export default function ExpenseFormPage() {
             <div>
               <strong>{selectedType.name}</strong>
               <span className="form-preview__sub">
-                {form.amount ? `$${form.amount}` : 'No amount'}
+                {form.amount ? `$${form.amount}` : t('No amount')}
                 {form.date && ` · ${form.date}`}
                 {form.wallet_id && (() => {
                   const w = wallets.find((w) => w.id === Number(form.wallet_id))
@@ -339,14 +341,14 @@ export default function ExpenseFormPage() {
             className="btn btn--primary"
             disabled={loading || !form.expense_type_id || !form.amount}
           >
-            {loading ? 'Saving…' : isEdit ? 'Update Expense' : 'Create Expense'}
+            {loading ? t('Saving…') : isEdit ? t('Update Expense') : t('Create Expense')}
           </button>
           <button
             type="button"
             className="btn btn--ghost"
             onClick={() => navigate('/expenses')}
           >
-            Cancel
+            {t('Cancel')}
           </button>
         </div>
       </form>

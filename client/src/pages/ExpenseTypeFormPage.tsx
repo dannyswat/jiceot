@@ -10,6 +10,7 @@ import {
 } from '../common/constants'
 import IconPicker from '../components/IconPicker'
 import ColorPicker from '../components/ColorPicker'
+import { useI18n } from '../contexts/I18nContext'
 import type { ExpenseType, RecurringPeriod, RecurringType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
@@ -97,6 +98,7 @@ const INITIAL_FORM: ExpenseTypeFormState = {
 }
 
 export default function ExpenseTypeFormPage() {
+  const { t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
@@ -148,9 +150,9 @@ export default function ExpenseTypeFormPage() {
           stopped: et.stopped,
         })
       })
-      .catch(() => setError('Failed to load expense type'))
+        .catch(() => setError(t('Failed to load expense type')))
       .finally(() => setInitialLoading(false))
-  }, [isEdit, id])
+      }, [id, isEdit, t])
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
@@ -196,7 +198,7 @@ export default function ExpenseTypeFormPage() {
       }
       navigate('/expense-types')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save expense type')
+      setError(err instanceof Error ? err.message : t('Failed to save expense type'))
     } finally {
       setLoading(false)
     }
@@ -284,8 +286,8 @@ export default function ExpenseTypeFormPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>{isEdit ? 'Edit Expense Type' : 'New Expense Type'}</h1>
-          <p>{isEdit ? 'Update expense type settings' : 'Create a new expense category'}</p>
+          <h1>{isEdit ? t('Edit Expense Type') : t('New Expense Type')}</h1>
+          <p>{isEdit ? t('Update expense type settings') : t('Create a new expense category')}</p>
         </div>
       </div>
 
@@ -294,13 +296,13 @@ export default function ExpenseTypeFormPage() {
 
         {/* Parent */}
         <div className="field">
-          <label className="field__label">Parent Type</label>
+          <label className="field__label">{t('Parent Type')}</label>
           <select
             className="field__input"
             value={form.parent_id}
             onChange={(e) => set('parent_id', e.target.value)}
           >
-            <option value="">None (top-level)</option>
+            <option value="">{t('None (top-level)')}</option>
             {parentTypes
               .filter((pt) => pt.id !== Number(id))
               .map((pt) => (
@@ -313,43 +315,43 @@ export default function ExpenseTypeFormPage() {
 
         {/* Name */}
         <div className="field">
-          <label className="field__label">Name *</label>
+          <label className="field__label">{t('Name')} *</label>
           <input
             className="field__input"
             required
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
-            placeholder="e.g. Groceries, Electricity"
+            placeholder={t('e.g. Groceries, Electricity')}
           />
         </div>
 
         {/* Icon & Color */}
         <div className="field-row">
           <div className="field field--flex1">
-            <label className="field__label">Icon</label>
+            <label className="field__label">{t('Icon')}</label>
             <IconPicker value={form.icon} onChange={(v) => set('icon', v)} />
           </div>
           <div className="field field--flex1">
-            <label className="field__label">Color</label>
+            <label className="field__label">{t('Color')}</label>
             <ColorPicker value={form.color} onChange={(v) => set('color', v)} />
           </div>
         </div>
 
         {/* Description */}
         <div className="field">
-          <label className="field__label">Description</label>
+          <label className="field__label">{t('Description')}</label>
           <input
             className="field__input"
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
-            placeholder="Optional description"
+            placeholder={t('Optional description')}
           />
         </div>
 
         {/* Default amount & wallet */}
         <div className="field-row">
           <div className="field field--flex1">
-            <label className="field__label">Default Amount</label>
+            <label className="field__label">{t('Default Amount')}</label>
             <AmountInput
               value={form.default_amount}
               onChange={(value) => set('default_amount', value)}
@@ -358,13 +360,13 @@ export default function ExpenseTypeFormPage() {
             />
           </div>
           <div className="field field--flex1">
-            <label className="field__label">Default Wallet</label>
+            <label className="field__label">{t('Default Wallet')}</label>
             <select
               className="field__input"
               value={form.default_wallet_id}
               onChange={(e) => set('default_wallet_id', e.target.value)}
             >
-              <option value="">None</option>
+              <option value="">{t('None')}</option>
               {wallets.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.icon} {w.name}
@@ -376,7 +378,7 @@ export default function ExpenseTypeFormPage() {
 
         {/* Recurring settings */}
         <div className="field">
-          <label className="field__label">Recurring Type</label>
+          <label className="field__label">{t('Recurring Type')}</label>
           <select
             className="field__input"
             value={form.recurring_type}
@@ -384,7 +386,7 @@ export default function ExpenseTypeFormPage() {
           >
             {RECURRING_TYPE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
-                {o.label}
+                {t(o.label)}
               </option>
             ))}
           </select>
@@ -394,7 +396,7 @@ export default function ExpenseTypeFormPage() {
           <>
             <div className="field-row">
               <div className="field field--flex1">
-                <label className="field__label">Recurring Period</label>
+                <label className="field__label">{t('Recurring Period')}</label>
                 <select
                   className="field__input"
                   value={form.recurring_period}
@@ -402,13 +404,13 @@ export default function ExpenseTypeFormPage() {
                 >
                   {periodOptionsForRecurringType(form.recurring_type).map((o) => (
                     <option key={o.value} value={o.value}>
-                      {o.label}
+                      {t(o.label)}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="field field--flex1">
-                <label className="field__label">Reminder Type</label>
+                <label className="field__label">{t('Reminder Type')}</label>
                 <select
                   className="field__input"
                   value={form.reminder_type}
@@ -416,14 +418,14 @@ export default function ExpenseTypeFormPage() {
                 >
                   {reminderTypeOptions.filter((option) => option.value !== 'none').map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {t(option.label)}
                     </option>
                   ))}
                 </select>
               </div>
               {form.recurring_type === 'fixed_day' && (
                 <div className="field field--flex1">
-                  <label className="field__label">Due Day</label>
+                  <label className="field__label">{t('Due Day')}</label>
                   <select
                     className="field__input"
                     value={form.recurring_due_day}
@@ -439,7 +441,7 @@ export default function ExpenseTypeFormPage() {
               )}
             </div>
             <small>
-              Weekly recurring expenses default to On day. Automatic uses the app default reminder behavior for the selected schedule.
+              {t('Weekly recurring expenses default to On day. Automatic uses the app default reminder behavior for the selected schedule.')}
             </small>
           </>
         )}
@@ -452,7 +454,7 @@ export default function ExpenseTypeFormPage() {
               checked={form.stopped}
               onChange={(e) => set('stopped', e.target.checked)}
             />
-            <span>Mark as stopped</span>
+            <span>{t('Mark as stopped')}</span>
           </label>
         )}
 
@@ -465,12 +467,12 @@ export default function ExpenseTypeFormPage() {
             {form.icon || (form.name ? form.name.charAt(0).toUpperCase() : '?')}
           </div>
           <div>
-            <strong>{form.name || 'Expense Type Name'}</strong>
+            <strong>{form.name || t('Expense Type Name')}</strong>
             <span className="form-preview__sub">
-              {RECURRING_TYPE_OPTIONS.find((o) => o.value === form.recurring_type)?.label}
+              {t(RECURRING_TYPE_OPTIONS.find((o) => o.value === form.recurring_type)?.label ?? form.recurring_type)}
               {form.recurring_type !== 'none' &&
                 form.recurring_period !== 'none' &&
-                ` · ${RECURRING_PERIOD_OPTIONS.find((o) => o.value === form.recurring_period)?.label}`}
+                ` · ${t(RECURRING_PERIOD_OPTIONS.find((o) => o.value === form.recurring_period)?.label ?? form.recurring_period)}`}
               {form.recurring_type !== 'none' && form.reminder_type !== 'none' && ` · ${reminderTypeLabel(form.reminder_type)}`}
               {form.default_amount && ` · $${form.default_amount}`}
             </span>
@@ -484,14 +486,14 @@ export default function ExpenseTypeFormPage() {
             className="btn btn--primary"
             disabled={loading || !form.name.trim()}
           >
-            {loading ? 'Saving…' : isEdit ? 'Update Type' : 'Create Type'}
+            {loading ? t('Saving…') : isEdit ? t('Update Type') : t('Create Type')}
           </button>
           <button
             type="button"
             className="btn btn--ghost"
             onClick={handleClose}
           >
-            Cancel
+            {t('Cancel')}
           </button>
         </div>
       </form>

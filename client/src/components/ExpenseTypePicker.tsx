@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
+import { useI18n } from '../contexts/I18nContext'
 import type { ExpenseType } from '../types/expense'
 
 interface ExpenseTypePickerProps {
@@ -27,6 +28,7 @@ export default function ExpenseTypePicker({
   title = 'Select Expense Type',
   triggerClassName,
 }: ExpenseTypePickerProps) {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
 
@@ -80,7 +82,7 @@ export default function ExpenseTypePicker({
             </span>
           </span>
         ) : (
-          <span className="type-picker-trigger__placeholder">{placeholder}</span>
+          <span className="type-picker-trigger__placeholder">{t(placeholder)}</span>
         )}
       </button>
 
@@ -90,8 +92,8 @@ export default function ExpenseTypePicker({
           <div className="modal-wrap">
             <div className="modal quick-add__modal expense-type-picker__modal">
               <div className="modal__header">
-                <h3>{title}</h3>
-                <button type="button" onClick={handleClose} aria-label="Close expense type picker">
+                <h3>{t(title)}</h3>
+                <button type="button" onClick={handleClose} aria-label={t('Close expense type picker')}>
                   <XMarkIcon />
                 </button>
               </div>
@@ -102,14 +104,14 @@ export default function ExpenseTypePicker({
                   type="text"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search expense types…"
+                  placeholder={t('Search expense types…')}
                 />
               </div>
 
               {onCreateNew && (
                 <div className="expense-type-picker__actions">
                   <button type="button" className="link-button" onClick={handleCreateNew}>
-                    Add new expense type
+                    {t('Add new expense type')}
                   </button>
                 </div>
               )}
@@ -117,10 +119,10 @@ export default function ExpenseTypePicker({
               <div className="quick-add__body">
                 {filteredTypes.length === 0 ? (
                   <div className="type-picker__empty expense-type-picker__empty">
-                    <p>No types match "{search}"</p>
+                    <p>{t('No types match "{search}"', { search })}</p>
                     {onCreateNew && (
                       <button type="button" className="link-button" onClick={handleCreateNew}>
-                        Create it instead
+                        {t('Create it instead')}
                       </button>
                     )}
                   </div>

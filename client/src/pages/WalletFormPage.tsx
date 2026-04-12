@@ -6,6 +6,7 @@ import { walletAPI, expenseTypeAPI } from '../services/api'
 import { BILL_PERIOD_OPTIONS } from '../common/constants'
 import IconPicker from '../components/IconPicker'
 import ColorPicker from '../components/ColorPicker'
+import { useI18n } from '../contexts/I18nContext'
 import type { ExpenseType } from '../types/expense'
 
 interface ExpenseDraftFormState {
@@ -50,6 +51,7 @@ interface WalletFormLocationState {
 }
 
 export default function WalletFormPage() {
+  const { t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
   const { id } = useParams()
@@ -101,8 +103,9 @@ export default function WalletFormPage() {
         })
       })
       .catch(() => setError('Failed to load wallet'))
+        .catch(() => setError(t('Failed to load wallet')))
       .finally(() => setInitialLoading(false))
-  }, [isEdit, id])
+      }, [id, isEdit, t])
 
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
@@ -160,7 +163,7 @@ export default function WalletFormPage() {
       }
       navigate('/wallets')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save wallet')
+      setError(err instanceof Error ? err.message : t('Failed to save wallet'))
     } finally {
       setLoading(false)
     }
@@ -210,8 +213,8 @@ export default function WalletFormPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>{isEdit ? 'Edit Wallet' : 'New Wallet'}</h1>
-          <p>{isEdit ? 'Update wallet configuration' : 'Create a new money source'}</p>
+          <h1>{isEdit ? t('Edit Wallet') : t('New Wallet')}</h1>
+          <p>{isEdit ? t('Update wallet configuration') : t('Create a new money source')}</p>
         </div>
       </div>
 
@@ -220,36 +223,36 @@ export default function WalletFormPage() {
 
         {/* Name */}
         <div className="field">
-          <label className="field__label">Name *</label>
+          <label className="field__label">{t('Name')} *</label>
           <input
             className="field__input"
             required
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
-            placeholder="e.g. Visa Gold, Cash Wallet"
+            placeholder={t('e.g. Visa Gold, Cash Wallet')}
           />
         </div>
 
         {/* Icon & Color */}
         <div className="field-row">
           <div className="field field--flex1">
-            <label className="field__label">Icon</label>
+            <label className="field__label">{t('Icon')}</label>
             <IconPicker value={form.icon} onChange={(v) => set('icon', v)} />
           </div>
           <div className="field field--flex1">
-            <label className="field__label">Color</label>
+            <label className="field__label">{t('Color')}</label>
             <ColorPicker value={form.color} onChange={(v) => set('color', v)} />
           </div>
         </div>
 
         {/* Description */}
         <div className="field">
-          <label className="field__label">Description</label>
+          <label className="field__label">{t('Description')}</label>
           <input
             className="field__input"
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
-            placeholder="Optional description"
+            placeholder={t('Optional description')}
           />
         </div>
 
@@ -264,7 +267,7 @@ export default function WalletFormPage() {
                 if (e.target.checked) set('is_cash', false)
               }}
             />
-            <span>Credit wallet</span>
+            <span>{t('Credit wallet')}</span>
           </label>
           <label className="field-check">
             <input
@@ -275,14 +278,14 @@ export default function WalletFormPage() {
                 if (e.target.checked) set('is_credit', false)
               }}
             />
-            <span>Cash wallet</span>
+            <span>{t('Cash wallet')}</span>
           </label>
         </div>
 
         {/* Billing */}
         <div className="field-row">
           <div className="field field--flex1">
-            <label className="field__label">Billing Period</label>
+            <label className="field__label">{t('Billing Period')}</label>
             <select
               className="field__input"
               value={form.bill_period}
@@ -290,19 +293,19 @@ export default function WalletFormPage() {
             >
               {BILL_PERIOD_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.label)}
                 </option>
               ))}
             </select>
           </div>
           <div className="field field--flex1">
-            <label className="field__label">Due Day</label>
+            <label className="field__label">{t('Due Day')}</label>
             <select
               className="field__input"
               value={form.bill_due_day}
               onChange={(e) => set('bill_due_day', Number(e.target.value))}
             >
-              <option value={0}>No specific day</option>
+              <option value={0}>{t('No specific day')}</option>
               {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                 <option key={d} value={d}>
                   {d}
@@ -314,20 +317,20 @@ export default function WalletFormPage() {
 
         {/* Default expense type */}
         <div className="field">
-          <label className="field__label">Default Expense Type</label>
+          <label className="field__label">{t('Default Expense Type')}</label>
           <select
             className="field__input"
             value={form.default_expense_type_id}
             onChange={(e) => set('default_expense_type_id', e.target.value)}
           >
-            <option value="">None</option>
+            <option value="">{t('None')}</option>
             {expenseTypes.map((et) => (
               <option key={et.id} value={et.id}>
                 {et.icon} {et.name}
               </option>
             ))}
           </select>
-          <p className="field-hint">Automatically used when recording expenses for this wallet</p>
+          <p className="field-hint">{t('Automatically used when recording expenses for this wallet')}</p>
         </div>
 
         {/* Stopped (edit only) */}
@@ -338,7 +341,7 @@ export default function WalletFormPage() {
               checked={form.stopped}
               onChange={(e) => set('stopped', e.target.checked)}
             />
-            <span>Mark as stopped</span>
+            <span>{t('Mark as stopped')}</span>
           </label>
         )}
 
@@ -351,12 +354,12 @@ export default function WalletFormPage() {
             {form.icon || (form.name ? form.name.charAt(0).toUpperCase() : '?')}
           </div>
           <div>
-            <strong>{form.name || 'Wallet Name'}</strong>
+            <strong>{form.name || t('Wallet Name')}</strong>
             <span className="form-preview__sub">
-              {form.is_credit ? 'Credit' : form.is_cash ? 'Cash' : 'Standard'}
+              {form.is_credit ? t('Credit') : form.is_cash ? t('Cash') : t('Standard')}
               {form.bill_period !== 'none' &&
-                ` · ${BILL_PERIOD_OPTIONS.find((o) => o.value === form.bill_period)?.label}`}
-              {form.bill_due_day > 0 && ` · Due day ${form.bill_due_day}`}
+                ` · ${t(BILL_PERIOD_OPTIONS.find((o) => o.value === form.bill_period)?.label ?? form.bill_period)}`}
+              {form.bill_due_day > 0 && ` · ${t('Due day')} ${form.bill_due_day}`}
             </span>
           </div>
         </div>
@@ -368,14 +371,14 @@ export default function WalletFormPage() {
             className="btn btn--primary"
             disabled={loading || !form.name.trim()}
           >
-            {loading ? 'Saving…' : isEdit ? 'Update Wallet' : 'Create Wallet'}
+            {loading ? t('Saving…') : isEdit ? t('Update Wallet') : t('Create Wallet')}
           </button>
           <button
             type="button"
             className="btn btn--ghost"
             onClick={handleClose}
           >
-            Cancel
+            {t('Cancel')}
           </button>
         </div>
       </form>

@@ -1,5 +1,6 @@
 import { DEFAULT_CURRENCY_SYMBOL } from './constants'
 import { getStoredUser } from '../services/api'
+import { getLocaleForLanguage, getStoredLanguage } from '../contexts/I18nContext'
 
 function resolveCurrencySymbol(currencySymbol?: string): string {
 	const candidate = currencySymbol?.trim() || getStoredUser()?.currency_symbol?.trim()
@@ -10,7 +11,8 @@ export function formatCurrency(amount: number, currencySymbol?: string, locale =
 	const symbol = resolveCurrencySymbol(currencySymbol)
 	const roundedAmount = Number.isFinite(amount) ? Math.round(amount) : 0
 	const prefix = roundedAmount < 0 ? '-' : ''
-	const formattedAmount = new Intl.NumberFormat(locale, {
+	const resolvedLocale = locale === 'en-US' ? getLocaleForLanguage(getStoredLanguage()) : locale
+	const formattedAmount = new Intl.NumberFormat(resolvedLocale, {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 0,
 	}).format(Math.abs(roundedAmount))

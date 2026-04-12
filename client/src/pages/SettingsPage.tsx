@@ -7,11 +7,13 @@ import {
   ComputerDesktopIcon,
   ExclamationTriangleIcon,
   KeyIcon,
+  LanguageIcon,
   RocketLaunchIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline'
 
 import { useAuth } from '../contexts/AuthContext'
+import { LANGUAGE_OPTIONS, normalizeLanguage, useI18n, type SupportedLanguage } from '../contexts/I18nContext'
 import { formatCurrency } from '../common/currency'
 import { CURRENCY_SYMBOL_OPTIONS, DEFAULT_CURRENCY_SYMBOL } from '../common/constants'
 import type { AuthContextValue, User } from '../types/auth'
@@ -21,52 +23,13 @@ function normalizeCurrencySymbolInput(value: string): string {
   return trimmed || DEFAULT_CURRENCY_SYMBOL
 }
 
-const SETTINGS_SECTIONS = [
-  {
-    title: 'Account',
-    items: [
-      {
-        name: 'Get Started Setup',
-        description: 'Starter wallets, expense types, currency, and Bark setup',
-        icon: RocketLaunchIcon,
-        href: '/get-started',
-      },
-      {
-        name: 'Change Password',
-        description: 'Update your account password',
-        icon: KeyIcon,
-        href: '/change-password',
-      },
-    ],
-  },
-  {
-    title: 'Notifications',
-    items: [
-      {
-        name: 'Push Notifications',
-        description: 'Daily reminders for due items via Bark',
-        icon: BellAlertIcon,
-        href: '/settings/notifications',
-      },
-    ],
-  },
-  {
-    title: 'Security',
-    items: [
-      {
-        name: 'Devices',
-        description: 'Manage logged-in devices',
-        icon: ComputerDesktopIcon,
-        href: '/settings/devices',
-      },
-    ],
-  },
-]
-
 export default function SettingsPage() {
   const auth: AuthContextValue = useAuth()
+  const { locale, t } = useI18n()
   const user: User | null = auth.user
   const navigate = useNavigate()
+  const rawLanguage: unknown = user ? (user as { language?: unknown }).language : undefined
+  const currentLanguage: SupportedLanguage = normalizeLanguage(typeof rawLanguage === 'string' ? rawLanguage : undefined)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -75,15 +38,64 @@ export default function SettingsPage() {
   const [isSavingCurrency, setIsSavingCurrency] = useState(false)
   const [currencyError, setCurrencyError] = useState<string | null>(null)
   const [currencyMessage, setCurrencyMessage] = useState<string | null>(null)
+  const [language, setLanguage] = useState<SupportedLanguage>(currentLanguage)
+  const [isSavingLanguage, setIsSavingLanguage] = useState(false)
+  const [languageError, setLanguageError] = useState<string | null>(null)
+  const [languageMessage, setLanguageMessage] = useState<string | null>(null)
 
   useEffect(() => {
     const newSymbol: string = user && 'currency_symbol' in user ? user.currency_symbol : DEFAULT_CURRENCY_SYMBOL
+    const nextRawLanguage: unknown = user ? (user as { language?: unknown }).language : undefined
     setCurrencySymbol(newSymbol)
+    setLanguage(normalizeLanguage(typeof nextRawLanguage === 'string' ? nextRawLanguage : undefined))
   }, [user])
 
   const currentCurrencySymbol: string = initialCurrencySymbol
   const normalizedCurrencySymbol: string = normalizeCurrencySymbolInput(currencySymbol)
   const hasCurrencyChanges = normalizedCurrencySymbol !== currentCurrencySymbol
+  const hasLanguageChanges = language !== currentLanguage
+
+  const settingsSections = [
+    {
+      title: t('Account'),
+      items: [
+        {
+          name: t('Get Started Setup'),
+          description: t('Starter wallets, expense types, currency, and Bark setup'),
+          icon: RocketLaunchIcon,
+          href: '/get-started',
+        },
+        {
+          name: t('Change Password'),
+          description: t('Update your account password'),
+          icon: KeyIcon,
+          href: '/change-password',
+        },
+      ],
+    },
+    {
+      title: t('Notifications'),
+      items: [
+        {
+          name: t('Push Notifications'),
+          description: t('Daily reminders for due items via Bark'),
+          icon: BellAlertIcon,
+          href: '/settings/notifications',
+        },
+      ],
+    },
+    {
+      title: t('Security'),
+      items: [
+        {
+          name: t('Devices'),
+          description: t('Manage logged-in devices'),
+          icon: ComputerDesktopIcon,
+          href: '/settings/devices',
+        },
+      ],
+    },
+  ]
 
   async function handleSaveCurrencySymbol(): Promise<void> {
     setIsSavingCurrency(true)
@@ -91,11 +103,25 @@ export default function SettingsPage() {
     setCurrencyMessage(null)
     try {
       await auth.updateCurrencySymbol(normalizedCurrencySymbol)
-      setCurrencyMessage('Currency symbol updated.')
+      setCurrencyMessage(t('Currency symbol updated.'))
     } catch (err) {
-      setCurrencyError(err instanceof Error ? err.message : 'Failed to update currency symbol')
+      setCurrencyError(err instanceof Error ? err.message : t('Failed to update currency symbol'))
     } finally {
       setIsSavingCurrency(false)
+    }
+  }
+
+  async function handleSaveLanguage(): Promise<void> {
+    setIsSavingLanguage(true)
+    setLanguageError(null)
+    setLanguageMessage(null)
+    try {
+      await (auth.updateLanguage as (language: SupportedLanguage) => Promise<void>)(language)
+      setLanguageMessage(t('Language updated.'))
+    } catch (err) {
+      setLanguageError(err instanceof Error ? err.message : t('Failed to update language'))
+    } finally {
+      setIsSavingLanguage(false)
     }
   }
 
@@ -106,7 +132,7 @@ export default function SettingsPage() {
       await auth.deleteAccount()
       navigate('/login', { replace: true })
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Failed to delete account')
+      setDeleteError(err instanceof Error ? err.message : t('Failed to delete account'))
     } finally {
       setIsDeleting(false)
     }
@@ -115,8 +141,8 @@ export default function SettingsPage() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1>Settings</h1>
-        <p>Manage your account and preferences</p>
+        <h1>{t('Settings')}</h1>
+        <p>{t('Manage your account and preferences')}</p>
       </div>
 
       {/* User card */}
@@ -125,30 +151,30 @@ export default function SettingsPage() {
           <UserCircleIcon />
         </div>
         <div>
-          <p className="settings-user-card__name">{user?.name ?? 'User'}</p>
+          <p className="settings-user-card__name">{user?.name ?? t('User')}</p>
           <p className="settings-user-card__email">{user?.email ?? ''}</p>
           {user?.created_at && (
             <p className="settings-user-card__since">
-              Member since {new Date(user.created_at).toLocaleDateString()}
+              {t('Member since')} {new Date(user.created_at).toLocaleDateString(locale)}
             </p>
           )}
         </div>
       </div>
 
       <div className="settings-section">
-        <h2 className="settings-section__title">Display</h2>
+        <h2 className="settings-section__title">{t('Display')}</h2>
         <div className="settings-preference">
           <div className="settings-preference__icon">
             <BanknotesIcon />
           </div>
           <div className="settings-preference__body">
             <div className="settings-preference__copy">
-              <p>Currency symbol</p>
-              <small>Used for labels and amounts throughout the app. It does not change stored values.</small>
+              <p>{t('Currency symbol')}</p>
+              <small>{t('Used for labels and amounts throughout the app. It does not change stored values.')}</small>
             </div>
             <div className="settings-preference__controls">
               <label className="field field--flex1">
-                <span className="field__label">Display symbol</span>
+                <span className="field__label">{t('Display symbol')}</span>
                 <input
                   type="text"
                   className="field__input"
@@ -167,11 +193,11 @@ export default function SettingsPage() {
                 <datalist id="currency-symbol-options">
                   {CURRENCY_SYMBOL_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
-                      {option.label}
+                      {t(option.label)}
                     </option>
                   ))}
                 </datalist>
-                <small className="field-hint">Choose a suggested symbol or type your own, up to 4 characters.</small>
+                <small className="field-hint">{t('Choose a suggested symbol or type your own, up to 4 characters.')}</small>
               </label>
               <button
                 type="button"
@@ -179,11 +205,11 @@ export default function SettingsPage() {
                 onClick={() => void handleSaveCurrencySymbol()}
                 disabled={!hasCurrencyChanges || isSavingCurrency}
               >
-                {isSavingCurrency ? 'Saving…' : 'Save'}
+                {isSavingCurrency ? t('Saving…') : t('Save')}
               </button>
             </div>
             <p className="settings-preference__preview">
-              Preview: {formatCurrency(12345, normalizedCurrencySymbol)}
+              {t('Preview:')} {formatCurrency(12345, normalizedCurrencySymbol)}
             </p>
             {currencyError && <p className="form-error">{currencyError}</p>}
             {currencyMessage && <p className="settings-preference__message">{currencyMessage}</p>}
@@ -191,8 +217,52 @@ export default function SettingsPage() {
         </div>
       </div>
 
+      <div className="settings-section">
+        <h2 className="settings-section__title">{t('Language')}</h2>
+        <div className="settings-preference">
+          <div className="settings-preference__icon">
+            <LanguageIcon />
+          </div>
+          <div className="settings-preference__body">
+            <div className="settings-preference__copy">
+              <p>{t('App language')}</p>
+              <small>{t('Choose the language used across the app interface.')}</small>
+            </div>
+            <div className="settings-preference__controls">
+              <label className="field field--flex1">
+                <span className="field__label">{t('Language')}</span>
+                <select
+                  className="field__input"
+                  value={language}
+                  onChange={(event) => {
+                    setLanguage(event.target.value as SupportedLanguage)
+                    setLanguageError(null)
+                    setLanguageMessage(null)
+                  }}
+                  disabled={isSavingLanguage}
+                >
+                  {LANGUAGE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="primary-button settings-preference__save"
+                onClick={() => void handleSaveLanguage()}
+                disabled={!hasLanguageChanges || isSavingLanguage}
+              >
+                {isSavingLanguage ? t('Saving…') : t('Save')}
+              </button>
+            </div>
+            {languageError && <p className="form-error">{languageError}</p>}
+            {languageMessage && <p className="settings-preference__message">{languageMessage}</p>}
+          </div>
+        </div>
+      </div>
+
       {/* Settings sections */}
-      {SETTINGS_SECTIONS.map((section) => (
+      {settingsSections.map((section) => (
         <div key={section.title} className="settings-section">
           <h2 className="settings-section__title">{section.title}</h2>
           <div className="settings-section__items">
@@ -212,18 +282,18 @@ export default function SettingsPage() {
 
       {/* Danger zone */}
       <div className="settings-section settings-section--danger">
-        <h2 className="settings-section__title">Danger Zone</h2>
+        <h2 className="settings-section__title">{t('Danger Zone')}</h2>
         <div className="settings-danger">
           <div>
-            <p>Delete Account</p>
-            <small>Permanently delete your account and all data</small>
+            <p>{t('Delete Account')}</p>
+            <small>{t('Permanently delete your account and all data')}</small>
           </div>
           <button
             type="button"
             className="danger-button"
             onClick={() => setShowDeleteDialog(true)}
           >
-            Delete Account
+            {t('Delete Account')}
           </button>
         </div>
       </div>
@@ -239,17 +309,17 @@ export default function SettingsPage() {
                   <ExclamationTriangleIcon />
                 </div>
                 <div>
-                  <h3>Delete Account</h3>
-                  <p>This action cannot be undone.</p>
+                  <h3>{t('Delete Account')}</h3>
+                  <p>{t('This action cannot be undone.')}</p>
                 </div>
               </div>
 
               <div className="modal__body">
-                <p>All your data will be permanently removed:</p>
+                <p>{t('All your data will be permanently removed:')}</p>
                 <ul>
-                  <li>Wallets and payment records</li>
-                  <li>Expense types and expenses</li>
-                  <li>Account information and sessions</li>
+                  <li>{t('Wallets and payment records')}</li>
+                  <li>{t('Expense types and expenses')}</li>
+                  <li>{t('Account information and sessions')}</li>
                 </ul>
               </div>
 
@@ -262,7 +332,7 @@ export default function SettingsPage() {
                   onClick={() => setShowDeleteDialog(false)}
                   disabled={isDeleting}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button
                   type="button"
@@ -270,7 +340,7 @@ export default function SettingsPage() {
                   onClick={() => void handleDeleteAccount()}
                   disabled={isDeleting}
                 >
-                  {isDeleting ? 'Deleting…' : 'Delete My Account'}
+                  {isDeleting ? t('Deleting…') : t('Delete My Account')}
                 </button>
               </div>
             </div>

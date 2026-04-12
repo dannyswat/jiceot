@@ -3,10 +3,12 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../contexts/I18nContext'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
   const { register, isLoading } = useAuth()
+  const { t } = useI18n()
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,12 +21,12 @@ export default function RegisterPage() {
     setError(null)
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match')
+      setError(t('Passwords do not match'))
       return
     }
 
     if (password.length < 6) {
-      setError('Password must be at least 6 characters')
+      setError(t('Password must be at least 6 characters'))
       return
     }
 
@@ -32,7 +34,7 @@ export default function RegisterPage() {
       await register(name, email, password)
       navigate('/get-started', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed')
+      setError(err instanceof Error ? err.message : t('Registration failed'))
     }
   }
 
@@ -41,14 +43,14 @@ export default function RegisterPage() {
       <div className="auth-card">
         <div className="auth-card__header">
           <img src="/jiceot.svg" alt="Jiceot" className="auth-card__logo" />
-          <p>Create your account</p>
+          <p>{t('Create your account')}</p>
         </div>
 
         <form className="auth-form" onSubmit={(e) => void handleSubmit(e)}>
           {error && <p className="form-error">{error}</p>}
 
           <label>
-            <span>Name</span>
+            <span>{t('Name')}</span>
             <input
               type="text"
               value={name}
@@ -60,7 +62,7 @@ export default function RegisterPage() {
           </label>
 
           <label>
-            <span>Email</span>
+            <span>{t('Email')}</span>
             <input
               type="email"
               value={email}
@@ -72,7 +74,7 @@ export default function RegisterPage() {
           </label>
 
           <label>
-            <span>Password</span>
+            <span>{t('Password')}</span>
             <div className="input-with-toggle">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -91,11 +93,11 @@ export default function RegisterPage() {
                 {showPassword ? <EyeSlashIcon /> : <EyeIcon />}
               </button>
             </div>
-            <small className="field-hint">At least 6 characters</small>
+            <small className="field-hint">{t('At least 6 characters')}</small>
           </label>
 
           <label>
-            <span>Confirm password</span>
+            <span>{t('Confirm password')}</span>
             <input
               type="password"
               value={confirmPassword}
@@ -107,13 +109,13 @@ export default function RegisterPage() {
           </label>
 
           <button className="primary-button" type="submit" disabled={isLoading}>
-            {isLoading ? 'Creating account…' : 'Create account'}
+            {isLoading ? t('Creating account…') : t('Create account')}
           </button>
         </form>
 
         <p className="auth-switch">
-          Already registered?{' '}
-          <NavLink to="/login">Sign in</NavLink>
+          {t('Already registered?')}{' '}
+          <NavLink to="/login">{t('Sign in')}</NavLink>
         </p>
       </div>
     </main>

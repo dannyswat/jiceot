@@ -12,6 +12,7 @@ type User struct {
 	PasswordHash   string         `json:"-" gorm:"not null"`
 	Name           string         `json:"name" gorm:"not null"`
 	CurrencySymbol string         `json:"currency_symbol" gorm:"type:varchar(8);not null;default:'$'"`
+	Language       string         `json:"language" gorm:"type:varchar(16);not null;default:'en'"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index"`

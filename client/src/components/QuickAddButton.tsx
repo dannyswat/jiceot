@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
+import { useI18n } from '../contexts/I18nContext'
 import { walletAPI, expenseTypeAPI } from '../services/api'
 import type { Wallet } from '../types/wallet'
 import type { ExpenseType } from '../types/expense'
 
 export default function QuickAddButton() {
+  const { t } = useI18n()
   const location = useLocation()
   const navigate = useNavigate()
   const [isOpen, setIsOpen] = useState(false)
@@ -62,7 +64,7 @@ export default function QuickAddButton() {
         type="button"
         className="quick-add-fab"
         onClick={() => setIsOpen(true)}
-        aria-label="Quick Add"
+        aria-label={t('Quick Add')}
       >
         <PlusIcon />
       </button>
@@ -73,7 +75,7 @@ export default function QuickAddButton() {
           <div className="modal-wrap">
             <div className="modal quick-add__modal">
               <div className="modal__header">
-                <h3>Quick Add</h3>
+                <h3>{t('Quick Add')}</h3>
                 <button type="button" onClick={() => setIsOpen(false)}>
                   <XMarkIcon />
                 </button>
@@ -86,14 +88,14 @@ export default function QuickAddButton() {
                   className={tab === 'expenses' ? 'active' : ''}
                   onClick={() => setTab('expenses')}
                 >
-                  Expenses
+                  {t('Expenses')}
                 </button>
                 <button
                   type="button"
                   className={tab === 'wallets' ? 'active' : ''}
                   onClick={() => setTab('wallets')}
                 >
-                  Payment
+                  {t('Payment')}
                 </button>
               </div>
 
@@ -105,13 +107,13 @@ export default function QuickAddButton() {
                 ) : tab === 'expenses' ? (
                   expenseTypes.length === 0 ? (
                     <div className="quick-add__empty">
-                      <p>No expense types yet.</p>
+                      <p>{t('No expense types yet.')}</p>
                       <button
                         type="button"
                         className="link-button"
                         onClick={() => { navigate('/expense-types/new'); setIsOpen(false) }}
                       >
-                        Create one
+                        {t('Create one')}
                       </button>
                     </div>
                   ) : (
@@ -136,13 +138,13 @@ export default function QuickAddButton() {
                   )
                 ) : wallets.length === 0 ? (
                   <div className="quick-add__empty">
-                    <p>No wallets yet.</p>
+                    <p>{t('No wallets yet.')}</p>
                     <button
                       type="button"
                       className="link-button"
                       onClick={() => { navigate('/wallets/new'); setIsOpen(false) }}
                     >
-                      Create one
+                      {t('Create one')}
                     </button>
                   </div>
                 ) : (
@@ -161,8 +163,8 @@ export default function QuickAddButton() {
                           {w.icon || '💳'}
                         </span>
                         <span className="quick-add__label">{w.name}</span>
-                        {w.is_credit && <span className="quick-add__badge">Credit</span>}
-                        {w.is_cash && <span className="quick-add__badge">Cash</span>}
+                        {w.is_credit && <span className="quick-add__badge">{t('Credit')}</span>}
+                        {w.is_cash && <span className="quick-add__badge">{t('Cash')}</span>}
                       </button>
                     ))}
                   </div>

@@ -12,6 +12,7 @@ import {
 import { CURRENCY_SYMBOL_OPTIONS, DEFAULT_CURRENCY_SYMBOL } from '../common/constants'
 import { formatCurrency } from '../common/currency'
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../contexts/I18nContext'
 import { expenseTypeAPI, notificationAPI, walletAPI } from '../services/api'
 import type { ReminderType } from '../types/expense'
 import type { NotificationSetting } from '../types/notification'
@@ -168,6 +169,7 @@ function clampDueDays(value: number): number {
 export default function GetStartedPage() {
   const navigate = useNavigate()
   const auth = useAuth()
+  const { t } = useI18n()
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [existingExpenseTypeNames, setExistingExpenseTypeNames] = useState<string[]>([])
   const [currencySymbol, setCurrencySymbol] = useState(auth.user?.currency_symbol || DEFAULT_CURRENCY_SYMBOL)
@@ -237,7 +239,7 @@ export default function GetStartedPage() {
     if (notificationResult.status === 'fulfilled') {
       applyNotificationSetting(notificationResult.value)
     } else {
-      setNotificationLoadWarning('Notification defaults are shown because your saved settings could not be loaded.')
+      setNotificationLoadWarning(t('Notification defaults are shown because your saved settings could not be loaded.'))
     }
 
     setLoading(false)
@@ -267,7 +269,7 @@ export default function GetStartedPage() {
     setError(null)
 
     if (enabled && !barkUrl.trim()) {
-      setError('Bark URL is required when notifications are enabled.')
+      setError(t('Bark URL is required when notifications are enabled.'))
       return
     }
 
@@ -321,7 +323,7 @@ export default function GetStartedPage() {
 
       navigate('/dashboard', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to finish setup')
+      setError(err instanceof Error ? err.message : t('Failed to finish setup'))
     } finally {
       setSaving(false)
     }
@@ -332,7 +334,7 @@ export default function GetStartedPage() {
       <div className="page page--setup-loading">
         <div className="page__loading">
           <div className="loading-orb" />
-          <p>Preparing your starter setup...</p>
+          <p>{t('Preparing your starter setup...')}</p>
         </div>
       </div>
     )
@@ -342,23 +344,23 @@ export default function GetStartedPage() {
     <div className="page page--setup">
       <section className="setup-hero">
         <div className="setup-hero__copy">
-          <p className="eyebrow">Get Started</p>
-          <h1>Set up the parts most people need in the first five minutes.</h1>
+          <p className="eyebrow">{t('Get Started')}</p>
+          <h1>{t('Set up the parts most people need in the first five minutes.')}</h1>
           <p>
-            Pick starter wallets and expense types, set your display currency, and decide whether Jiceot should remind you through Bark.
+            {t('Pick starter wallets and expense types, set your display currency, and decide whether Jiceot should remind you through Bark.')}
           </p>
           <div className="setup-hero__stats">
             <div>
               <strong>{selectedWalletKeys.length}</strong>
-              <span>wallet presets selected</span>
+              <span>{t('wallet presets selected')}</span>
             </div>
             <div>
               <strong>{selectedExpenseTypeKeys.length}</strong>
-              <span>expense types selected</span>
+              <span>{t('expense types selected')}</span>
             </div>
             <div>
               <strong>{enabled ? 'On' : 'Off'}</strong>
-              <span>push reminder status</span>
+              <span>{t('push reminder status')}</span>
             </div>
           </div>
         </div>
@@ -367,31 +369,31 @@ export default function GetStartedPage() {
             <div className="setup-checklist__item">
               <CheckCircleIcon />
               <div>
-                <strong>Use the presets as-is</strong>
-                <span>You can edit or delete everything later from Wallets and Expense Types.</span>
+                <strong>{t('Use the presets as-is')}</strong>
+                <span>{t('You can edit or delete everything later from Wallets and Expense Types.')}</span>
               </div>
             </div>
             <div className="setup-checklist__item">
               <CheckCircleIcon />
               <div>
-                <strong>No duplicate presets</strong>
-                <span>Anything already in your account is marked and skipped automatically.</span>
+                <strong>{t('No duplicate presets')}</strong>
+                <span>{t('Anything already in your account is marked and skipped automatically.')}</span>
               </div>
             </div>
             <div className="setup-checklist__item">
               <CheckCircleIcon />
               <div>
-                <strong>Skip is always safe</strong>
-                <span>You can come back later from Settings whenever you want.</span>
+                <strong>{t('Skip is always safe')}</strong>
+                <span>{t('You can come back later from Settings whenever you want.')}</span>
               </div>
             </div>
           </div>
           <div className="setup-hero__actions">
             <button type="button" className="ghost-button" onClick={() => navigate('/dashboard', { replace: true })}>
-              Skip for now
+              {t('Skip for now')}
             </button>
             <button type="button" className="primary-button" onClick={() => void handleSubmit()} disabled={saving}>
-              {saving ? 'Finishing setup...' : 'Finish setup'}
+              {saving ? t('Finishing setup...') : t('Finish setup')}
             </button>
           </div>
         </div>
@@ -404,14 +406,14 @@ export default function GetStartedPage() {
         <div className="setup-section__header">
           <div className="setup-section__icon"><BanknotesIcon /></div>
           <div>
-            <h2>Currency</h2>
-            <p>Pick the symbol Jiceot should use across balances, reports, and forms.</p>
+            <h2>{t('Currency')}</h2>
+            <p>{t('Pick the symbol Jiceot should use across balances, reports, and forms.')}</p>
           </div>
         </div>
 
         <div className="setup-currency-card">
           <label className="field field--flex1">
-            <span className="field__label">Display symbol</span>
+            <span className="field__label">{t('Display symbol')}</span>
             <input
               type="text"
               className="field__input"
@@ -424,12 +426,12 @@ export default function GetStartedPage() {
             />
             <datalist id="setup-currency-symbol-options">
               {CURRENCY_SYMBOL_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
+                <option key={option.value} value={option.value}>{t(option.label)}</option>
               ))}
             </datalist>
           </label>
           <div className="setup-currency-preview">
-            <span>Preview</span>
+            <span>{t('Preview')}</span>
             <strong>{formatCurrency(12345, currencySymbol.trim() || DEFAULT_CURRENCY_SYMBOL)}</strong>
           </div>
         </div>
@@ -439,8 +441,8 @@ export default function GetStartedPage() {
         <div className="setup-section__header">
           <div className="setup-section__icon"><CreditCardIcon /></div>
           <div>
-            <h2>Starter Wallets</h2>
-            <p>Select the wallet types you want ready on day one.</p>
+            <h2>{t('Starter Wallets')}</h2>
+            <p>{t('Select the wallet types you want ready on day one.')}</p>
           </div>
         </div>
         <div className="setup-card-grid">
@@ -460,7 +462,7 @@ export default function GetStartedPage() {
                   <span className="setup-preset-card__emoji" style={{ background: preset.color }}>{preset.icon}</span>
                 </div>
                 <strong>{preset.name}</strong>
-                {exists && <small className="setup-preset-card__meta">Already added</small>}
+                {exists && <small className="setup-preset-card__meta">{t('Already added')}</small>}
               </button>
             )
           })}
@@ -471,14 +473,14 @@ export default function GetStartedPage() {
         <div className="setup-section__header">
           <div className="setup-section__icon"><RectangleGroupIcon /></div>
           <div>
-            <h2>Starter Expense Types</h2>
-            <p>Comprehensive starters across different roles and life situations.</p>
+            <h2>{t('Starter Expense Types')}</h2>
+            <p>{t('Comprehensive starters across different roles and life situations.')}</p>
           </div>
         </div>
         <div className="setup-role-groups">
           {EXPENSE_TYPE_GROUPS.map((group) => (
             <div key={group.key} className="setup-role-group">
-              <h3>{group.title}</h3>
+              <h3>{t(group.title)}</h3>
               <div className="setup-card-grid setup-card-grid--compact">
                 {group.items.map((preset) => {
                   const exists = existingExpenseTypeNameSet.has(normalizeName(preset.name))
@@ -497,9 +499,9 @@ export default function GetStartedPage() {
                       </div>
                       <strong>{preset.name}</strong>
                       {preset.recurring_type === 'fixed_day' && (
-                        <small className="setup-preset-card__meta">Monthly reminder on day {preset.recurring_due_day}</small>
+                        <small className="setup-preset-card__meta">{t('Monthly reminder on day {day}', { day: preset.recurring_due_day ?? '' })}</small>
                       )}
-                      {exists && <small className="setup-preset-card__meta">Already added</small>}
+                      {exists && <small className="setup-preset-card__meta">{t('Already added')}</small>}
                     </button>
                   )
                 })}
@@ -513,8 +515,8 @@ export default function GetStartedPage() {
         <div className="setup-section__header">
           <div className="setup-section__icon"><BellAlertIcon /></div>
           <div>
-            <h2>Notifications</h2>
-            <p>Enable Bark if you want a daily push reminder whenever something is due soon.</p>
+            <h2>{t('Notifications')}</h2>
+            <p>{t('Enable Bark if you want a daily push reminder whenever something is due soon.')}</p>
           </div>
         </div>
 
@@ -527,14 +529,14 @@ export default function GetStartedPage() {
           >
             <img src="https://bark.day.app/_media/Icon.png" alt="Bark" className="setup-bark-link__icon" />
             <div className="setup-bark-link__copy">
-              <strong>Open Bark</strong>
-              <span>Install Bark, copy your personal push URL, then paste it below.</span>
+              <strong>{t('Open Bark')}</strong>
+              <span>{t('Install Bark, copy your personal push URL, then paste it below.')}</span>
             </div>
             <ArrowTopRightOnSquareIcon />
           </a>
 
           <div className="field setup-toggle-row">
-            <label className="field__label" htmlFor="setup-notifications-enabled">Enable notifications</label>
+            <label className="field__label" htmlFor="setup-notifications-enabled">{t('Enable notifications')}</label>
             <input
               id="setup-notifications-enabled"
               type="checkbox"
@@ -544,7 +546,7 @@ export default function GetStartedPage() {
           </div>
 
           <div className="field">
-            <label className="field__label">Bark URL</label>
+            <label className="field__label">{t('Bark URL')}</label>
             <input
               type="url"
               className="field__input"
@@ -553,12 +555,12 @@ export default function GetStartedPage() {
               onChange={(event) => setBarkUrl(event.target.value)}
               disabled={!enabled}
             />
-            <small className="field-hint">Paste the Bark URL from the app after opening the link above.</small>
+            <small className="field-hint">{t('Paste the Bark URL from the app after opening the link above.')}</small>
           </div>
 
           <div className="field-row">
             <div className="field field--flex1">
-              <label className="field__label">Daily reminder time</label>
+              <label className="field__label">{t('Daily reminder time')}</label>
               <select
                 className="field__input"
                 value={reminderTime}
@@ -571,7 +573,7 @@ export default function GetStartedPage() {
               </select>
             </div>
             <div className="field field--flex1">
-              <label className="field__label">Notify days ahead</label>
+              <label className="field__label">{t('Notify days ahead')}</label>
               <input
                 type="number"
                 className="field__input"
@@ -585,7 +587,7 @@ export default function GetStartedPage() {
           </div>
 
           <div className="field">
-            <label className="field__label">Timezone</label>
+            <label className="field__label">{t('Timezone')}</label>
             <select
               className="field__input"
               value={timezone}

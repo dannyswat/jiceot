@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
+import { useI18n } from '../contexts/I18nContext'
 import { notificationAPI } from '../services/api'
 import type { NotificationSetting } from '../types/notification'
 
@@ -17,6 +18,7 @@ const REMINDER_HOURS = Array.from({ length: 24 }, (_, i) => ({
 
 export default function NotificationSettingsPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [setting, setSetting] = useState<NotificationSetting | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -30,11 +32,7 @@ export default function NotificationSettingsPage() {
   const [timezone, setTimezone] = useState(BROWSER_TZ)
   const [dueDaysAhead, setDueDaysAhead] = useState(3)
 
-  useEffect(() => {
-    void loadSettings()
-  }, [])
-
-  async function loadSettings(): Promise<void> {
+  const loadSettings = useCallback(async (): Promise<void> => {
     try {
       const data = await notificationAPI.getSettings()
       setSetting(data)
@@ -45,11 +43,15 @@ export default function NotificationSettingsPage() {
       setTimezone(data.timezone || BROWSER_TZ)
       setDueDaysAhead(data.due_days_ahead || 3)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load settings')
+      setError(err instanceof Error ? err.message : t('Failed to load settings'))
     } finally {
       setLoading(false)
     }
-  }
+  }, [t])
+
+  useEffect(() => {
+    void loadSettings()
+  }, [loadSettings])
 
   async function handleSave(): Promise<void> {
     setSaving(true)
@@ -64,9 +66,9 @@ export default function NotificationSettingsPage() {
         due_days_ahead: dueDaysAhead,
       })
       setSetting(updated)
-      setSuccess('Settings saved successfully')
+      setSuccess(t('Settings saved successfully'))
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save settings')
+      setError(err instanceof Error ? err.message : t('Failed to save settings'))
     } finally {
       setSaving(false)
     }
@@ -80,7 +82,7 @@ export default function NotificationSettingsPage() {
       const result = await notificationAPI.test()
       setSuccess(result.message)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to send test notification')
+      setError(err instanceof Error ? err.message : t('Failed to send test notification'))
     } finally {
       setTesting(false)
     }
@@ -94,10 +96,10 @@ export default function NotificationSettingsPage() {
             <ArrowLeftIcon />
           </button>
           <div>
-            <h1>Notification Settings</h1>
+            <h1>{t('Notification Settings')}</h1>
           </div>
         </div>
-        <div className="page__loading"><p>Loading…</p></div>
+        <div className="page__loading"><p>{t('Loading…')}</p></div>
       </div>
     )
   }
@@ -109,8 +111,8 @@ export default function NotificationSettingsPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>Notification Settings</h1>
-          <p>Configure daily push notifications for due items via Bark</p>
+          <h1>{t('Notification Settings')}</h1>
+          <p>{t('Configure daily push notifications for due items via Bark')}</p>
         </div>
       </div>
 
@@ -120,7 +122,7 @@ export default function NotificationSettingsPage() {
 
         {/* Enable toggle */}
         <div className="field" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <label className="field__label" style={{ margin: 0 }}>Enable Notifications</label>
+          <label className="field__label" style={{ margin: 0 }}>{t('Enable Notifications')}</label>
           <input
             type="checkbox"
             checked={enabled}
@@ -131,7 +133,7 @@ export default function NotificationSettingsPage() {
 
         {/* Bark URL */}
         <div className="field">
-          <label className="field__label">Bark URL</label>
+          <label className="field__label">{t('Bark URL')}</label>
           <input
             type="url"
             className="field__input"
@@ -141,17 +143,17 @@ export default function NotificationSettingsPage() {
             disabled={!enabled}
           />
           <small>
-            Your Bark push URL — get it from the{' '}
+            {t('Your Bark push URL — get it from the')}{' '}
             <a href="https://bark.day.app" target="_blank" rel="noopener noreferrer">
               Bark app
             </a>
-            .
+            {'.'}
           </small>
         </div>
 
         {/* Reminder time */}
         <div className="field">
-          <label className="field__label">Daily Reminder Time</label>
+          <label className="field__label">{t('Daily Reminder Time')}</label>
           <select
             className="field__input"
             value={reminderTime}
@@ -162,14 +164,14 @@ export default function NotificationSettingsPage() {
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
-          <small>A notification is sent at this time whenever there are due items.</small>
+          <small>{t('A notification is sent at this time whenever there are due items.')}</small>
         </div>
 
         {/* Timezone */}
         <div className="field">
           <label className="field__label">
-            Timezone{' '}
-            <small style={{ fontWeight: 400, opacity: 0.6 }}>(auto-detected from browser)</small>
+            {t('Timezone')}{' '}
+            <small style={{ fontWeight: 400, opacity: 0.6 }}>{t('(auto-detected from browser)')}</small>
           </label>
           <select
             className="field__input"
@@ -190,7 +192,7 @@ export default function NotificationSettingsPage() {
 
         {/* Due days ahead */}
         <div className="field">
-          <label className="field__label">Notify Days Ahead</label>
+          <label className="field__label">{t('Notify Days Ahead')}</label>
           <input
             type="number"
             className="field__input"
@@ -200,7 +202,7 @@ export default function NotificationSettingsPage() {
             onChange={(e) => setDueDaysAhead(Math.max(1, Math.min(30, Number(e.target.value))))}
             disabled={!enabled}
           />
-          <small>Get notified about items due within this many days (1–30). Expense types set to In advance use this window, while On day items wait until the due date or overdue state. Default: 3.</small>
+          <small>{t('Get notified about items due within this many days (1–30). Expense types set to In advance use this window, while On day items wait until the due date or overdue state. Default: 3.')}</small>
         </div>
 
         {/* Actions */}
@@ -211,7 +213,7 @@ export default function NotificationSettingsPage() {
             onClick={() => void handleSave()}
             disabled={saving}
           >
-            {saving ? 'Saving…' : 'Save Settings'}
+            {saving ? t('Saving…') : t('Save Settings')}
           </button>
           <button
             type="button"
@@ -219,12 +221,12 @@ export default function NotificationSettingsPage() {
             onClick={() => void handleTest()}
             disabled={testing || !barkUrl}
           >
-            {testing ? 'Sending…' : 'Send Test'}
+            {testing ? t('Sending…') : t('Send Test')}
           </button>
         </div>
 
         {setting?.last_notified_at && (
-          <small>Last notification sent: {new Date(setting.last_notified_at).toLocaleString()}</small>
+          <small>{t('Last notification sent:')} {new Date(setting.last_notified_at).toLocaleString()}</small>
         )}
       </div>
     </div>

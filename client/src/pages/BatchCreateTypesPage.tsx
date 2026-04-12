@@ -5,6 +5,7 @@ import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 import AmountInput from '../components/AmountInput'
 import { walletAPI, expenseTypeAPI } from '../services/api'
 import { PRESET_COLORS, BILL_PERIOD_OPTIONS, REMINDER_TYPE_OPTIONS } from '../common/constants'
+import { useI18n } from '../contexts/I18nContext'
 import type { RecurringType, RecurringPeriod, ReminderType } from '../types/expense'
 
 function defaultReminderTypeForRecurring(recurringType: RecurringType, recurringPeriod: RecurringPeriod): ReminderType {
@@ -65,6 +66,7 @@ function newExpenseTypeRow(): ExpenseTypeRow {
 
 export default function BatchCreateTypesPage() {
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [walletRows, setWalletRows] = useState<WalletRow[]>([newWalletRow()])
   const [expenseTypeRows, setExpenseTypeRows] = useState<ExpenseTypeRow[]>([newExpenseTypeRow()])
   const [saving, setSaving] = useState(false)
@@ -173,7 +175,11 @@ export default function BatchCreateTypesPage() {
       setResult({ wallets: walletsCreated, types: typesCreated })
     } catch (err) {
       setError(
-        `Created ${walletsCreated} wallet(s) and ${typesCreated} type(s) before error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        t('Created {wallets} wallet(s) and {types} type(s) before error: {error}', {
+          wallets: walletsCreated,
+          types: typesCreated,
+          error: err instanceof Error ? err.message : t('Unknown error'),
+        }),
       )
     } finally {
       setSaving(false)
@@ -187,16 +193,18 @@ export default function BatchCreateTypesPage() {
           <ArrowLeftIcon />
         </button>
         <div>
-          <h1>Batch Create</h1>
-          <p>Quickly set up multiple wallets and expense types</p>
+          <h1>{t('Batch Create')}</h1>
+          <p>{t('Quickly set up multiple wallets and expense types')}</p>
         </div>
       </div>
 
       {error && <div className="alert alert--error">{error}</div>}
       {result && (
         <div className="alert alert--success">
-          Created {result.wallets} wallet{result.wallets !== 1 ? 's' : ''} and{' '}
-          {result.types} expense type{result.types !== 1 ? 's' : ''} successfully!
+          {t('Created {wallets} wallets and {types} expense types successfully!', {
+            wallets: result.wallets,
+            types: result.types,
+          })}
         </div>
       )}
 
@@ -204,25 +212,25 @@ export default function BatchCreateTypesPage() {
         {/* Wallets section */}
         <div className="batch-section">
           <div className="batch-section__header">
-            <h2>Wallets</h2>
+            <h2>{t('Wallets')}</h2>
             <button
               type="button"
               className="btn btn--ghost btn--sm"
               onClick={() => setWalletRows((r) => [...r, newWalletRow()])}
             >
-              <PlusIcon /> Add Row
+              <PlusIcon /> {t('Add Row')}
             </button>
           </div>
 
           <div className="batch-table">
             <div className="batch-table__head">
-              <span>Name</span>
-              <span>Icon</span>
-              <span>Color</span>
-              <span>Credit</span>
-              <span>Cash</span>
-              <span>Period</span>
-              <span>Due Day</span>
+              <span>{t('Name')}</span>
+              <span>{t('Icon')}</span>
+              <span>{t('Color')}</span>
+              <span>{t('Credit')}</span>
+              <span>{t('Cash')}</span>
+              <span>{t('Period')}</span>
+              <span>{t('Due Day')}</span>
               <span></span>
             </div>
             {walletRows.map((row, idx) => (
@@ -231,7 +239,7 @@ export default function BatchCreateTypesPage() {
                   className="field__input field__input--compact"
                   value={row.name}
                   onChange={(e) => updateWallet(idx, 'name', e.target.value)}
-                  placeholder="Wallet name"
+                  placeholder={t('Wallet name')}
                 />
                 <input
                   className="field__input field__input--compact field__input--icon"
@@ -269,7 +277,7 @@ export default function BatchCreateTypesPage() {
                   onChange={(e) => updateWallet(idx, 'bill_period', e.target.value)}
                 >
                   {BILL_PERIOD_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>{t(o.label)}</option>
                   ))}
                 </select>
                 <select
@@ -298,25 +306,25 @@ export default function BatchCreateTypesPage() {
         {/* Expense types section */}
         <div className="batch-section">
           <div className="batch-section__header">
-            <h2>Expense Types</h2>
+            <h2>{t('Expense Types')}</h2>
             <button
               type="button"
               className="btn btn--ghost btn--sm"
               onClick={() => setExpenseTypeRows((r) => [...r, newExpenseTypeRow()])}
             >
-              <PlusIcon /> Add Row
+              <PlusIcon /> {t('Add Row')}
             </button>
           </div>
 
           <div className="batch-table">
             <div className="batch-table__head">
-              <span>Name</span>
-              <span>Icon</span>
-              <span>Color</span>
-              <span>Recurring</span>
-              <span>Period</span>
-              <span>Reminder</span>
-              <span>Amount</span>
+              <span>{t('Name')}</span>
+              <span>{t('Icon')}</span>
+              <span>{t('Color')}</span>
+              <span>{t('Recurring')}</span>
+              <span>{t('Period')}</span>
+              <span>{t('Reminder')}</span>
+              <span>{t('Amount')}</span>
               <span></span>
             </div>
             {expenseTypeRows.map((row, idx) => (
@@ -325,7 +333,7 @@ export default function BatchCreateTypesPage() {
                   className="field__input field__input--compact"
                   value={row.name}
                   onChange={(e) => updateExpenseType(idx, 'name', e.target.value)}
-                  placeholder="Type name"
+                  placeholder={t('Type name')}
                 />
                 <input
                   className="field__input field__input--compact field__input--icon"
@@ -346,9 +354,9 @@ export default function BatchCreateTypesPage() {
                   value={row.recurring_type}
                   onChange={(e) => updateExpenseType(idx, 'recurring_type', e.target.value as RecurringType)}
                 >
-                  <option value="none">None</option>
-                  <option value="fixed_day">Fixed day</option>
-                  <option value="flexible">Flexible</option>
+                  <option value="none">{t('None')}</option>
+                  <option value="fixed_day">{t('Fixed day')}</option>
+                  <option value="flexible">{t('Flexible')}</option>
                 </select>
                 <select
                   className="field__input field__input--compact"
@@ -357,12 +365,12 @@ export default function BatchCreateTypesPage() {
                   disabled={row.recurring_type === 'none'}
                 >
                   <option value="none">—</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Biweekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="bimonthly">Bimonthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="annually">Annually</option>
+                  <option value="weekly">{t('Weekly')}</option>
+                  <option value="biweekly">{t('Biweekly')}</option>
+                  <option value="monthly">{t('Monthly')}</option>
+                  <option value="bimonthly">{t('Bimonthly')}</option>
+                  <option value="quarterly">{t('Quarterly')}</option>
+                  <option value="annually">{t('Annually')}</option>
                 </select>
                 <select
                   className="field__input field__input--compact"
@@ -371,7 +379,7 @@ export default function BatchCreateTypesPage() {
                   disabled={row.recurring_type === 'none'}
                 >
                   {REMINDER_TYPE_OPTIONS.filter((option) => option.value !== 'none').map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
+                    <option key={option.value} value={option.value}>{t(option.label)}</option>
                   ))}
                 </select>
                 <AmountInput

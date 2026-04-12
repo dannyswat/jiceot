@@ -11,10 +11,11 @@ import {
 import { paymentAPI, walletAPI } from '../services/api'
 import { formatCurrency } from '../common/currency'
 import { formatDate, startOfMonth, endOfMonth } from '../common/date'
+import { useI18n } from '../contexts/I18nContext'
 import type { Payment } from '../types/payment'
 import type { Wallet } from '../types/wallet'
 
-function formatLinkedExpenseSummary(payment: Payment): string | null {
+function formatLinkedExpenseSummary(payment: Payment, t: (key: string, params?: Record<string, string | number>) => string): string | null {
   if (!payment.wallet || payment.wallet.is_cash || payment.wallet.is_credit) {
     return null
   }
@@ -24,13 +25,13 @@ function formatLinkedExpenseSummary(payment: Payment): string | null {
   }
 
   const visibleSummaries = payment.expenses.slice(0, 2).map((expense) => {
-    const label = expense.expense_type?.name ?? 'Expense'
+    const label = expense.expense_type?.name ?? t('Expense')
     const icon = expense.expense_type?.icon ? `${expense.expense_type.icon} ` : ''
     return `${icon}${label} ${formatCurrency(expense.amount)}`
   })
 
   if (payment.expenses.length > 2) {
-    visibleSummaries.push(`+${payment.expenses.length - 2} more`)
+    visibleSummaries.push(t('+{count} more', { count: payment.expenses.length - 2 }))
   }
 
   return visibleSummaries.join(' · ')
@@ -40,6 +41,7 @@ const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
 
 export default function PaymentsPage() {
+  const { locale, t } = useI18n()
   const [payments, setPayments] = useState<Payment[]>([])
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,8 +55,8 @@ export default function PaymentsPage() {
     walletAPI
       .list({ includeStopped: true })
       .then((r) => setWallets(r.wallets))
-      .catch((err) => { setError(err instanceof Error ? err.message : 'Failed to load wallets') })
-  }, [])
+      .catch((err) => { setError(err instanceof Error ? err.message : t('Failed to load wallets')) })
+  }, [t])
 
   const loadPayments = useCallback(async () => {
     setLoading(true)
@@ -69,23 +71,23 @@ export default function PaymentsPage() {
       })
       setPayments(res.payments)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load payments')
+      setError(err instanceof Error ? err.message : t('Failed to load payments'))
     } finally {
       setLoading(false)
     }
-  }, [filterWallet, filterYear, filterMonth])
+  }, [filterMonth, filterWallet, filterYear, t])
 
   useEffect(() => {
     void loadPayments()
   }, [loadPayments])
 
   async function handleDelete(p: Payment): Promise<void> {
-    if (!window.confirm(`Delete this payment of ${formatCurrency(p.amount)}?`)) return
+    if (!window.confirm(t('Delete this payment of {amount}?', { amount: formatCurrency(p.amount) }))) return
     try {
       await paymentAPI.delete(p.id)
       await loadPayments()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete payment')
+      setError(err instanceof Error ? err.message : t('Failed to delete payment'))
     }
   }
 
@@ -94,14 +96,14 @@ export default function PaymentsPage() {
   const years = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i)
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
-    label: new Date(2000, i).toLocaleString('default', { month: 'short' }),
+    label: new Date(2000, i).toLocaleString(locale, { month: 'short' }),
   }))
 
   return (
     <div className="page">
       <div className="page__header">
-        <h1>Payments</h1>
-        <p>Ledger of wallet-linked outgoing payments</p>
+        <h1>{t('Payments')}</h1>
+        <p>{t('Ledger of wallet-linked outgoing payments')}</p>
       </div>
 
       {/* Toolbar */}
@@ -115,7 +117,7 @@ export default function PaymentsPage() {
               setFilterWallet(e.target.value ? Number(e.target.value) : '')
             }
           >
-            <option value="">All Wallets</option>
+            <option value="">{t('All Wallets')}</option>
             {wallets.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.icon} {w.name}
@@ -147,7 +149,7 @@ export default function PaymentsPage() {
         </div>
         <Link to="/payments/new" state={{ returnTo: '/payments' }} className="btn btn--primary">
           <PlusIcon />
-          <span>New Payment</span>
+          <span>{t('New Payment')}</span>
         </Link>
       </div>
 
@@ -155,9 +157,7 @@ export default function PaymentsPage() {
 
       {/* Summary */}
       <div className="summary-bar">
-        <span>
-          {payments.length} payment{payments.length !== 1 ? 's' : ''}
-        </span>
+        <span>{t('{count} payments', { count: payments.length })}</span>
         <strong>{formatCurrency(total)}</strong>
       </div>
 
@@ -170,10 +170,10 @@ export default function PaymentsPage() {
       {!loading && payments.length === 0 && (
         <div className="empty-state">
           <BanknotesIcon />
-          <p>No payments found for this period</p>
+          <p>{t('No payments found for this period')}</p>
           <Link to="/payments/new" state={{ returnTo: '/payments' }} className="btn btn--primary">
             <PlusIcon />
-            <span>Record a payment</span>
+            <span>{t('Record a payment')}</span>
           </Link>
         </div>
       )}
@@ -182,7 +182,7 @@ export default function PaymentsPage() {
         <div className="entity-list">
           {payments.map((p) => {
             const secondaryParts = [formatDate(p.date)]
-            const linkedExpenseSummary = formatLinkedExpenseSummary(p)
+            const linkedExpenseSummary = formatLinkedExpenseSummary(p, t)
 
             if (linkedExpenseSummary) {
               secondaryParts.push(linkedExpenseSummary)
@@ -202,7 +202,7 @@ export default function PaymentsPage() {
                   )}
                   <div className="entity-row__info">
                     <span className="entity-row__primary">
-                      {p.wallet?.icon} {p.wallet?.name ?? 'Unknown Wallet'}
+                      {p.wallet?.icon} {p.wallet?.name ?? t('Unknown Wallet')}
                     </span>
                     <span className="entity-row__secondary">{secondaryParts.join(' · ')}</span>
                   </div>
@@ -210,13 +210,13 @@ export default function PaymentsPage() {
                 <div className="entity-row__trailing">
                   <span className="entity-row__amount">{formatCurrency(p.amount)}</span>
                   <div className="entity-row__buttons">
-                    <Link to={`/payments/${p.id}`} className="icon-button" title="Edit">
+                    <Link to={`/payments/${p.id}`} className="icon-button" title={t('Edit')}>
                       <PencilIcon />
                     </Link>
                     <button
                       className="icon-button icon-button--danger"
                       onClick={() => handleDelete(p)}
-                      title="Delete"
+                      title={t('Delete')}
                     >
                       <TrashIcon />
                     </button>

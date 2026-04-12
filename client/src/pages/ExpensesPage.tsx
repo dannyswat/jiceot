@@ -11,6 +11,7 @@ import {
 import { expenseAPI, expenseTypeAPI, walletAPI } from '../services/api'
 import { formatCurrency } from '../common/currency'
 import { formatDate, startOfMonth, endOfMonth } from '../common/date'
+import { useI18n } from '../contexts/I18nContext'
 import type { Expense, ExpenseType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
@@ -18,6 +19,7 @@ const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
 
 export default function ExpensesPage() {
+  const { locale, t } = useI18n()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([])
   const [wallets, setWallets] = useState<Wallet[]>([])
@@ -56,23 +58,23 @@ export default function ExpensesPage() {
       })
       setExpenses(res.expenses)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load expenses')
+      setError(err instanceof Error ? err.message : t('Failed to load expenses'))
     } finally {
       setLoading(false)
     }
-  }, [filterType, filterWallet, filterYear, filterMonth, unbilledOnly])
+  }, [filterMonth, filterType, filterWallet, filterYear, t, unbilledOnly])
 
   useEffect(() => {
     void loadExpenses()
   }, [loadExpenses])
 
   async function handleDelete(exp: Expense): Promise<void> {
-    if (!window.confirm(`Delete this expense of ${formatCurrency(exp.amount)}?`)) return
+    if (!window.confirm(t('Delete this expense of {amount}?', { amount: formatCurrency(exp.amount) }))) return
     try {
       await expenseAPI.delete(exp.id)
       await loadExpenses()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete expense')
+      setError(err instanceof Error ? err.message : t('Failed to delete expense'))
     }
   }
 
@@ -81,14 +83,14 @@ export default function ExpensesPage() {
   const years = Array.from({ length: 6 }, (_, i) => currentYear - 5 + i)
   const months = Array.from({ length: 12 }, (_, i) => ({
     value: i + 1,
-    label: new Date(2000, i).toLocaleString('default', { month: 'short' }),
+    label: new Date(2000, i).toLocaleString(locale, { month: 'short' }),
   }))
 
   return (
     <div className="page">
       <div className="page__header">
-        <h1>Expenses</h1>
-        <p>Day-by-day spend records linked to wallets and payments</p>
+        <h1>{t('Expenses')}</h1>
+        <p>{t('Day-by-day spend records linked to wallets and payments')}</p>
       </div>
 
       {/* Toolbar */}
@@ -100,7 +102,7 @@ export default function ExpensesPage() {
             value={filterType}
             onChange={(e) => setFilterType(e.target.value ? Number(e.target.value) : '')}
           >
-            <option value="">All Types</option>
+            <option value="">{t('All Types')}</option>
             {expenseTypes.map((et) => (
               <option key={et.id} value={et.id}>
                 {et.icon} {et.name}
@@ -112,7 +114,7 @@ export default function ExpensesPage() {
             value={filterWallet}
             onChange={(e) => setFilterWallet(e.target.value ? Number(e.target.value) : '')}
           >
-            <option value="">All Wallets</option>
+            <option value="">{t('All Wallets')}</option>
             {wallets.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.icon} {w.name}
@@ -143,12 +145,12 @@ export default function ExpensesPage() {
               checked={unbilledOnly}
               onChange={(e) => setUnbilledOnly(e.target.checked)}
             />
-            <span>Unbilled only</span>
+            <span>{t('Unbilled only')}</span>
           </label>
         </div>
         <Link to="/expenses/new" className="btn btn--primary">
           <PlusIcon />
-          <span>New Expense</span>
+          <span>{t('New Expense')}</span>
         </Link>
       </div>
 
@@ -156,9 +158,7 @@ export default function ExpensesPage() {
 
       {/* Summary */}
       <div className="summary-bar">
-        <span>
-          {expenses.length} expense{expenses.length !== 1 ? 's' : ''}
-        </span>
+        <span>{t('{count} expenses', { count: expenses.length })}</span>
         <strong>{formatCurrency(total)}</strong>
       </div>
 
@@ -169,10 +169,10 @@ export default function ExpensesPage() {
       {!loading && expenses.length === 0 && (
         <div className="empty-state">
           <BanknotesIcon />
-          <p>No expenses found for this period</p>
+          <p>{t('No expenses found for this period')}</p>
           <Link to="/expenses/new" className="btn btn--primary">
             <PlusIcon />
-            <span>Record an expense</span>
+            <span>{t('Record an expense')}</span>
           </Link>
         </div>
       )}
@@ -188,7 +188,7 @@ export default function ExpensesPage() {
                 />
                 <div className="entity-row__info">
                   <span className="entity-row__primary">
-                    {exp.expense_type?.icon} {exp.expense_type?.name ?? 'Unknown Type'}
+                    {exp.expense_type?.icon} {exp.expense_type?.name ?? t('Unknown Type')}
                   </span>
                   <span className="entity-row__secondary">
                     {formatDate(exp.date)}
@@ -196,7 +196,7 @@ export default function ExpensesPage() {
                     {exp.note && ` · ${exp.note}`}
                     {!exp.payment_id && exp.wallet?.is_credit && (
                       <span className="badge badge--orange" style={{ marginLeft: 6 }}>
-                        Unbilled
+                        {t('Unbilled')}
                       </span>
                     )}
                   </span>
@@ -205,13 +205,13 @@ export default function ExpensesPage() {
               <div className="entity-row__trailing">
                 <span className="entity-row__amount">{formatCurrency(exp.amount)}</span>
                 <div className="entity-row__buttons">
-                  <Link to={`/expenses/${exp.id}`} className="icon-button" title="Edit">
+                  <Link to={`/expenses/${exp.id}`} className="icon-button" title={t('Edit')}>
                     <PencilIcon />
                   </Link>
                   <button
                     className="icon-button icon-button--danger"
                     onClick={() => handleDelete(exp)}
-                    title="Delete"
+                    title={t('Delete')}
                   >
                     <TrashIcon />
                   </button>

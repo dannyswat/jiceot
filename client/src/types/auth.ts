@@ -3,6 +3,7 @@ export interface User {
   email: string
   name: string
   currency_symbol: string
+  language: 'en' | 'zh-Hant' | 'zh-Hans'
   created_at: string
   updated_at: string
 }
@@ -34,6 +35,10 @@ export interface ChangePasswordRequest {
 
 export interface UpdateCurrencySymbolRequest {
 	currency_symbol: string
+}
+
+export interface UpdateLanguageRequest {
+  language: 'en' | 'zh-Hant' | 'zh-Hans'
 }
 
 export interface UserDevice {
@@ -68,6 +73,7 @@ export interface AuthContextValue {
   logout: () => Promise<void>
   changePassword: (currentPassword: string, nextPassword: string) => Promise<void>
   updateCurrencySymbol: (currencySymbol: string) => Promise<void>
+  updateLanguage: (language: 'en' | 'zh-Hant' | 'zh-Hans') => Promise<void>
   deleteAccount: () => Promise<void>
   refreshSession: () => Promise<void>
 }

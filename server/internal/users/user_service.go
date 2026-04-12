@@ -10,6 +10,7 @@ import (
 )
 
 const DefaultCurrencySymbol = "$"
+const DefaultLanguage = "en"
 
 type UserService struct {
 	db             *gorm.DB
@@ -31,6 +32,10 @@ type UpdateCurrencySymbolRequest struct {
 	CurrencySymbol string `json:"currency_symbol"`
 }
 
+type UpdateLanguageRequest struct {
+	Language string `json:"language"`
+}
+
 type UserListResponse struct {
 	Users []User `json:"users"`
 	Total int64  `json:"total"`
@@ -44,6 +49,7 @@ var (
 	ErrEmptyName             = errors.New("name cannot be empty")
 	ErrPasswordTooShort      = errors.New("password must be at least 6 characters")
 	ErrInvalidCurrencySymbol = errors.New("currency symbol must be 1-4 visible characters")
+	ErrInvalidLanguage       = errors.New("language must be one of: en, zh-Hant, zh-Hans")
 )
 
 func NewUserService(db *gorm.DB, passwordHasher PasswordHasher) *UserService {
@@ -80,12 +86,36 @@ func (s *UserService) Register(req CreateUserRequest) (*User, error) {
 		PasswordHash:   hashedPassword,
 		Name:           strings.TrimSpace(req.Name),
 		CurrencySymbol: DefaultCurrencySymbol,
+		Language:       DefaultLanguage,
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
+	return &user, nil
+}
+
+// UpdateLanguage updates a user's preferred language.
+func (s *UserService) UpdateLanguage(userID uint, language string) (*User, error) {
+	var user User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	normalizedLanguage, err := normalizeLanguage(language)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&user).Update("language", normalizedLanguage).Error; err != nil {
+		return nil, fmt.Errorf("failed to update language: %w", err)
+	}
+
+	user.Language = normalizedLanguage
 	return &user, nil
 }
 
@@ -273,6 +303,20 @@ func normalizeCurrencySymbol(value string) (string, error) {
 		return "", ErrInvalidCurrencySymbol
 	}
 	return symbol, nil
+}
+
+func normalizeLanguage(value string) (string, error) {
+	language := strings.TrimSpace(value)
+	if language == "" {
+		return DefaultLanguage, nil
+	}
+
+	switch language {
+	case "en", "zh-Hant", "zh-Hans":
+		return language, nil
+	default:
+		return "", ErrInvalidLanguage
+	}
 }
 
 // DeleteUserAccount hard deletes a user and all their associated data

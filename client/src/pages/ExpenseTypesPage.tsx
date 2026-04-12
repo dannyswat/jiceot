@@ -13,6 +13,7 @@ import {
 import { expenseTypeAPI } from '../services/api'
 import { daysUntil, formatDate } from '../common/date'
 import { RECURRING_TYPE_OPTIONS, RECURRING_PERIOD_OPTIONS, REMINDER_TYPE_OPTIONS } from '../common/constants'
+import { useI18n } from '../contexts/I18nContext'
 import type { ExpenseType, ExpenseTypeTreeNode, ReminderType } from '../types/expense'
 
 type ViewMode = 'hierarchy' | 'list'
@@ -35,6 +36,7 @@ function HierarchyIcon() {
 }
 
 export default function ExpenseTypesPage() {
+  const { t } = useI18n()
   const [tree, setTree] = useState<ExpenseTypeTreeNode[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -50,11 +52,11 @@ export default function ExpenseTypesPage() {
       const res = await expenseTypeAPI.tree(includeStopped)
       setTree(res.tree)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load expense types')
+      setError(err instanceof Error ? err.message : t('Failed to load expense types'))
     } finally {
       setLoading(false)
     }
-  }, [includeStopped])
+  }, [includeStopped, t])
 
   useEffect(() => {
     void loadTree()
@@ -90,7 +92,7 @@ export default function ExpenseTypesPage() {
       })
       await loadTree()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to postpone')
+      setError(err instanceof Error ? err.message : t('Failed to postpone'))
     }
   }
 
@@ -100,39 +102,39 @@ export default function ExpenseTypesPage() {
       await expenseTypeAPI.toggle(et.id)
       await loadTree()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to toggle')
+      setError(err instanceof Error ? err.message : t('Failed to toggle'))
     }
   }
 
   async function handleDelete(et: ExpenseType): Promise<void> {
     setMenuOpenId(null)
-    if (!window.confirm(`Delete "${et.name}"? This cannot be undone.`)) return
+    if (!window.confirm(t('Delete {name}? This cannot be undone.', { name: et.name }))) return
     try {
       await expenseTypeAPI.delete(et.id)
       await loadTree()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete')
+      setError(err instanceof Error ? err.message : t('Failed to delete'))
     }
   }
 
   const recurringLabel = (et: ExpenseType) => {
     if (et.recurring_type === 'none') return null
-    const type = RECURRING_TYPE_OPTIONS.find((o) => o.value === et.recurring_type)?.label
-    const period = RECURRING_PERIOD_OPTIONS.find((o) => o.value === et.recurring_period)?.label
-    return `${type}${period && period !== 'None' ? ` · ${period}` : ''}`
+    const type = t(RECURRING_TYPE_OPTIONS.find((o) => o.value === et.recurring_type)?.label ?? et.recurring_type)
+    const period = t(RECURRING_PERIOD_OPTIONS.find((o) => o.value === et.recurring_period)?.label ?? et.recurring_period)
+    return `${type}${period && period !== t('None') ? ` · ${period}` : ''}`
   }
 
   const reminderLabel = (reminderType: ReminderType) => {
     if (reminderType === 'none') return null
-    return REMINDER_TYPE_OPTIONS.find((option) => option.value === reminderType)?.label ?? reminderType
+    return t(REMINDER_TYPE_OPTIONS.find((option) => option.value === reminderType)?.label ?? reminderType)
   }
 
   const dueStatus = (et: ExpenseType) => {
     if (!et.next_due_day) return null
     const days = daysUntil(et.next_due_day)
-    if (days < 0) return { label: `Overdue (${Math.abs(days)}d)`, cls: 'badge--red' }
-    if (days <= 3) return { label: `Due soon (${days}d)`, cls: 'badge--orange' }
-    return { label: `In ${days}d`, cls: 'badge--dim' }
+    if (days < 0) return { label: t('Overdue ({days}d)', { days: Math.abs(days) }), cls: 'badge--red' }
+    if (days <= 3) return { label: t('Due soon ({days}d)', { days }), cls: 'badge--orange' }
+    return { label: t('In {days}d', { days }), cls: 'badge--dim' }
   }
 
   const flatTypes = tree.flatMap((node) => [node.expense_type, ...node.children])
@@ -161,11 +163,11 @@ export default function ExpenseTypesPage() {
               {showParent && et.parent && <span className="badge badge--dim">{et.parent.name}</span>}
               {recurring && <span className="badge badge--blue">{recurring}</span>}
               {et.reminder_type === 'automatic' && <span className="badge badge--orange">{reminderLabel(et.reminder_type)}</span>}
-              {et.stopped && <span className="badge badge--dim">Stopped</span>}
+              {et.stopped && <span className="badge badge--dim">{t('Stopped')}</span>}
               {status && <span className={`badge ${status.cls}`}>{status.label}</span>}
               {et.next_due_day && (
                 <span className="tree-item__due-date">
-                  Due: {formatDate(et.next_due_day)}
+                  {t('Due:')} {formatDate(et.next_due_day)}
                 </span>
               )}
             </div>
@@ -176,12 +178,12 @@ export default function ExpenseTypesPage() {
                 type="button"
                 className="icon-button"
                 onClick={() => handlePostpone(et)}
-                title="Postpone 7 days"
+                title={t('Postpone 7 days')}
               >
                 ⏭
               </button>
             )}
-            <Link to={`/expense-types/${et.id}`} className="icon-button" title="Edit">
+            <Link to={`/expense-types/${et.id}`} className="icon-button" title={t('Edit')}>
               <PencilIcon />
             </Link>
             <div
@@ -192,7 +194,7 @@ export default function ExpenseTypesPage() {
                 type="button"
                 className="icon-button"
                 onClick={() => setMenuOpenId((prev) => (prev === et.id ? null : et.id))}
-                title="More actions"
+                title={t('More actions')}
                 aria-haspopup="menu"
                 aria-expanded={menuOpenId === et.id}
               >
@@ -205,14 +207,14 @@ export default function ExpenseTypesPage() {
                     onClick={() => handleToggle(et)}
                     role="menuitem"
                   >
-                    {et.stopped ? 'Resume type' : 'Stop type'}
+                    {et.stopped ? t('Resume type') : t('Stop type')}
                   </button>
                   <button
                     className="wallet-card-menu__item wallet-card-menu__item--danger"
                     onClick={() => handleDelete(et)}
                     role="menuitem"
                   >
-                    Delete type
+                    {t('Delete type')}
                   </button>
                 </div>
               )}
@@ -226,8 +228,8 @@ export default function ExpenseTypesPage() {
   return (
     <div className="page">
       <div className="page__header">
-        <h1>Expense Types</h1>
-        <p>Hierarchy, defaults, and recurring logic</p>
+        <h1>{t('Expense Types')}</h1>
+        <p>{t('Hierarchy, defaults, and recurring logic')}</p>
       </div>
 
       <div className="entity-toolbar">
@@ -238,17 +240,17 @@ export default function ExpenseTypesPage() {
               checked={includeStopped}
               onChange={(e) => setIncludeStopped(e.target.checked)}
             />
-            <span>Show stopped</span>
+            <span>{t('Show stopped')}</span>
           </label>
-          <div className="report-view-toggle expense-type-view-toggle" role="tablist" aria-label="Expense type view mode">
+          <div className="report-view-toggle expense-type-view-toggle" role="tablist" aria-label={t('Expense type view mode')}>
             <button
               type="button"
               className={`filter-chip expense-type-view-toggle__button${viewMode === 'hierarchy' ? ' filter-chip--active' : ''}`}
               onClick={() => setViewMode('hierarchy')}
               role="tab"
               aria-selected={viewMode === 'hierarchy'}
-              aria-label="Hierarchy view"
-              title="Hierarchy view"
+              aria-label={t('Hierarchy view')}
+              title={t('Hierarchy view')}
             >
               <HierarchyIcon />
             </button>
@@ -258,8 +260,8 @@ export default function ExpenseTypesPage() {
               onClick={() => setViewMode('list')}
               role="tab"
               aria-selected={viewMode === 'list'}
-              aria-label="List view"
-              title="List view"
+              aria-label={t('List view')}
+              title={t('List view')}
             >
               <Bars3BottomLeftIcon />
             </button>
@@ -267,7 +269,7 @@ export default function ExpenseTypesPage() {
         </div>
         <Link to="/expense-types/new" className="btn btn--primary">
           <PlusIcon />
-          <span>New Type</span>
+          <span>{t('New Type')}</span>
         </Link>
       </div>
 
@@ -280,10 +282,10 @@ export default function ExpenseTypesPage() {
       {!loading && tree.length === 0 && (
         <div className="empty-state">
           <TagIcon />
-          <p>No expense types yet</p>
+          <p>{t('No expense types yet')}</p>
           <Link to="/expense-types/new" className="btn btn--primary">
             <PlusIcon />
-            <span>Create your first type</span>
+            <span>{t('Create your first type')}</span>
           </Link>
         </div>
       )}

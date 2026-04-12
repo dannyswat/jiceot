@@ -107,6 +107,43 @@ func (h *UserHandler) UpdateCurrencySymbol(c echo.Context) error {
 	return c.JSON(http.StatusOK, user)
 }
 
+// UpdateLanguage handles PUT /api/user/preferences/language
+func (h *UserHandler) UpdateLanguage(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Unauthorized",
+		})
+	}
+
+	var req UpdateLanguageRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request format",
+		})
+	}
+
+	user, err := h.userService.UpdateLanguage(userID, req.Language)
+	if err != nil {
+		switch err {
+		case ErrUserNotFound:
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "User not found",
+			})
+		case ErrInvalidLanguage:
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "Failed to update language",
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, user)
+}
+
 // GetUser handles GET /api/users/:id (for admin purposes if needed)
 func (h *UserHandler) GetUser(c echo.Context) error {
 	userID := getUserIDFromContext(c)

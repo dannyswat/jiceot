@@ -9,6 +9,7 @@ import type {
 	MessageResponse,
 	RegisterRequest,
 	UpdateCurrencySymbolRequest,
+	UpdateLanguageRequest,
 	User,
 } from '../types/auth'
 import type { DashboardStats, DueExpensesResponse, DueWalletsResponse } from '../types/dashboard'
@@ -179,6 +180,8 @@ export const authAPI = {
 export const userAPI = {
 	updateCurrencySymbol: async (payload: UpdateCurrencySymbolRequest): Promise<User> =>
 		(await api.put<User>('/user/preferences/currency', payload)).data,
+	updateLanguage: async (payload: UpdateLanguageRequest): Promise<User> =>
+		(await api.put<User>('/user/preferences/language', payload)).data,
 }
 
 export const deviceAPI = {

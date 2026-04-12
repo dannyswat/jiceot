@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BackspaceIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
+import { useI18n } from '../contexts/I18nContext'
+
 interface AmountInputProps {
   value: string
   onChange: (value: string) => void
@@ -174,6 +176,7 @@ export default function AmountInput({
   triggerClassName,
   hint,
 }: AmountInputProps) {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
   const [draft, setDraft] = useState(value)
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -266,7 +269,7 @@ export default function AmountInput({
         <span className={joinClassNames('amount-input__trigger-value', value ? undefined : 'amount-input__trigger-value--placeholder')}>
           {triggerLabel}
         </span>
-        <span className="amount-input__trigger-badge">Calc</span>
+        <span className="amount-input__trigger-badge">{t('Calc')}</span>
       </button>
 
       {isOpen && createPortal(
@@ -276,10 +279,10 @@ export default function AmountInput({
             <div className="modal modal--narrow amount-input__modal">
               <div className="modal__header">
                 <div>
-                  <h3>{title}</h3>
-                  <p>Enter an amount or a quick calculation</p>
+                  <h3>{t(title)}</h3>
+                  <p>{t('Enter an amount or a quick calculation')}</p>
                 </div>
-                <button type="button" onClick={closeInput} aria-label="Close amount input">
+                <button type="button" onClick={closeInput} aria-label={t('Close amount input')}>
                   <XMarkIcon />
                 </button>
               </div>
@@ -318,9 +321,9 @@ export default function AmountInput({
                         : 'amount-input__result--invalid',
                   )}
                 >
-                  {draft.trim() === '' && (hint || 'Tap the keypad to enter a value')}
-                  {draft.trim() !== '' && isExpressionValid && resolvedAmount !== null && `Result: $${resolvedAmount}`}
-                  {draft.trim() !== '' && !isExpressionValid && 'Invalid calculation'}
+                  {draft.trim() === '' && (hint ? t(hint) : t('Tap the keypad to enter a value'))}
+                  {draft.trim() !== '' && isExpressionValid && resolvedAmount !== null && t('Result: ${amount}', { amount: `$${resolvedAmount}` })}
+                  {draft.trim() !== '' && !isExpressionValid && t('Invalid calculation')}
                 </div>
 
                 <div className="amount-input__keypad">
@@ -343,13 +346,13 @@ export default function AmountInput({
                     className="amount-input__key amount-input__key--muted"
                     onClick={() => setDraft('')}
                   >
-                    Clear
+                      {t('Clear')}
                   </button>
                   <button
                     type="button"
                     className="amount-input__key amount-input__key--muted"
                     onClick={removeLastCharacter}
-                    aria-label="Delete last character"
+                      aria-label={t('Delete last character')}
                   >
                     <BackspaceIcon />
                   </button>
@@ -358,7 +361,7 @@ export default function AmountInput({
 
               <div className="modal__actions">
                 <button type="button" className="btn btn--ghost" onClick={closeInput}>
-                  Cancel
+                  {t('Cancel')}
                 </button>
                 <button
                   type="button"
@@ -366,7 +369,7 @@ export default function AmountInput({
                   onClick={applyValue}
                   disabled={!isExpressionValid}
                 >
-                  Apply Amount
+                  {t('Apply Amount')}
                 </button>
               </div>
             </div>

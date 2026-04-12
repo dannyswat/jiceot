@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline'
 
+import { useI18n } from '../contexts/I18nContext'
+
 interface IconPickerProps {
   value: string
   onChange: (icon: string) => void
@@ -29,6 +31,7 @@ const ICON_CATEGORIES: Record<string, string[]> = {
 const ALL_ICONS = Object.values(ICON_CATEGORIES).flat()
 
 export default function IconPicker({ value, onChange }: IconPickerProps) {
+  const { t } = useI18n()
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
@@ -49,7 +52,7 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
           maxLength={2}
           placeholder="�"
         />
-        <button type="button" onClick={() => setIsOpen(true)} title="Browse icons">
+        <button type="button" onClick={() => setIsOpen(true)} title={t('Browse icons')}>
           <MagnifyingGlassIcon />
         </button>
       </div>
@@ -60,7 +63,7 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
           <div className="modal-wrap">
             <div className="modal icon-picker__modal">
               <div className="modal__header">
-                <h3>Select an Icon</h3>
+                <h3>{t('Select an Icon')}</h3>
                 <button type="button" onClick={() => setIsOpen(false)}>
                   <XMarkIcon />
                 </button>
@@ -72,7 +75,7 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search icons…"
+                  placeholder={t('Search icons…')}
                 />
               </div>
 
@@ -83,7 +86,7 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
                     className={category === 'All' ? 'active' : ''}
                     onClick={() => setCategory('All')}
                   >
-                    All
+                    {t('All')}
                   </button>
                   {Object.keys(ICON_CATEGORIES).map((cat) => (
                     <button
@@ -92,7 +95,7 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
                       className={category === cat ? 'active' : ''}
                       onClick={() => setCategory(cat)}
                     >
-                      {cat}
+                      {t(cat)}
                     </button>
                   ))}
                 </div>
@@ -114,11 +117,11 @@ export default function IconPicker({ value, onChange }: IconPickerProps) {
                     </button>
                   ))
                 ) : (
-                  <p className="icon-picker__empty">No icons found</p>
+                  <p className="icon-picker__empty">{t('No icons found')}</p>
                 )}
               </div>
 
-              <p className="icon-picker__hint">Tip: type an emoji directly in the input field</p>
+              <p className="icon-picker__hint">{t('Tip: type an emoji directly in the input field')}</p>
             </div>
           </div>
         </>,

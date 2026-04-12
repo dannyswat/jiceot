@@ -3,11 +3,13 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 
 import { useAuth } from '../contexts/AuthContext'
+import { useI18n } from '../contexts/I18nContext'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { login, isLoading } = useAuth()
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -28,7 +30,7 @@ export default function LoginPage() {
       await login(email, password)
       navigate(destination, { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to sign in')
+      setError(err instanceof Error ? err.message : t('Unable to sign in'))
     }
   }
 
@@ -37,14 +39,14 @@ export default function LoginPage() {
       <div className="auth-card">
         <div className="auth-card__header">
           <img src="/jiceot.svg" alt="Jiceot" className="auth-card__logo" />
-          <p>Sign in to manage your finances</p>
+          <p>{t('Sign in to manage your finances')}</p>
         </div>
 
         <form className="auth-form" onSubmit={(e) => void handleSubmit(e)}>
           {error && <p className="form-error">{error}</p>}
 
           <label>
-            <span>Email</span>
+            <span>{t('Email')}</span>
             <input
               type="email"
               value={email}
@@ -56,7 +58,7 @@ export default function LoginPage() {
           </label>
 
           <label>
-            <span>Password</span>
+            <span>{t('Password')}</span>
             <div className="input-with-toggle">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -78,13 +80,13 @@ export default function LoginPage() {
           </label>
 
           <button className="primary-button" type="submit" disabled={isLoading}>
-            {isLoading ? 'Signing in…' : 'Sign in'}
+            {isLoading ? t('Signing in…') : t('Sign in')}
           </button>
         </form>
 
         <p className="auth-switch">
-          Need an account?{' '}
-          <NavLink to="/register">Register</NavLink>
+          {t('Need an account?')}{' '}
+          <NavLink to="/register">{t('Register')}</NavLink>
         </p>
       </div>
     </main>

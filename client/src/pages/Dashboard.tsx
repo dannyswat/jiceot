@@ -8,6 +8,7 @@ import {
 import { dashboardAPI } from '../services/api'
 import { formatCurrency } from '../common/currency'
 import { RECURRING_PERIOD_OPTIONS } from '../common/constants'
+import { useI18n } from '../contexts/I18nContext'
 import type { DashboardStats, DueExpense, DueWallet } from '../types/dashboard'
 
 function statusColor(status: string): string {
@@ -25,33 +26,34 @@ function statusColor(status: string): string {
   }
 }
 
-function statusLabel(status: string): string {
+function statusLabel(status: string, t: (key: string) => string): string {
   switch (status) {
     case 'overdue':
-      return 'Overdue'
+      return t('Overdue')
     case 'due_soon':
-      return 'Due Soon'
+      return t('Due Soon')
     case 'upcoming':
-      return 'Upcoming'
+      return t('Upcoming')
     case 'suggested':
-      return 'Suggested'
+      return t('Suggested')
     default:
       return status
   }
 }
 
-function daysLabel(days: number): string {
-  if (days < 0) return `${Math.abs(days)}d overdue`
-  if (days === 0) return 'Due today'
-  if (days === 1) return 'Tomorrow'
-  return `In ${days} days`
+function daysLabel(days: number, t: (key: string, params?: Record<string, string | number>) => string): string {
+  if (days < 0) return t('{days}d overdue', { days: Math.abs(days) })
+  if (days === 0) return t('Due today')
+  if (days === 1) return t('Tomorrow')
+  return t('In {days} days', { days })
 }
 
-function periodLabel(period: string): string {
-  return RECURRING_PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period
+function periodLabel(period: string, t: (key: string) => string): string {
+  return t(RECURRING_PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period)
 }
 
 export default function Dashboard() {
+  const { t } = useI18n()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,11 +64,11 @@ export default function Dashboard() {
       const data = await dashboardAPI.stats()
       setStats(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+      setError(err instanceof Error ? err.message : t('Failed to load dashboard'))
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void loadDashboard()
@@ -84,7 +86,7 @@ export default function Dashboard() {
     return (
       <div className="page">
         <div className="page__header">
-          <h1>Dashboard</h1>
+          <h1>{t('Dashboard')}</h1>
         </div>
         <div className="alert alert--error">{error}</div>
       </div>
@@ -103,19 +105,19 @@ export default function Dashboard() {
       {/* Stats */}
       <div className="dash-stats">
         <div className="stat-card stat-card--warm">
-          <p>Total Expenses</p>
+          <p>{t('Total Expenses')}</p>
           <strong>{formatCurrency(stats.total_expenses)}</strong>
         </div>
         <div className="stat-card stat-card--teal">
-          <p>Payments Made</p>
+          <p>{t('Payments Made')}</p>
           <strong>{stats.payments_made}</strong>
         </div>
         <div className="stat-card stat-card--ink">
-          <p>Pending Credit Bills</p>
+          <p>{t('Pending Credit Bills')}</p>
           <strong>{stats.pending_wallets}</strong>
         </div>
         <div className="stat-card stat-card--sand">
-          <p>Pending Expenses</p>
+          <p>{t('Pending Expenses')}</p>
           <strong>{stats.pending_expenses}</strong>
         </div>
       </div>
@@ -127,10 +129,10 @@ export default function Dashboard() {
           {dueWallets.length > 0 && (
             <div className="surface-card">
               <div className="surface-card__header">
-                <h2>Credit Bills Due</h2>
-                <Link to="/due-items" className="btn btn--sm btn--ghost">View all</Link>
+                <h2>{t('Credit Bills Due')}</h2>
+                <Link to="/due-items" className="btn btn--sm btn--ghost">{t('View all')}</Link>
               </div>
-              <DueWalletList items={dueWallets} />
+              <DueWalletList items={dueWallets} t={t} />
             </div>
           )}
 
@@ -138,10 +140,10 @@ export default function Dashboard() {
           {fixedExpenses.length > 0 && (
             <div className="surface-card">
               <div className="surface-card__header">
-                <h2>Expenses Due</h2>
-                <Link to="/due-items" className="btn btn--sm btn--ghost">View all</Link>
+                <h2>{t('Expenses Due')}</h2>
+                <Link to="/due-items" className="btn btn--sm btn--ghost">{t('View all')}</Link>
               </div>
-              <DueExpenseList items={fixedExpenses} />
+              <DueExpenseList items={fixedExpenses} t={t} />
             </div>
           )}
 
@@ -149,10 +151,10 @@ export default function Dashboard() {
           {flexibleExpenses.length > 0 && (
             <div className="surface-card">
               <div className="surface-card__header">
-                <h2>Suggested Expenses</h2>
-                <Link to="/due-items" className="btn btn--sm btn--ghost">View all</Link>
+                <h2>{t('Suggested Expenses')}</h2>
+                <Link to="/due-items" className="btn btn--sm btn--ghost">{t('View all')}</Link>
               </div>
-              <DueExpenseList items={flexibleExpenses} />
+              <DueExpenseList items={flexibleExpenses} t={t} />
             </div>
           )}
         </div>
@@ -161,10 +163,10 @@ export default function Dashboard() {
       {!hasDueItems && (
         <div className="empty-state">
           <WalletIcon />
-          <p>No upcoming due items</p>
+          <p>{t('No upcoming due items')}</p>
           <Link to="/wallets" className="btn btn--ghost">
             <RectangleGroupIcon />
-            <span>Manage wallets</span>
+            <span>{t('Manage wallets')}</span>
           </Link>
         </div>
       )}
@@ -172,7 +174,7 @@ export default function Dashboard() {
   )
 }
 
-function DueWalletList({ items }: { items: DueWallet[] }) {
+function DueWalletList({ items, t }: { items: DueWallet[]; t: (key: string, params?: Record<string, string | number>) => string }) {
   return (
     <div className="due-list">
       {items.map((w) => (
@@ -184,7 +186,7 @@ function DueWalletList({ items }: { items: DueWallet[] }) {
             <div className="due-item__info">
               <span className="due-item__name">{w.name}</span>
               <span className="due-item__meta">
-                Day {w.bill_due_day} · {daysLabel(w.days_until_due)}
+                {t('Day')} {w.bill_due_day} · {daysLabel(w.days_until_due, t)}
               </span>
             </div>
           </div>
@@ -196,17 +198,17 @@ function DueWalletList({ items }: { items: DueWallet[] }) {
                 color: statusColor(w.status),
               }}
             >
-              {statusLabel(w.status)}
+              {statusLabel(w.status, t)}
             </span>
             {w.has_payment ? (
-              <span className="badge badge--green">Paid</span>
+              <span className="badge badge--green">{t('Paid')}</span>
             ) : (
               <Link
                 to={`/payments/new?wallet_id=${w.id}`}
                 state={{ returnTo: '/dashboard' }}
                 className="btn btn--sm btn--primary"
               >
-                Pay
+                {t('Pay')}
               </Link>
             )}
           </div>
@@ -216,7 +218,7 @@ function DueWalletList({ items }: { items: DueWallet[] }) {
   )
 }
 
-function DueExpenseList({ items }: { items: DueExpense[] }) {
+function DueExpenseList({ items, t }: { items: DueExpense[]; t: (key: string, params?: Record<string, string | number>) => string }) {
   return (
     <div className="due-list">
       {items.map((e) => (
@@ -228,7 +230,7 @@ function DueExpenseList({ items }: { items: DueExpense[] }) {
             <div className="due-item__info">
               <span className="due-item__name">{e.name}</span>
               <span className="due-item__meta">
-                {periodLabel(e.recurring_period)} · {daysLabel(e.days_until_due)}
+                {periodLabel(e.recurring_period, t)} · {daysLabel(e.days_until_due, t)}
                 {e.default_amount > 0 && ` · ${formatCurrency(e.default_amount)}`}
               </span>
             </div>
@@ -241,13 +243,13 @@ function DueExpenseList({ items }: { items: DueExpense[] }) {
                 color: statusColor(e.status),
               }}
             >
-              {statusLabel(e.status)}
+              {statusLabel(e.status, t)}
             </span>
             <Link
               to={`/expenses/new?expense_type_id=${e.id}`}
               className="btn btn--sm btn--primary"
             >
-              Record
+              {t('Record')}
             </Link>
           </div>
         </li>
