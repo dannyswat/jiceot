@@ -4,8 +4,14 @@ import { ArrowLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 import AmountInput from '../components/AmountInput'
 import { walletAPI, expenseTypeAPI } from '../services/api'
-import { PRESET_COLORS, BILL_PERIOD_OPTIONS } from '../common/constants'
-import type { RecurringType, RecurringPeriod } from '../types/expense'
+import { PRESET_COLORS, BILL_PERIOD_OPTIONS, REMINDER_TYPE_OPTIONS } from '../common/constants'
+import type { RecurringType, RecurringPeriod, ReminderType } from '../types/expense'
+
+function defaultReminderTypeForRecurring(recurringType: RecurringType, recurringPeriod: RecurringPeriod): ReminderType {
+  if (recurringType === 'none') return 'none'
+  if (recurringPeriod === 'weekly') return 'on_day'
+  return 'in_advance'
+}
 
 interface WalletRow {
   key: number
@@ -25,7 +31,7 @@ interface ExpenseTypeRow {
   color: string
   recurring_type: RecurringType
   recurring_period: RecurringPeriod
-  automatic: boolean
+  reminder_type: ReminderType
   default_amount: string
 }
 
@@ -52,7 +58,7 @@ function newExpenseTypeRow(): ExpenseTypeRow {
     color: PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)],
     recurring_type: 'none',
     recurring_period: 'none',
-    automatic: false,
+    reminder_type: 'none',
     default_amount: '',
   }
 }
@@ -70,7 +76,50 @@ export default function BatchCreateTypesPage() {
   }
 
   function updateExpenseType<K extends keyof ExpenseTypeRow>(idx: number, key: K, value: ExpenseTypeRow[K]) {
-    setExpenseTypeRows((rows) => rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)))
+    setExpenseTypeRows((rows) => rows.map((row, i) => {
+      if (i !== idx) return row
+
+      if (key === 'recurring_type') {
+        const nextRecurringType = value as RecurringType
+        if (nextRecurringType === 'none') {
+          return {
+            ...row,
+            recurring_type: nextRecurringType,
+            recurring_period: 'none',
+            reminder_type: 'none',
+          }
+        }
+
+        const previousDefault = defaultReminderTypeForRecurring(row.recurring_type, row.recurring_period)
+        const nextReminderType = row.reminder_type === 'none' || row.reminder_type === previousDefault
+          ? defaultReminderTypeForRecurring(nextRecurringType, row.recurring_period)
+          : row.reminder_type
+
+        return {
+          ...row,
+          recurring_type: nextRecurringType,
+          reminder_type: nextReminderType,
+        }
+      }
+
+      if (key === 'recurring_period') {
+        const nextRecurringPeriod = value as RecurringPeriod
+        const previousDefault = defaultReminderTypeForRecurring(row.recurring_type, row.recurring_period)
+        const nextReminderType = row.recurring_type === 'none'
+          ? 'none'
+          : row.reminder_type === 'none' || row.reminder_type === previousDefault
+            ? defaultReminderTypeForRecurring(row.recurring_type, nextRecurringPeriod)
+            : row.reminder_type
+
+        return {
+          ...row,
+          recurring_period: nextRecurringPeriod,
+          reminder_type: nextReminderType,
+        }
+      }
+
+      return { ...row, [key]: value }
+    }))
   }
 
   function removeWallet(idx: number) {
@@ -115,7 +164,7 @@ export default function BatchCreateTypesPage() {
           color: row.color || undefined,
           recurring_type: row.recurring_type,
           recurring_period: row.recurring_type !== 'none' ? row.recurring_period : undefined,
-          automatic: row.recurring_type !== 'none' ? row.automatic : false,
+          reminder_type: row.recurring_type !== 'none' ? row.reminder_type : 'none',
           default_amount: row.default_amount ? Number(row.default_amount) : undefined,
         })
         typesCreated++
@@ -266,7 +315,7 @@ export default function BatchCreateTypesPage() {
               <span>Color</span>
               <span>Recurring</span>
               <span>Period</span>
-              <span>Auto</span>
+              <span>Reminder</span>
               <span>Amount</span>
               <span></span>
             </div>
@@ -315,12 +364,16 @@ export default function BatchCreateTypesPage() {
                   <option value="quarterly">Quarterly</option>
                   <option value="annually">Annually</option>
                 </select>
-                <input
-                  type="checkbox"
-                  checked={row.automatic}
-                  onChange={(e) => updateExpenseType(idx, 'automatic', e.target.checked)}
+                <select
+                  className="field__input field__input--compact"
+                  value={row.reminder_type}
+                  onChange={(e) => updateExpenseType(idx, 'reminder_type', e.target.value as ReminderType)}
                   disabled={row.recurring_type === 'none'}
-                />
+                >
+                  {REMINDER_TYPE_OPTIONS.filter((option) => option.value !== 'none').map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
                 <AmountInput
                   value={row.default_amount}
                   onChange={(value) => updateExpenseType(idx, 'default_amount', value)}

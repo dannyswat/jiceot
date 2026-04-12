@@ -17,6 +17,7 @@ var (
 	ErrInvalidRecurringType      = errors.New("invalid recurring type")
 	ErrInvalidRecurringPeriod    = errors.New("invalid recurring period")
 	ErrInvalidRecurringDueDay    = errors.New("recurring due day must be between 1 and 31")
+	ErrInvalidReminderType       = errors.New("invalid reminder type")
 	ErrFlexiblePostponeOnly      = errors.New("only flexible expense types can be postponed")
 	ErrExpenseTypeInUse          = errors.New("cannot delete expense type that is in use")
 	ErrExpenseTypeCycleReference = errors.New("expense type cannot reference itself as parent")
@@ -37,7 +38,7 @@ type CreateExpenseTypeRequest struct {
 	RecurringType   string  `json:"recurring_type"`
 	RecurringPeriod string  `json:"recurring_period"`
 	RecurringDueDay int     `json:"recurring_due_day"`
-	Automatic       bool    `json:"automatic"`
+	ReminderType    string  `json:"reminder_type"`
 	NextDueDay      *string `json:"next_due_day"`
 	Stopped         bool    `json:"stopped"`
 }
@@ -53,7 +54,7 @@ type UpdateExpenseTypeRequest struct {
 	RecurringType   string  `json:"recurring_type"`
 	RecurringPeriod string  `json:"recurring_period"`
 	RecurringDueDay int     `json:"recurring_due_day"`
-	Automatic       bool    `json:"automatic"`
+	ReminderType    string  `json:"reminder_type"`
 	NextDueDay      *string `json:"next_due_day"`
 	Stopped         bool    `json:"stopped"`
 }
@@ -77,7 +78,7 @@ func NewExpenseTypeService(db *gorm.DB) *ExpenseTypeService {
 }
 
 func (s *ExpenseTypeService) CreateExpenseType(userID uint, req CreateExpenseTypeRequest) (*ExpenseType, error) {
-	prepared, err := s.prepareExpenseType(userID, req.ParentID, 0, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.Automatic, req.NextDueDay, req.Stopped, nil)
+	prepared, err := s.prepareExpenseType(userID, req.ParentID, 0, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.ReminderType, req.NextDueDay, req.Stopped, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +107,7 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := s.prepareExpenseType(userID, req.ParentID, expenseTypeID, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.Automatic, req.NextDueDay, req.Stopped, existing)
+	prepared, err := s.prepareExpenseType(userID, req.ParentID, expenseTypeID, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.ReminderType, req.NextDueDay, req.Stopped, existing)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +121,7 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	existing.RecurringType = prepared.RecurringType
 	existing.RecurringPeriod = prepared.RecurringPeriod
 	existing.RecurringDueDay = prepared.RecurringDueDay
-	existing.Automatic = prepared.Automatic
+	existing.ReminderType = prepared.ReminderType
 	existing.NextDueDay = prepared.NextDueDay
 	existing.Stopped = prepared.Stopped
 	if err := s.db.Save(existing).Error; err != nil {
@@ -236,7 +237,7 @@ func (s *ExpenseTypeService) ToggleExpenseType(userID, expenseTypeID uint) (*Exp
 	return expenseType, nil
 }
 
-func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, expenseTypeID uint, name, icon, color, description string, defaultAmount float64, defaultWalletID *uint, recurringType, recurringPeriod string, recurringDueDay int, automatic bool, nextDueDay *string, stopped bool, existing *ExpenseType) (*ExpenseType, error) {
+func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, expenseTypeID uint, name, icon, color, description string, defaultAmount float64, defaultWalletID *uint, recurringType, recurringPeriod string, recurringDueDay int, reminderType string, nextDueDay *string, stopped bool, existing *ExpenseType) (*ExpenseType, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, ErrEmptyExpenseTypeName
 	}
@@ -274,10 +275,10 @@ func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, exp
 	}
 	recurringType = normalizeRecurringType(recurringType)
 	recurringPeriod = normalizeRecurringPeriod(recurringPeriod)
-	if err := validateRecurring(recurringType, recurringPeriod, recurringDueDay); err != nil {
+	reminderType = normalizeReminderType(reminderType, recurringType, recurringPeriod)
+	if err := validateRecurring(recurringType, recurringPeriod, recurringDueDay, reminderType); err != nil {
 		return nil, err
 	}
-	automatic = automatic && recurringType != RecurringTypeNone
 	prepared := &ExpenseType{
 		ParentID:        parentID,
 		Name:            strings.TrimSpace(name),
@@ -289,7 +290,7 @@ func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, exp
 		RecurringType:   recurringType,
 		RecurringPeriod: recurringPeriod,
 		RecurringDueDay: recurringDueDay,
-		Automatic:       automatic,
+		ReminderType:    reminderType,
 		Stopped:         stopped,
 		UserID:          userID,
 	}
@@ -343,11 +344,17 @@ func normalizeRecurringPeriod(value string) string {
 	return value
 }
 
-func validateRecurring(recurringType, recurringPeriod string, recurringDueDay int) error {
+func validateRecurring(recurringType, recurringPeriod string, recurringDueDay int, reminderType string) error {
+	if !isValidReminderType(reminderType) {
+		return ErrInvalidReminderType
+	}
 	switch recurringType {
 	case RecurringTypeNone:
 		if recurringPeriod != RecurringPeriodNone {
 			return ErrInvalidRecurringPeriod
+		}
+		if reminderType != ReminderTypeNone {
+			return ErrInvalidReminderType
 		}
 		return nil
 	case RecurringTypeFixedDay:
@@ -365,6 +372,15 @@ func validateRecurring(recurringType, recurringPeriod string, recurringDueDay in
 		return nil
 	default:
 		return ErrInvalidRecurringType
+	}
+}
+
+func isValidReminderType(reminderType string) bool {
+	switch reminderType {
+	case ReminderTypeNone, ReminderTypeInAdvance, ReminderTypeOnDay, ReminderTypeAutomatic:
+		return true
+	default:
+		return false
 	}
 }
 

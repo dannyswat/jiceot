@@ -13,6 +13,48 @@ import ColorPicker from '../components/ColorPicker'
 import type { ExpenseType, RecurringPeriod, RecurringType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
+type ReminderTypeValue = 'none' | 'in_advance' | 'on_day' | 'automatic'
+
+const reminderTypeOptions: { value: ReminderTypeValue; label: string }[] = [
+  { value: 'in_advance', label: 'In advance' },
+  { value: 'on_day', label: 'On day' },
+  { value: 'automatic', label: 'Automatic' },
+  { value: 'none', label: 'None' },
+]
+
+function defaultReminderTypeForRecurring(recurringType: RecurringType, recurringPeriod: RecurringPeriod): ReminderTypeValue {
+  if (recurringType === 'none') return 'none'
+  if (recurringPeriod === 'weekly') return 'on_day'
+  return 'in_advance'
+}
+
+function defaultRecurringPeriodForType(recurringType: RecurringType): RecurringPeriod {
+  switch (recurringType) {
+    case 'flexible':
+      return 'weekly'
+    case 'fixed_day':
+      return 'monthly'
+    default:
+      return 'none'
+  }
+}
+
+function isRecurringPeriodAllowed(recurringType: RecurringType, recurringPeriod: RecurringPeriod): boolean {
+  if (recurringType === 'none') return recurringPeriod === 'none'
+  if (recurringType === 'flexible') return recurringPeriod !== 'none'
+  if (recurringType === 'fixed_day') return recurringPeriod !== 'none' && recurringPeriod !== 'weekly' && recurringPeriod !== 'biweekly'
+  return false
+}
+
+function periodOptionsForRecurringType(recurringType: RecurringType) {
+  return RECURRING_PERIOD_OPTIONS.filter((option) => isRecurringPeriodAllowed(recurringType, option.value))
+}
+
+function reminderTypeLabel(reminderType: ReminderTypeValue): string {
+  const option = reminderTypeOptions.find((candidate) => candidate.value === reminderType)
+  return option ? option.label : reminderType
+}
+
 interface ExpenseTypeFormLocationState {
   returnTo?: string
   expenseDraft?: {
@@ -24,6 +66,36 @@ interface ExpenseTypeFormLocationState {
   }
 }
 
+interface ExpenseTypeFormState {
+  parent_id: string
+  name: string
+  icon: string
+  color: string
+  description: string
+  default_amount: string
+  default_wallet_id: string
+  recurring_type: RecurringType
+  recurring_period: RecurringPeriod
+  recurring_due_day: number
+  reminder_type: ReminderTypeValue
+  stopped: boolean
+}
+
+const INITIAL_FORM: ExpenseTypeFormState = {
+  parent_id: '',
+  name: '',
+  icon: '',
+  color: '#d94f3d',
+  description: '',
+  default_amount: '',
+  default_wallet_id: '',
+  recurring_type: 'none',
+  recurring_period: 'none',
+  recurring_due_day: 0,
+  reminder_type: 'none',
+  stopped: false,
+}
+
 export default function ExpenseTypeFormPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -32,20 +104,7 @@ export default function ExpenseTypeFormPage() {
   const navigationState = location.state as ExpenseTypeFormLocationState | null
   const returnTo = !isEdit ? navigationState?.returnTo : undefined
 
-  const [form, setForm] = useState({
-    parent_id: '' as string,
-    name: '',
-    icon: '',
-    color: '#d94f3d',
-    description: '',
-    default_amount: '',
-    default_wallet_id: '' as string,
-    recurring_type: 'none' as RecurringType,
-    recurring_period: 'none' as RecurringPeriod,
-    recurring_due_day: 0,
-    automatic: false,
-    stopped: false,
-  })
+  const [form, setForm] = useState<ExpenseTypeFormState>(INITIAL_FORM)
   const [parentTypes, setParentTypes] = useState<ExpenseType[]>([])
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [loading, setLoading] = useState(false)
@@ -69,6 +128,11 @@ export default function ExpenseTypeFormPage() {
     expenseTypeAPI
       .get(Number(id))
       .then((et) => {
+        const recurringType = et.recurring_type
+        const recurringPeriod = isRecurringPeriodAllowed(recurringType, et.recurring_period)
+          ? et.recurring_period
+          : defaultRecurringPeriodForType(recurringType)
+
         setForm({
           parent_id: et.parent_id?.toString() ?? '',
           name: et.name,
@@ -77,10 +141,10 @@ export default function ExpenseTypeFormPage() {
           description: et.description,
           default_amount: et.default_amount ? Math.round(et.default_amount).toString() : '',
           default_wallet_id: et.default_wallet_id?.toString() ?? '',
-          recurring_type: et.recurring_type,
-          recurring_period: et.recurring_period,
-          recurring_due_day: et.recurring_due_day,
-          automatic: et.automatic,
+          recurring_type: recurringType,
+          recurring_period: recurringPeriod,
+          recurring_due_day: recurringType === 'fixed_day' ? (et.recurring_due_day || 1) : et.recurring_due_day,
+          reminder_type: (et.reminder_type ?? 'none') as ReminderTypeValue,
           stopped: et.stopped,
         })
       })
@@ -93,6 +157,12 @@ export default function ExpenseTypeFormPage() {
     setError('')
     setLoading(true)
     try {
+      const recurringPeriod = form.recurring_type === 'none'
+        ? 'none'
+        : isRecurringPeriodAllowed(form.recurring_type, form.recurring_period)
+          ? form.recurring_period
+          : defaultRecurringPeriodForType(form.recurring_type)
+
       const payload = {
         name: form.name,
         icon: form.icon || undefined,
@@ -102,9 +172,9 @@ export default function ExpenseTypeFormPage() {
         default_amount: form.default_amount ? Number(form.default_amount) : undefined,
         default_wallet_id: form.default_wallet_id ? Number(form.default_wallet_id) : null,
         recurring_type: form.recurring_type,
-        recurring_period: form.recurring_type !== 'none' ? form.recurring_period : ('none' as RecurringPeriod),
-        recurring_due_day: form.recurring_type === 'fixed_day' ? form.recurring_due_day : 0,
-        automatic: form.recurring_type !== 'none' ? form.automatic : false,
+        recurring_period: recurringPeriod,
+        recurring_due_day: form.recurring_type === 'fixed_day' ? Math.max(form.recurring_due_day, 1) : 0,
+        reminder_type: form.recurring_type !== 'none' ? form.reminder_type : 'none',
         ...(isEdit ? { stopped: form.stopped } : {}),
       }
       if (isEdit && id) {
@@ -132,8 +202,58 @@ export default function ExpenseTypeFormPage() {
     }
   }
 
-  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+  function set<K extends keyof ExpenseTypeFormState>(key: K, value: ExpenseTypeFormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  function setRecurringType(value: RecurringType) {
+    setForm((prev) => {
+      if (value === 'none') {
+        return {
+          ...prev,
+          recurring_type: value,
+          recurring_period: 'none',
+          recurring_due_day: 0,
+          reminder_type: 'none',
+        }
+      }
+
+      const nextRecurringPeriod = isRecurringPeriodAllowed(value, prev.recurring_period)
+        ? prev.recurring_period
+        : defaultRecurringPeriodForType(value)
+      const previousPeriod = isRecurringPeriodAllowed(prev.recurring_type, prev.recurring_period)
+        ? prev.recurring_period
+        : defaultRecurringPeriodForType(prev.recurring_type)
+      const previousDefault = defaultReminderTypeForRecurring(prev.recurring_type, previousPeriod)
+      const nextReminderType = prev.reminder_type === 'none' || prev.reminder_type === previousDefault
+        ? defaultReminderTypeForRecurring(value, nextRecurringPeriod)
+        : prev.reminder_type
+
+      return {
+        ...prev,
+        recurring_type: value,
+        recurring_period: nextRecurringPeriod,
+        recurring_due_day: value === 'fixed_day' ? (prev.recurring_due_day || 1) : 0,
+        reminder_type: nextReminderType,
+      }
+    })
+  }
+
+  function setRecurringPeriod(value: RecurringPeriod) {
+    setForm((prev) => {
+      const previousDefault = defaultReminderTypeForRecurring(prev.recurring_type, prev.recurring_period)
+      const nextReminderType = prev.recurring_type === 'none'
+        ? 'none'
+        : prev.reminder_type === 'none' || prev.reminder_type === previousDefault
+          ? defaultReminderTypeForRecurring(prev.recurring_type, value)
+          : prev.reminder_type
+
+      return {
+        ...prev,
+        recurring_period: value,
+        reminder_type: nextReminderType,
+      }
+    })
   }
 
   function handleClose() {
@@ -260,7 +380,7 @@ export default function ExpenseTypeFormPage() {
           <select
             className="field__input"
             value={form.recurring_type}
-            onChange={(e) => set('recurring_type', e.target.value as RecurringType)}
+            onChange={(e) => setRecurringType(e.target.value as RecurringType)}
           >
             {RECURRING_TYPE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -278,11 +398,25 @@ export default function ExpenseTypeFormPage() {
                 <select
                   className="field__input"
                   value={form.recurring_period}
-                  onChange={(e) => set('recurring_period', e.target.value as RecurringPeriod)}
+                  onChange={(e) => setRecurringPeriod(e.target.value as RecurringPeriod)}
                 >
-                  {RECURRING_PERIOD_OPTIONS.filter((o) => o.value !== 'none').map((o) => (
+                  {periodOptionsForRecurringType(form.recurring_type).map((o) => (
                     <option key={o.value} value={o.value}>
                       {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field field--flex1">
+                <label className="field__label">Reminder Type</label>
+                <select
+                  className="field__input"
+                  value={form.reminder_type}
+                  onChange={(e) => set('reminder_type', e.target.value as ReminderTypeValue)}
+                >
+                  {reminderTypeOptions.filter((option) => option.value !== 'none').map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -295,7 +429,6 @@ export default function ExpenseTypeFormPage() {
                     value={form.recurring_due_day}
                     onChange={(e) => set('recurring_due_day', Number(e.target.value))}
                   >
-                    <option value={0}>No specific day</option>
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                       <option key={d} value={d}>
                         {d}
@@ -305,16 +438,8 @@ export default function ExpenseTypeFormPage() {
                 </div>
               )}
             </div>
-            <label className="field-check">
-              <input
-                type="checkbox"
-                checked={form.automatic}
-                onChange={(e) => set('automatic', e.target.checked)}
-              />
-              <span>Automatic expense</span>
-            </label>
             <small>
-              Automatic recurring expenses skip advance reminders and only notify on the due day or once overdue.
+              Weekly recurring expenses default to On day. Automatic uses the app default reminder behavior for the selected schedule.
             </small>
           </>
         )}
@@ -346,7 +471,7 @@ export default function ExpenseTypeFormPage() {
               {form.recurring_type !== 'none' &&
                 form.recurring_period !== 'none' &&
                 ` · ${RECURRING_PERIOD_OPTIONS.find((o) => o.value === form.recurring_period)?.label}`}
-              {form.recurring_type !== 'none' && form.automatic && ' · Automatic'}
+              {form.recurring_type !== 'none' && form.reminder_type !== 'none' && ` · ${reminderTypeLabel(form.reminder_type)}`}
               {form.default_amount && ` · $${form.default_amount}`}
             </span>
           </div>

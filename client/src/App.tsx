@@ -5,6 +5,7 @@ import { useAuth } from './contexts/AuthContext'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import GetStartedPage from './pages/GetStartedPage'
 import SettingsPage from './pages/SettingsPage'
 import ChangePasswordPage from './pages/ChangePasswordPage'
 import DevicesPage from './pages/DevicesPage'
@@ -29,6 +30,7 @@ export default function App() {
       <Route path="/login" element={<PublicOnlyRoute><LoginPage /></PublicOnlyRoute>} />
       <Route path="/register" element={<PublicOnlyRoute><RegisterPage /></PublicOnlyRoute>} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+        <Route path="/get-started" element={<GetStartedPage />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/due-items" element={<DueItemsPage />} />
         <Route path="/wallets" element={<WalletsPage />} />

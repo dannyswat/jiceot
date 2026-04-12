@@ -54,6 +54,7 @@ func TestUserService_Register(t *testing.T) {
 		assert.NotNil(t, user)
 		assert.Equal(t, "test@example.com", user.Email)
 		assert.Equal(t, "Test User", user.Name)
+		assert.Equal(t, DefaultCurrencySymbol, user.CurrencySymbol)
 		assert.NotEmpty(t, user.PasswordHash)
 		assert.NotEqual(t, "password123", user.PasswordHash)
 	})
@@ -201,6 +202,41 @@ func TestUserService_ChangePassword(t *testing.T) {
 		err := service.ChangePassword(user.ID, changeReq)
 		assert.Error(t, err)
 		assert.Equal(t, ErrPasswordTooShort, err)
+	})
+}
+
+func TestUserService_UpdateCurrencySymbol(t *testing.T) {
+	db := setupTestDB(t)
+	passwordHasher := &BcryptPasswordHasher{}
+	service := NewUserService(db, passwordHasher)
+
+	user, err := service.Register(CreateUserRequest{
+		Email:    "currency@example.com",
+		Password: "password123",
+		Name:     "Currency User",
+	})
+	require.NoError(t, err)
+
+	t.Run("updates symbol", func(t *testing.T) {
+		updatedUser, updateErr := service.UpdateCurrencySymbol(user.ID, "€")
+		require.NoError(t, updateErr)
+		assert.Equal(t, "€", updatedUser.CurrencySymbol)
+
+		persistedUser, getErr := service.GetUser(user.ID)
+		require.NoError(t, getErr)
+		assert.Equal(t, "€", persistedUser.CurrencySymbol)
+	})
+
+	t.Run("blank resets to default", func(t *testing.T) {
+		updatedUser, updateErr := service.UpdateCurrencySymbol(user.ID, "   ")
+		require.NoError(t, updateErr)
+		assert.Equal(t, DefaultCurrencySymbol, updatedUser.CurrencySymbol)
+	})
+
+	t.Run("rejects invalid symbol", func(t *testing.T) {
+		updatedUser, updateErr := service.UpdateCurrencySymbol(user.ID, "abcde")
+		assert.ErrorIs(t, updateErr, ErrInvalidCurrencySymbol)
+		assert.Nil(t, updatedUser)
 	})
 }
 

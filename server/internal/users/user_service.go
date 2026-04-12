@@ -4,9 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"gorm.io/gorm"
 )
+
+const DefaultCurrencySymbol = "$"
 
 type UserService struct {
 	db             *gorm.DB
@@ -24,18 +27,23 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"new_password" validate:"required,min=6"`
 }
 
+type UpdateCurrencySymbolRequest struct {
+	CurrencySymbol string `json:"currency_symbol"`
+}
+
 type UserListResponse struct {
 	Users []User `json:"users"`
 	Total int64  `json:"total"`
 }
 
 var (
-	ErrUserNotFound     = errors.New("user not found")
-	ErrEmailExists      = errors.New("email already exists")
-	ErrInvalidPassword  = errors.New("invalid password")
-	ErrEmptyEmail       = errors.New("email cannot be empty")
-	ErrEmptyName        = errors.New("name cannot be empty")
-	ErrPasswordTooShort = errors.New("password must be at least 6 characters")
+	ErrUserNotFound          = errors.New("user not found")
+	ErrEmailExists           = errors.New("email already exists")
+	ErrInvalidPassword       = errors.New("invalid password")
+	ErrEmptyEmail            = errors.New("email cannot be empty")
+	ErrEmptyName             = errors.New("name cannot be empty")
+	ErrPasswordTooShort      = errors.New("password must be at least 6 characters")
+	ErrInvalidCurrencySymbol = errors.New("currency symbol must be 1-4 visible characters")
 )
 
 func NewUserService(db *gorm.DB, passwordHasher PasswordHasher) *UserService {
@@ -68,15 +76,39 @@ func (s *UserService) Register(req CreateUserRequest) (*User, error) {
 
 	// Create user
 	user := User{
-		Email:        strings.ToLower(req.Email),
-		PasswordHash: hashedPassword,
-		Name:         strings.TrimSpace(req.Name),
+		Email:          strings.ToLower(req.Email),
+		PasswordHash:   hashedPassword,
+		Name:           strings.TrimSpace(req.Name),
+		CurrencySymbol: DefaultCurrencySymbol,
 	}
 
 	if err := s.db.Create(&user).Error; err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
+	return &user, nil
+}
+
+// UpdateCurrencySymbol updates a user's preferred display currency symbol.
+func (s *UserService) UpdateCurrencySymbol(userID uint, symbol string) (*User, error) {
+	var user User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+
+	normalizedSymbol, err := normalizeCurrencySymbol(symbol)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Model(&user).Update("currency_symbol", normalizedSymbol).Error; err != nil {
+		return nil, fmt.Errorf("failed to update currency symbol: %w", err)
+	}
+
+	user.CurrencySymbol = normalizedSymbol
 	return &user, nil
 }
 
@@ -227,6 +259,20 @@ func (s *UserService) validateChangePasswordRequest(req ChangePasswordRequest) e
 		return ErrInvalidPassword
 	}
 	return nil
+}
+
+func normalizeCurrencySymbol(value string) (string, error) {
+	symbol := strings.TrimSpace(value)
+	if symbol == "" {
+		return DefaultCurrencySymbol, nil
+	}
+	if strings.ContainsAny(symbol, " \t\r\n") {
+		return "", ErrInvalidCurrencySymbol
+	}
+	if utf8.RuneCountInString(symbol) > 4 {
+		return "", ErrInvalidCurrencySymbol
+	}
+	return symbol, nil
 }
 
 // DeleteUserAccount hard deletes a user and all their associated data

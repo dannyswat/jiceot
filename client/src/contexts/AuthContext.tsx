@@ -8,7 +8,7 @@ import {
 	type ReactNode,
 } from 'react'
 
-import { authAPI, clearStoredAuth, getStoredToken, getStoredUser, registerUnauthorizedHandler, storeAuthSession } from '../services/api'
+import { authAPI, clearStoredAuth, getStoredToken, getStoredUser, registerUnauthorizedHandler, storeAuthSession, storeUser, userAPI } from '../services/api'
 import type { AuthContextValue, ChangePasswordRequest, LoginRequest, RegisterRequest, User } from '../types/auth'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 			try {
 				const currentUser = await authAPI.me()
+				storeUser(currentUser)
 				startTransition(() => setUser(currentUser))
 			} catch {
 				clearStoredAuth()
@@ -105,6 +106,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 				setIsLoading(false)
 			}
 		},
+		updateCurrencySymbol: async (currencySymbol: string) => {
+			setIsLoading(true)
+			try {
+				const updatedUser = await userAPI.updateCurrencySymbol({
+					currency_symbol: currencySymbol,
+				})
+				storeUser(updatedUser)
+				startTransition(() => setUser(updatedUser))
+			} finally {
+				setIsLoading(false)
+			}
+		},
 		deleteAccount: async () => {
 			setIsLoading(true)
 			try {
@@ -117,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 		},
 		refreshSession: async () => {
 			const currentUser = await authAPI.me()
+			storeUser(currentUser)
 			startTransition(() => setUser(currentUser))
 		},
 	}), [isLoading, user])

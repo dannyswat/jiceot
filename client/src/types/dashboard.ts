@@ -20,6 +20,7 @@ export interface DueExpense {
   default_amount: number
   recurring_type: string
   recurring_period: string
+  reminder_type: string
   next_due_date: string
   days_until_due: number
   status: 'overdue' | 'due_soon' | 'upcoming' | 'suggested'

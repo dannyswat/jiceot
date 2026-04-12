@@ -1,14 +1,21 @@
-export function formatCurrency(amount: number, currency = 'USD', locale = 'en-US'): string {
-	if (!Number.isFinite(amount)) {
-		return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(0)
-	}
+import { DEFAULT_CURRENCY_SYMBOL } from './constants'
+import { getStoredUser } from '../services/api'
 
-	return new Intl.NumberFormat(locale, {
-		style: 'currency',
-		currency,
+function resolveCurrencySymbol(currencySymbol?: string): string {
+	const candidate = currencySymbol?.trim() || getStoredUser()?.currency_symbol?.trim()
+	return candidate || DEFAULT_CURRENCY_SYMBOL
+}
+
+export function formatCurrency(amount: number, currencySymbol?: string, locale = 'en-US'): string {
+	const symbol = resolveCurrencySymbol(currencySymbol)
+	const roundedAmount = Number.isFinite(amount) ? Math.round(amount) : 0
+	const prefix = roundedAmount < 0 ? '-' : ''
+	const formattedAmount = new Intl.NumberFormat(locale, {
 		minimumFractionDigits: 0,
 		maximumFractionDigits: 0,
-	}).format(Math.round(amount))
+	}).format(Math.abs(roundedAmount))
+
+	return `${prefix}${symbol}${formattedAmount}`
 }
 
 export function parseCurrencyInput(value: string): number {

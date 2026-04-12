@@ -1,4 +1,5 @@
 export type RecurringType = 'none' | 'fixed_day' | 'flexible'
+export type ReminderType = 'none' | 'in_advance' | 'on_day' | 'automatic'
 export type RecurringPeriod =
   | 'none'
   | 'weekly'
@@ -38,7 +39,7 @@ export interface ExpenseType {
   recurring_type: RecurringType
   recurring_period: RecurringPeriod
   recurring_due_day: number
-  automatic: boolean
+  reminder_type: ReminderType
   next_due_day?: string | null
   stopped: boolean
   user_id: number
@@ -59,7 +60,7 @@ export interface CreateExpenseTypeRequest {
   recurring_type?: RecurringType
   recurring_period?: RecurringPeriod
   recurring_due_day?: number
-  automatic?: boolean
+  reminder_type?: ReminderType
   next_due_day?: string | null
   stopped?: boolean
 }

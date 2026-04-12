@@ -173,7 +173,7 @@ func (h *ExpenseTypeHandler) expenseTypeError(c echo.Context, err error, fallbac
 		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	case ErrExpenseTypeNameExists:
 		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
-	case ErrEmptyExpenseTypeName, ErrInvalidExpenseParent, ErrInvalidRecurringType, ErrInvalidRecurringPeriod, ErrInvalidRecurringDueDay, ErrFlexiblePostponeOnly, ErrExpenseTypeCycleReference, ErrExpenseTypeInUse:
+	case ErrEmptyExpenseTypeName, ErrInvalidExpenseParent, ErrInvalidRecurringType, ErrInvalidRecurringPeriod, ErrInvalidRecurringDueDay, ErrInvalidReminderType, ErrFlexiblePostponeOnly, ErrExpenseTypeCycleReference, ErrExpenseTypeInUse:
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	default:
 		if err != nil {

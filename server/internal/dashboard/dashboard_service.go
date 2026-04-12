@@ -52,6 +52,7 @@ type DueExpense struct {
 	DefaultAmount   float64 `json:"default_amount"`
 	RecurringType   string  `json:"recurring_type"`
 	RecurringPeriod string  `json:"recurring_period"`
+	ReminderType    string  `json:"reminder_type"`
 	NextDueDate     string  `json:"next_due_date"`
 	DaysUntilDue    int     `json:"days_until_due"`
 	Status          string  `json:"status"`
@@ -261,8 +262,12 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 			DefaultAmount:   expenseType.DefaultAmount,
 			RecurringType:   expenseType.RecurringType,
 			RecurringPeriod: expenseType.RecurringPeriod,
+			ReminderType:    expenses.EffectiveReminderType(expenseType),
 			NextDueDate:     nextDue.Format(expenses.DateOnlyLayout),
 			DaysUntilDue:    dayDiff(now, *nextDue),
+		}
+		if !shouldIncludeDueExpense(entry.ReminderType, entry.DaysUntilDue) {
+			continue
 		}
 		if expenseType.RecurringType == expenses.RecurringTypeFlexible {
 			entry.Status = "suggested"
@@ -309,6 +314,17 @@ func dueStatus(now, dueDate time.Time) string {
 		return "due_soon"
 	}
 	return "upcoming"
+}
+
+func shouldIncludeDueExpense(reminderType string, daysUntilDue int) bool {
+	switch reminderType {
+	case expenses.ReminderTypeNone:
+		return false
+	case expenses.ReminderTypeOnDay:
+		return daysUntilDue <= 0
+	default:
+		return true
+	}
 }
 
 func statusPriority(status string) int {

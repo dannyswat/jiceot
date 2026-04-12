@@ -12,8 +12,8 @@ import {
 
 import { expenseTypeAPI } from '../services/api'
 import { daysUntil, formatDate } from '../common/date'
-import { RECURRING_TYPE_OPTIONS, RECURRING_PERIOD_OPTIONS } from '../common/constants'
-import type { ExpenseType, ExpenseTypeTreeNode } from '../types/expense'
+import { RECURRING_TYPE_OPTIONS, RECURRING_PERIOD_OPTIONS, REMINDER_TYPE_OPTIONS } from '../common/constants'
+import type { ExpenseType, ExpenseTypeTreeNode, ReminderType } from '../types/expense'
 
 type ViewMode = 'hierarchy' | 'list'
 
@@ -122,6 +122,11 @@ export default function ExpenseTypesPage() {
     return `${type}${period && period !== 'None' ? ` · ${period}` : ''}`
   }
 
+  const reminderLabel = (reminderType: ReminderType) => {
+    if (reminderType === 'none') return null
+    return REMINDER_TYPE_OPTIONS.find((option) => option.value === reminderType)?.label ?? reminderType
+  }
+
   const dueStatus = (et: ExpenseType) => {
     if (!et.next_due_day) return null
     const days = daysUntil(et.next_due_day)
@@ -155,7 +160,7 @@ export default function ExpenseTypesPage() {
             <div className="tree-item__badges">
               {showParent && et.parent && <span className="badge badge--dim">{et.parent.name}</span>}
               {recurring && <span className="badge badge--blue">{recurring}</span>}
-              {et.automatic && <span className="badge badge--orange">Automatic</span>}
+              {et.reminder_type === 'automatic' && <span className="badge badge--orange">{reminderLabel(et.reminder_type)}</span>}
               {et.stopped && <span className="badge badge--dim">Stopped</span>}
               {status && <span className={`badge ${status.cls}`}>{status.label}</span>}
               {et.next_due_day && (

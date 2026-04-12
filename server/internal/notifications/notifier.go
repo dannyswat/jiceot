@@ -214,7 +214,11 @@ func (n *Notifier) collectDueItems(userID uint, daysAhead int) []string {
 				continue
 			}
 			days := dayDiff(now, *nextDue)
-			if et.Automatic && days > 0 {
+			effectiveReminderType := expenses.EffectiveReminderType(et)
+			if effectiveReminderType == expenses.ReminderTypeNone {
+				continue
+			}
+			if effectiveReminderType == expenses.ReminderTypeOnDay && days > 0 {
 				continue
 			}
 			label := "📋"

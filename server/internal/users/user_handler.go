@@ -70,6 +70,43 @@ func (h *UserHandler) DeleteUserAccount(c echo.Context) error {
 	})
 }
 
+// UpdateCurrencySymbol handles PUT /api/user/preferences/currency
+func (h *UserHandler) UpdateCurrencySymbol(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Unauthorized",
+		})
+	}
+
+	var req UpdateCurrencySymbolRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Invalid request format",
+		})
+	}
+
+	user, err := h.userService.UpdateCurrencySymbol(userID, req.CurrencySymbol)
+	if err != nil {
+		switch err {
+		case ErrUserNotFound:
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "User not found",
+			})
+		case ErrInvalidCurrencySymbol:
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": err.Error(),
+			})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "Failed to update currency symbol",
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, user)
+}
+
 // GetUser handles GET /api/users/:id (for admin purposes if needed)
 func (h *UserHandler) GetUser(c echo.Context) error {
 	userID := getUserIDFromContext(c)

@@ -15,6 +15,11 @@ const (
 	RecurringTypeFixedDay = "fixed_day"
 	RecurringTypeFlexible = "flexible"
 
+	ReminderTypeNone      = "none"
+	ReminderTypeInAdvance = "in_advance"
+	ReminderTypeOnDay     = "on_day"
+	ReminderTypeAutomatic = "automatic"
+
 	RecurringPeriodNone         = "none"
 	RecurringPeriodWeekly       = "weekly"
 	RecurringPeriodBiweekly     = "biweekly"
@@ -38,7 +43,7 @@ type ExpenseType struct {
 	RecurringType   string         `json:"recurring_type" gorm:"type:varchar(20);not null;default:'none';check:chk_expense_type_recurring_type,recurring_type IN ('none','fixed_day','flexible')"`
 	RecurringPeriod string         `json:"recurring_period" gorm:"type:varchar(20);not null;default:'none';check:chk_expense_type_recurring_period,recurring_period IN ('none','weekly','biweekly','monthly','bimonthly','quarterly','fourmonths','semiannually','annually')"`
 	RecurringDueDay int            `json:"recurring_due_day" gorm:"not null;default:0"`
-	Automatic       bool           `json:"automatic" gorm:"not null;default:false"`
+	ReminderType    string         `json:"reminder_type" gorm:"type:varchar(20);not null;default:'in_advance';check:chk_expense_type_reminder_type,reminder_type IN ('none','in_advance','on_day','automatic')"`
 	NextDueDay      *time.Time     `json:"next_due_day" gorm:"type:date;index"`
 	Stopped         bool           `json:"stopped" gorm:"not null;default:false"`
 	UserID          uint           `json:"user_id" gorm:"type:bigint;not null;index"`
@@ -53,6 +58,7 @@ type ExpenseType struct {
 	BillCycle         int    `json:"bill_cycle,omitempty" gorm:"-"`
 	FixedAmount       string `json:"fixed_amount,omitempty" gorm:"-"`
 	DefaultBillTypeID *uint  `json:"default_bill_type_id,omitempty" gorm:"-"`
+	LegacyAutomatic   bool   `json:"-" gorm:"column:automatic;->"`
 }
 
 func (et *ExpenseType) AfterFind(*gorm.DB) error {
@@ -108,9 +114,19 @@ func (et *ExpenseType) syncFromLegacyFields() {
 		et.RecurringPeriod = RecurringPeriodNone
 	}
 
+	if et.ReminderType == "" {
+		if et.LegacyAutomatic {
+			et.ReminderType = ReminderTypeAutomatic
+		} else {
+			et.ReminderType = defaultReminderTypeForRecurring(et.RecurringType, et.RecurringPeriod)
+		}
+	}
+
 	if et.RecurringDueDay == 0 && et.BillDay > 0 {
 		et.RecurringDueDay = et.BillDay
 	}
+
+	et.ReminderType = normalizeReminderType(et.ReminderType, et.RecurringType, et.RecurringPeriod)
 
 	et.syncLegacyFields()
 }
@@ -171,4 +187,39 @@ func recurrenceFromLegacyCycle(billDay, billCycle int) (string, string) {
 	default:
 		return recurringType, RecurringPeriodNone
 	}
+}
+
+func normalizeReminderType(value, recurringType, recurringPeriod string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	if recurringType == RecurringTypeNone {
+		return ReminderTypeNone
+	}
+	if value == "" {
+		return defaultReminderTypeForRecurring(recurringType, recurringPeriod)
+	}
+	return value
+}
+
+func defaultReminderTypeForRecurring(recurringType, recurringPeriod string) string {
+	if recurringType == RecurringTypeNone {
+		return ReminderTypeNone
+	}
+	if recurringPeriod == RecurringPeriodWeekly {
+		return ReminderTypeOnDay
+	}
+	return ReminderTypeInAdvance
+}
+
+func EffectiveReminderType(expenseType ExpenseType) string {
+	if expenseType.RecurringType == RecurringTypeNone {
+		return ReminderTypeNone
+	}
+	reminderType := normalizeReminderType(expenseType.ReminderType, expenseType.RecurringType, expenseType.RecurringPeriod)
+	if reminderType != ReminderTypeAutomatic {
+		return reminderType
+	}
+	if expenseType.RecurringPeriod == RecurringPeriodWeekly {
+		return ReminderTypeOnDay
+	}
+	return ReminderTypeInAdvance
 }

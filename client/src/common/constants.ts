@@ -1,4 +1,4 @@
-import type { RecurringPeriod, RecurringType } from '../types/expense'
+import type { RecurringPeriod, RecurringType, ReminderType } from '../types/expense'
 import type { WalletTypeFilter } from '../types/wallet'
 
 export const PRESET_COLORS = [
@@ -81,6 +81,30 @@ export const RECURRING_PERIOD_OPTIONS: { value: RecurringPeriod; label: string }
 	{ value: 'fourmonths', label: 'Every 4 months' },
 	{ value: 'semiannually', label: 'Twice a year' },
 	{ value: 'annually', label: 'Annually' },
+] as const
+
+export const REMINDER_TYPE_OPTIONS: { value: ReminderType; label: string }[] = [
+	{ value: 'in_advance', label: 'In advance' },
+	{ value: 'on_day', label: 'On day' },
+	{ value: 'automatic', label: 'Automatic' },
+	{ value: 'none', label: 'None' },
+] as const
+
+export const DEFAULT_CURRENCY_SYMBOL = '$'
+
+export const CURRENCY_SYMBOL_OPTIONS = [
+	{ value: '$', label: 'Dollar ($)' },
+	{ value: '€', label: 'Euro (€)' },
+	{ value: '£', label: 'Pound (£)' },
+	{ value: '¥', label: 'Yen/Yuan (¥)' },
+	{ value: '₩', label: 'Won (₩)' },
+	{ value: '₹', label: 'Rupee (₹)' },
+	{ value: '₱', label: 'Peso (₱)' },
+	{ value: '₫', label: 'Dong (₫)' },
+	{ value: '₺', label: 'Lira (₺)' },
+	{ value: 'R$', label: 'Real (R$)' },
+	{ value: 'CHF', label: 'Swiss Franc (CHF)' },
+	{ value: 'kr', label: 'Krona/Krone (kr)' },
 ] as const
 
 export const APP_SECTIONS = [

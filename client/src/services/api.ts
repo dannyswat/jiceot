@@ -8,6 +8,7 @@ import type {
 	LoginRequest,
 	MessageResponse,
 	RegisterRequest,
+	UpdateCurrencySymbolRequest,
 	User,
 } from '../types/auth'
 import type { DashboardStats, DueExpensesResponse, DueWalletsResponse } from '../types/dashboard'
@@ -70,9 +71,13 @@ export function getStoredUser(): User | null {
 	}
 }
 
+export function storeUser(user: User): void {
+	window.localStorage.setItem(USER_KEY, JSON.stringify(user))
+}
+
 export function storeAuthSession(response: AuthResponse): void {
 	window.localStorage.setItem(TOKEN_KEY, response.token)
-	window.localStorage.setItem(USER_KEY, JSON.stringify(response.user))
+	storeUser(response.user)
 	api.defaults.headers.common.Authorization = `Bearer ${response.token}`
 }
 
@@ -169,6 +174,11 @@ export const authAPI = {
 	changePassword: async (payload: ChangePasswordRequest): Promise<MessageResponse> =>
 		(await api.put<MessageResponse>('/auth/password', payload)).data,
 	deleteAccount: async (): Promise<MessageResponse> => (await api.delete<MessageResponse>('/user/account')).data,
+}
+
+export const userAPI = {
+	updateCurrencySymbol: async (payload: UpdateCurrencySymbolRequest): Promise<User> =>
+		(await api.put<User>('/user/preferences/currency', payload)).data,
 }
 
 export const deviceAPI = {

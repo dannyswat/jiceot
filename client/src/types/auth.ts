@@ -2,6 +2,7 @@ export interface User {
   id: number
   email: string
   name: string
+  currency_symbol: string
   created_at: string
   updated_at: string
 }
@@ -29,6 +30,10 @@ export interface RegisterRequest {
 export interface ChangePasswordRequest {
   current_password: string
   new_password: string
+}
+
+export interface UpdateCurrencySymbolRequest {
+	currency_symbol: string
 }
 
 export interface UserDevice {
@@ -62,6 +67,7 @@ export interface AuthContextValue {
   register: (name: string, email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   changePassword: (currentPassword: string, nextPassword: string) => Promise<void>
+  updateCurrencySymbol: (currencySymbol: string) => Promise<void>
   deleteAccount: () => Promise<void>
   refreshSession: () => Promise<void>
 }

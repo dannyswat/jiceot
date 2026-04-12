@@ -88,7 +88,7 @@ export default function Layout() {
   const [notificationOpenPath, setNotificationOpenPath] = useState<string | null>(null)
   const [notificationItems, setNotificationItems] = useState<NotificationItem[]>([])
 
-  const isFormPage = location.pathname.includes('/new') || /\/\d+$/.test(location.pathname)
+  const isFormPage = location.pathname === '/get-started' || location.pathname.includes('/new') || /\/\d+$/.test(location.pathname)
 
   useEffect(() => {
     let active = true
