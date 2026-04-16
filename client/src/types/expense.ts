@@ -41,6 +41,7 @@ export interface ExpenseType {
   recurring_due_day: number
   reminder_type: ReminderType
   next_due_day?: string | null
+  ios_category: string
   stopped: boolean
   user_id: number
   created_at: string
@@ -62,6 +63,7 @@ export interface CreateExpenseTypeRequest {
   recurring_due_day?: number
   reminder_type?: ReminderType
   next_due_day?: string | null
+  ios_category?: string
   stopped?: boolean
 }
 

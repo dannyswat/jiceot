@@ -23,6 +23,16 @@ const reminderTypeOptions: { value: ReminderTypeValue; label: string }[] = [
   { value: 'none', label: 'None' },
 ]
 
+const iosShortcutCategoryOptions = [
+  'Food & Drinks',
+  'Shopping',
+  'Travel',
+  'Services',
+  'Entertainment',
+  'Health',
+  'Transport',
+] as const
+
 function defaultReminderTypeForRecurring(recurringType: RecurringType, recurringPeriod: RecurringPeriod): ReminderTypeValue {
   if (recurringType === 'none') return 'none'
   if (recurringPeriod === 'weekly') return 'on_day'
@@ -79,6 +89,7 @@ interface ExpenseTypeFormState {
   recurring_period: RecurringPeriod
   recurring_due_day: number
   reminder_type: ReminderTypeValue
+  ios_category: string
   stopped: boolean
 }
 
@@ -94,6 +105,7 @@ const INITIAL_FORM: ExpenseTypeFormState = {
   recurring_period: 'none',
   recurring_due_day: 0,
   reminder_type: 'none',
+  ios_category: '',
   stopped: false,
 }
 
@@ -147,6 +159,7 @@ export default function ExpenseTypeFormPage() {
           recurring_period: recurringPeriod,
           recurring_due_day: recurringType === 'fixed_day' ? (et.recurring_due_day || 1) : et.recurring_due_day,
           reminder_type: (et.reminder_type ?? 'none') as ReminderTypeValue,
+          ios_category: et.ios_category || '',
           stopped: et.stopped,
         })
       })
@@ -177,6 +190,7 @@ export default function ExpenseTypeFormPage() {
         recurring_period: recurringPeriod,
         recurring_due_day: form.recurring_type === 'fixed_day' ? Math.max(form.recurring_due_day, 1) : 0,
         reminder_type: form.recurring_type !== 'none' ? form.reminder_type : 'none',
+        ios_category: form.ios_category || undefined,
         ...(isEdit ? { stopped: form.stopped } : {}),
       }
       if (isEdit && id) {
@@ -346,6 +360,24 @@ export default function ExpenseTypeFormPage() {
             onChange={(e) => set('description', e.target.value)}
             placeholder={t('Optional description')}
           />
+        </div>
+
+        {/* iOS Category */}
+        <div className="field">
+          <label className="field__label">{t('iOS Shortcut Category')}</label>
+          <input
+            className="field__input"
+            list="ios-shortcut-category-options"
+            value={form.ios_category}
+            onChange={(e) => set('ios_category', e.target.value)}
+            placeholder={t('e.g. Food & Drink, Transport')}
+          />
+          <datalist id="ios-shortcut-category-options">
+            {iosShortcutCategoryOptions.map((category) => (
+              <option key={category} value={category} />
+            ))}
+          </datalist>
+          <small>{t('Used to map Apple Pay transactions from iOS Shortcuts')}</small>
         </div>
 
         {/* Default amount & wallet */}

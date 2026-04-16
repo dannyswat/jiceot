@@ -40,6 +40,7 @@ type CreateExpenseTypeRequest struct {
 	RecurringDueDay int     `json:"recurring_due_day"`
 	ReminderType    string  `json:"reminder_type"`
 	NextDueDay      *string `json:"next_due_day"`
+	IOSCategory     string  `json:"ios_category"`
 	Stopped         bool    `json:"stopped"`
 }
 
@@ -56,6 +57,7 @@ type UpdateExpenseTypeRequest struct {
 	RecurringDueDay int     `json:"recurring_due_day"`
 	ReminderType    string  `json:"reminder_type"`
 	NextDueDay      *string `json:"next_due_day"`
+	IOSCategory     string  `json:"ios_category"`
 	Stopped         bool    `json:"stopped"`
 }
 
@@ -78,7 +80,7 @@ func NewExpenseTypeService(db *gorm.DB) *ExpenseTypeService {
 }
 
 func (s *ExpenseTypeService) CreateExpenseType(userID uint, req CreateExpenseTypeRequest) (*ExpenseType, error) {
-	prepared, err := s.prepareExpenseType(userID, req.ParentID, 0, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.ReminderType, req.NextDueDay, req.Stopped, nil)
+	prepared, err := s.prepareExpenseType(userID, req.ParentID, 0, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.ReminderType, req.NextDueDay, req.IOSCategory, req.Stopped, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +109,7 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := s.prepareExpenseType(userID, req.ParentID, expenseTypeID, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.ReminderType, req.NextDueDay, req.Stopped, existing)
+	prepared, err := s.prepareExpenseType(userID, req.ParentID, expenseTypeID, req.Name, req.Icon, req.Color, req.Description, req.DefaultAmount, req.DefaultWalletID, req.RecurringType, req.RecurringPeriod, req.RecurringDueDay, req.ReminderType, req.NextDueDay, req.IOSCategory, req.Stopped, existing)
 	if err != nil {
 		return nil, err
 	}
@@ -123,6 +125,7 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	existing.RecurringDueDay = prepared.RecurringDueDay
 	existing.ReminderType = prepared.ReminderType
 	existing.NextDueDay = prepared.NextDueDay
+	existing.IOSCategory = prepared.IOSCategory
 	existing.Stopped = prepared.Stopped
 	if err := s.db.Save(existing).Error; err != nil {
 		return nil, fmt.Errorf("failed to update expense type: %w", err)
@@ -237,7 +240,18 @@ func (s *ExpenseTypeService) ToggleExpenseType(userID, expenseTypeID uint) (*Exp
 	return expenseType, nil
 }
 
-func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, expenseTypeID uint, name, icon, color, description string, defaultAmount float64, defaultWalletID *uint, recurringType, recurringPeriod string, recurringDueDay int, reminderType string, nextDueDay *string, stopped bool, existing *ExpenseType) (*ExpenseType, error) {
+func (s *ExpenseTypeService) FindExpenseTypeByIOSCategory(userID uint, iosCategory string) (*ExpenseType, error) {
+	var expenseType ExpenseType
+	if err := s.db.Where("user_id = ? AND LOWER(ios_category) = LOWER(?) AND stopped = false", userID, strings.TrimSpace(iosCategory)).First(&expenseType).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrExpenseTypeNotFound
+		}
+		return nil, fmt.Errorf("failed to find expense type by iOS category: %w", err)
+	}
+	return &expenseType, nil
+}
+
+func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, expenseTypeID uint, name, icon, color, description string, defaultAmount float64, defaultWalletID *uint, recurringType, recurringPeriod string, recurringDueDay int, reminderType string, nextDueDay *string, iosCategory string, stopped bool, existing *ExpenseType) (*ExpenseType, error) {
 	if strings.TrimSpace(name) == "" {
 		return nil, ErrEmptyExpenseTypeName
 	}
@@ -291,6 +305,7 @@ func (s *ExpenseTypeService) prepareExpenseType(userID uint, parentID *uint, exp
 		RecurringPeriod: recurringPeriod,
 		RecurringDueDay: recurringDueDay,
 		ReminderType:    reminderType,
+		IOSCategory:     strings.TrimSpace(iosCategory),
 		Stopped:         stopped,
 		UserID:          userID,
 	}

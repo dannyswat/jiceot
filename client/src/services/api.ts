@@ -182,6 +182,8 @@ export const userAPI = {
 		(await api.put<User>('/user/preferences/currency', payload)).data,
 	updateLanguage: async (payload: UpdateLanguageRequest): Promise<User> =>
 		(await api.put<User>('/user/preferences/language', payload)).data,
+	rotateAutomationKey: async (): Promise<User> =>
+		(await api.post<User>('/user/preferences/automation-key/rotate')).data,
 }
 
 export const deviceAPI = {

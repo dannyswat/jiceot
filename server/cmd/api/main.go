@@ -68,6 +68,7 @@ func main() {
 	dashboardHandler := dashboard.NewDashboardHandler(dashboardService)
 	reportsHandler := reports.NewReportsHandler(reportsService)
 	notificationSettingHandler := notifications.NewNotificationSettingHandler(notificationSettingService)
+	shortcutHandler := expenses.NewShortcutHandler(expenseService, expenseTypeService, walletService)
 
 	// Initialize Echo
 	e := echo.New()
@@ -117,6 +118,7 @@ func main() {
 	// User routes
 	protected.PUT("/user/preferences/currency", userHandler.UpdateCurrencySymbol)
 	protected.PUT("/user/preferences/language", userHandler.UpdateLanguage)
+	protected.POST("/user/preferences/automation-key/rotate", userHandler.RotateAutomationAPIKey)
 	protected.DELETE("/user/account", userHandler.DeleteUserAccount)
 
 	// Device management routes
@@ -173,6 +175,11 @@ func main() {
 	protected.GET("/expenses/:id", expenseHandler.GetExpense)
 	protected.PUT("/expenses/:id", expenseHandler.UpdateExpense)
 	protected.DELETE("/expenses/:id", expenseHandler.DeleteExpense)
+
+	// Automation routes (per-user automation API key via query string)
+	automation := api.Group("/automation")
+	automation.Use(auth.AutomationAPIKeyMiddleware(userService))
+	automation.POST("/expense", shortcutHandler.CreateAutomationExpense)
 
 	// Start background notifier
 	notifier := notifications.NewNotifier(db)

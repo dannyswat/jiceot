@@ -438,6 +438,10 @@ func (h *AuthHandler) ChangePassword(c echo.Context) error {
 
 // getUserIDFromContext extracts user ID from the JWT token in context
 func getUserIDFromContext(c echo.Context) uint {
+	if automationUserID, ok := c.Get("automation_user_id").(uint); ok {
+		return automationUserID
+	}
+
 	token, ok := c.Get("user").(*jwt.Token)
 	if !ok {
 		return 0

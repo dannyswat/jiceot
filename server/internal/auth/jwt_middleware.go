@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"dannyswat/jiceot/internal"
+	"dannyswat/jiceot/internal/users"
 
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
@@ -41,6 +42,29 @@ func JWTMiddleware(config *internal.Config) echo.MiddlewareFunc {
 			})
 		},
 	})
+}
+
+func AutomationAPIKeyMiddleware(userService *users.UserService) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			apiKey := c.QueryParam("api_key")
+			if apiKey == "" {
+				return c.JSON(http.StatusUnauthorized, map[string]string{
+					"error": "Automation API key is required",
+				})
+			}
+
+			user, err := userService.GetUserByAutomationAPIKey(apiKey)
+			if err != nil {
+				return c.JSON(http.StatusUnauthorized, map[string]string{
+					"error": "Invalid automation API key",
+				})
+			}
+
+			c.Set("automation_user_id", user.ID)
+			return next(c)
+		}
+	}
 }
 
 // OptionalJWTMiddleware creates a middleware that validates JWT if present but doesn't require it

@@ -45,6 +45,7 @@ type ExpenseType struct {
 	RecurringDueDay int            `json:"recurring_due_day" gorm:"not null;default:0"`
 	ReminderType    string         `json:"reminder_type" gorm:"type:varchar(20);not null;default:'in_advance';check:chk_expense_type_reminder_type,reminder_type IN ('none','in_advance','on_day','automatic')"`
 	NextDueDay      *time.Time     `json:"next_due_day" gorm:"type:date;index"`
+	IOSCategory     string         `json:"ios_category" gorm:"type:varchar(100);not null;default:''"`
 	Stopped         bool           `json:"stopped" gorm:"not null;default:false"`
 	UserID          uint           `json:"user_id" gorm:"type:bigint;not null;index"`
 	CreatedAt       time.Time      `json:"created_at"`

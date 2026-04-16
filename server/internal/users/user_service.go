@@ -96,6 +96,19 @@ func (s *UserService) Register(req CreateUserRequest) (*User, error) {
 	return &user, nil
 }
 
+func (s *UserService) ensureAutomationAPIKey(user *User) error {
+	if user == nil || strings.TrimSpace(user.AutomationAPIKey) != "" {
+		return nil
+	}
+
+	user.ensureAutomationAPIKey()
+	if err := s.db.Model(user).Update("automation_api_key", user.AutomationAPIKey).Error; err != nil {
+		return fmt.Errorf("failed to persist automation API key: %w", err)
+	}
+
+	return nil
+}
+
 // UpdateLanguage updates a user's preferred language.
 func (s *UserService) UpdateLanguage(userID uint, language string) (*User, error) {
 	var user User
@@ -217,6 +230,9 @@ func (s *UserService) GetUser(userID uint) (*User, error) {
 		}
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
+	if err := s.ensureAutomationAPIKey(&user); err != nil {
+		return nil, err
+	}
 
 	return &user, nil
 }
@@ -229,6 +245,21 @@ func (s *UserService) GetUserByEmail(email string) (*User, error) {
 			return nil, ErrUserNotFound
 		}
 		return nil, fmt.Errorf("failed to get user by email: %w", err)
+	}
+	if err := s.ensureAutomationAPIKey(&user); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (s *UserService) GetUserByAutomationAPIKey(apiKey string) (*User, error) {
+	var user User
+	if err := s.db.Where("automation_api_key = ?", strings.TrimSpace(apiKey)).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to get user by automation API key: %w", err)
 	}
 
 	return &user, nil
@@ -261,6 +292,20 @@ func (s *UserService) Authenticate(email, password string) (*User, error) {
 	// Validate password
 	if err := s.ValidatePassword(user, password); err != nil {
 		return nil, ErrInvalidPassword
+	}
+
+	return user, nil
+}
+
+func (s *UserService) RotateAutomationAPIKey(userID uint) (*User, error) {
+	user, err := s.GetUser(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	user.AutomationAPIKey = generateAutomationAPIKey()
+	if err := s.db.Model(user).Update("automation_api_key", user.AutomationAPIKey).Error; err != nil {
+		return nil, fmt.Errorf("failed to rotate automation API key: %w", err)
 	}
 
 	return user, nil

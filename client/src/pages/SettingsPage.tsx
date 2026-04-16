@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   BanknotesIcon,
   ChevronRightIcon,
+  ClipboardDocumentIcon,
   BellAlertIcon,
   ComputerDesktopIcon,
   ExclamationTriangleIcon,
@@ -16,11 +17,22 @@ import { useAuth } from '../contexts/AuthContext'
 import { LANGUAGE_OPTIONS, normalizeLanguage, useI18n, type SupportedLanguage } from '../contexts/I18nContext'
 import { formatCurrency } from '../common/currency'
 import { CURRENCY_SYMBOL_OPTIONS, DEFAULT_CURRENCY_SYMBOL } from '../common/constants'
+import { api } from '../services/api'
 import type { AuthContextValue, User } from '../types/auth'
 
 function normalizeCurrencySymbolInput(value: string): string {
   const trimmed = value.trim()
   return trimmed || DEFAULT_CURRENCY_SYMBOL
+}
+
+function buildAutomationURL(apiKey: string): string {
+  if (!apiKey) {
+    return ''
+  }
+
+  const url = new URL('/api/automation/expense', window.location.origin)
+  url.searchParams.set('api_key', apiKey)
+  return url.toString()
 }
 
 export default function SettingsPage() {
@@ -34,6 +46,8 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const initialCurrencySymbol: string = user && 'currency_symbol' in user ? user.currency_symbol : DEFAULT_CURRENCY_SYMBOL
+  const automationAPIKey: string = user && 'automation_api_key' in user ? user.automation_api_key : ''
+  const automationURL: string = buildAutomationURL(automationAPIKey)
   const [currencySymbol, setCurrencySymbol] = useState<string>(initialCurrencySymbol)
   const [isSavingCurrency, setIsSavingCurrency] = useState(false)
   const [currencyError, setCurrencyError] = useState<string | null>(null)
@@ -42,12 +56,16 @@ export default function SettingsPage() {
   const [isSavingLanguage, setIsSavingLanguage] = useState(false)
   const [languageError, setLanguageError] = useState<string | null>(null)
   const [languageMessage, setLanguageMessage] = useState<string | null>(null)
+  const [automationKeyMessage, setAutomationKeyMessage] = useState<string | null>(null)
+  const [automationKeyError, setAutomationKeyError] = useState<string | null>(null)
+  const [isRotatingAutomationKey, setIsRotatingAutomationKey] = useState(false)
 
   useEffect(() => {
     const newSymbol: string = user && 'currency_symbol' in user ? user.currency_symbol : DEFAULT_CURRENCY_SYMBOL
     const nextRawLanguage: unknown = user ? (user as { language?: unknown }).language : undefined
     setCurrencySymbol(newSymbol)
     setLanguage(normalizeLanguage(typeof nextRawLanguage === 'string' ? nextRawLanguage : undefined))
+    setAutomationKeyError(null)
   }, [user])
 
   const currentCurrencySymbol: string = initialCurrencySymbol
@@ -135,6 +153,38 @@ export default function SettingsPage() {
       setDeleteError(err instanceof Error ? err.message : t('Failed to delete account'))
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  async function handleCopyAutomationURL(): Promise<void> {
+    if (!automationURL) {
+      return
+    }
+
+    setAutomationKeyError(null)
+    setAutomationKeyMessage(null)
+
+    try {
+      await window.navigator.clipboard.writeText(automationURL)
+      setAutomationKeyMessage(t('Automation API URL copied.'))
+    } catch {
+      setAutomationKeyError(t('Failed to copy automation API URL'))
+    }
+  }
+
+  async function handleRotateAutomationKey(): Promise<void> {
+    setIsRotatingAutomationKey(true)
+    setAutomationKeyError(null)
+    setAutomationKeyMessage(null)
+
+    try {
+      await api.post<User>('/user/preferences/automation-key/rotate')
+      await auth.refreshSession()
+      setAutomationKeyMessage(t('Automation API key rotated.'))
+    } catch (err) {
+      setAutomationKeyError(err instanceof Error ? err.message : t('Failed to rotate automation API key'))
+    } finally {
+      setIsRotatingAutomationKey(false)
     }
   }
 
@@ -257,6 +307,55 @@ export default function SettingsPage() {
             </div>
             {languageError && <p className="form-error">{languageError}</p>}
             {languageMessage && <p className="settings-preference__message">{languageMessage}</p>}
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-section">
+        <h2 className="settings-section__title">{t('Automation')}</h2>
+        <div className="settings-preference">
+          <div className="settings-preference__icon">
+            <KeyIcon />
+          </div>
+          <div className="settings-preference__body">
+            <div className="settings-preference__copy">
+              <p>{t('Automation API URL')}</p>
+              <small>{t('Paste this URL directly into the Shortcuts Get Contents of URL action. The api_key is already included.')}</small>
+            </div>
+            <div className="settings-preference__controls settings-preference__controls--stack">
+              <label className="field field--flex1">
+                <span className="field__label">{t('Automation API URL')}</span>
+                <input
+                  type="text"
+                  className="field__input settings-preference__mono"
+                  value={automationURL}
+                  readOnly
+                  spellCheck={false}
+                />
+                <small className="field-hint">{t('Rotate the key if this URL was exposed. Copying the full URL is the fastest way to set up the shortcut.')}</small>
+              </label>
+              <div className="settings-preference__actions">
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => void handleCopyAutomationURL()}
+                  disabled={!automationURL || isRotatingAutomationKey}
+                >
+                  <ClipboardDocumentIcon />
+                  {t('Copy URL')}
+                </button>
+                <button
+                  type="button"
+                  className="primary-button settings-preference__save"
+                  onClick={() => void handleRotateAutomationKey()}
+                  disabled={isRotatingAutomationKey}
+                >
+                  {isRotatingAutomationKey ? t('Rotating…') : t('Rotate key')}
+                </button>
+              </div>
+            </div>
+            {automationKeyError && <p className="form-error">{automationKeyError}</p>}
+            {automationKeyMessage && <p className="settings-preference__message">{automationKeyMessage}</p>}
           </div>
         </div>
       </div>

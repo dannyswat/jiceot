@@ -4,6 +4,7 @@ export interface User {
   name: string
   currency_symbol: string
   language: 'en' | 'zh-Hant' | 'zh-Hans'
+  automation_api_key: string
   created_at: string
   updated_at: string
 }

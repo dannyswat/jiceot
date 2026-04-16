@@ -512,6 +512,7 @@ a.topbar__brand {
   height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   background: #ffffff;
   border-right: 1px solid rgba(148,163,184,0.22);
   backdrop-filter: blur(18px);
@@ -564,6 +565,7 @@ a.topbar__brand {
 
 .sidebar__nav {
   flex: 1;
+  min-height: 0;
   padding: 12px 10px;
   overflow-y: auto;
   display: flex;
@@ -1203,6 +1205,26 @@ a.topbar__brand {
   display: flex;
   align-items: end;
   gap: 12px;
+}
+
+.settings-preference__controls--stack {
+  align-items: stretch;
+}
+
+.settings-preference__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.settings-preference__actions .ghost-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.settings-preference__mono {
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.85rem;
 }
 
 .settings-preference__save {

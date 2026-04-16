@@ -19,14 +19,13 @@ func NewUserHandler(userService *UserService) *UserHandler {
 	}
 }
 
-// getUserIDFromContext extracts user ID from the JWT token in context using reflection
+// getUserIDFromContext extracts user ID from the JWT token in context using reflection.
 func getUserIDFromContext(c echo.Context) uint {
 	token, ok := c.Get("user").(*jwt.Token)
 	if !ok {
 		return 0
 	}
 
-	// Use reflection to extract UserID field regardless of the specific Claims type
 	claimsValue := reflect.ValueOf(token.Claims)
 	if claimsValue.Kind() == reflect.Ptr {
 		claimsValue = claimsValue.Elem()
@@ -190,4 +189,30 @@ func (h *UserHandler) ListUsers(c echo.Context) error {
 	return c.JSON(http.StatusForbidden, map[string]string{
 		"error": "Access denied",
 	})
+}
+
+// RotateAutomationAPIKey handles POST /api/user/preferences/automation-key/rotate
+func (h *UserHandler) RotateAutomationAPIKey(c echo.Context) error {
+	userID := getUserIDFromContext(c)
+	if userID == 0 {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "Unauthorized",
+		})
+	}
+
+	user, err := h.userService.RotateAutomationAPIKey(userID)
+	if err != nil {
+		switch err {
+		case ErrUserNotFound:
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "User not found",
+			})
+		default:
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "Failed to rotate automation API key",
+			})
+		}
+	}
+
+	return c.JSON(http.StatusOK, user)
 }

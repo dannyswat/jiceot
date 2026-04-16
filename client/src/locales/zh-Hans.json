@@ -428,5 +428,20 @@
   "Women lifestyle": "女性生活",
   "Housewife / homemaker": "家庭主妇／家庭管理",
   "Office worker / freelancer": "上班族／自由职业者",
-  "Parent / pet / health / travel": "亲子／宠物／健康／旅行"
+  "Parent / pet / health / travel": "亲子／宠物／健康／旅行",
+  "iOS Shortcut Category": "iOS 快捷指令分类",
+  "e.g. Food & Drink, Transport": "例如 Food & Drink、Transport",
+  "Used to map Apple Pay transactions from iOS Shortcuts": "用于从 iOS 快捷指令映射 Apple Pay 交易",
+  "Automation": "自动化",
+  "Automation API key": "自动化 API 密钥",
+  "Automation API URL": "自动化 API URL",
+  "Paste this URL directly into the Shortcuts Get Contents of URL action. The api_key is already included.": "将此 URL 直接粘贴到快捷指令的“获取 URL 内容”动作中。它已经包含 api_key。",
+  "Rotate the key if this URL was exposed. Copying the full URL is the fastest way to set up the shortcut.": "如果此 URL 曾被泄露，请轮换密钥。复制完整 URL 是设置快捷指令最快的方式。",
+  "Copy URL": "复制 URL",
+  "Rotate key": "轮换密钥",
+  "Automation API URL copied.": "自动化 API URL 已复制。",
+  "Automation API key rotated.": "自动化 API 密钥已轮换。",
+  "Failed to copy automation API URL": "复制自动化 API URL 失败",
+  "Failed to rotate automation API key": "轮换自动化 API 密钥失败",
+  "Rotating…": "正在轮换…"
 }
