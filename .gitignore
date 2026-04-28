@@ -82,6 +82,7 @@ temp/
 *.so
 *.dylib
 server/api
+__debug*
 
 # Test binary, built with `go test -c`
 *.test

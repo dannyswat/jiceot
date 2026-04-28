@@ -2698,6 +2698,7 @@ select,
 @media (min-width: 1024px) {
   .sidebar {
     transform: translateX(0);
+    overflow: visible;
   }
 
   .sidebar__close {
