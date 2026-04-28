@@ -15,6 +15,7 @@ interface NewExpenseEntry {
   tempId: number
   expense_type_id: string
   amount: string
+  date: string
   note: string
 }
 
@@ -108,14 +109,20 @@ export default function PaymentFormPage() {
     : undefined
 
   useEffect(() => {
-    if (!navigationState?.paymentDraft) return
+    const paymentDraft = navigationState?.paymentDraft
+    if (!paymentDraft) return
 
-    setForm(navigationState.paymentDraft.form)
-    setSelectedExpenseIds(navigationState.paymentDraft.selectedExpenseIds)
-    setNewExpenses(navigationState.paymentDraft.newExpenses)
-    setAmountMode(navigationState.paymentDraft.amountMode)
-    setDiscrepancyMode(navigationState.paymentDraft.discrepancyMode)
-    setWalletPickerOpen(!navigationState.paymentDraft.form.wallet_id)
+    setForm(paymentDraft.form)
+    setSelectedExpenseIds(paymentDraft.selectedExpenseIds)
+    setNewExpenses(
+      paymentDraft.newExpenses.map((expense) => ({
+        ...expense,
+        date: expense.date || paymentDraft.form.date,
+      })),
+    )
+    setAmountMode(paymentDraft.amountMode)
+    setDiscrepancyMode(paymentDraft.discrepancyMode)
+    setWalletPickerOpen(!paymentDraft.form.wallet_id)
     if (isEdit) {
       setInitialLoading(false)
     }
@@ -259,6 +266,7 @@ export default function PaymentFormPage() {
       tempId: Date.now(),
       expense_type_id: defaultTypeId ? defaultTypeId.toString() : '',
       amount: '',
+      date: form.date,
       note: '',
     }
     // If wallet has a default expense type, pre-fill amount from it
@@ -302,7 +310,7 @@ export default function PaymentFormPage() {
           expense_type_id: Number(ne.expense_type_id),
           wallet_id: Number(form.wallet_id),
           amount: Number(ne.amount),
-          date: form.date,
+          date: ne.date,
           note: ne.note || undefined,
         })
         createdIds.push(created.id)
@@ -544,6 +552,13 @@ export default function PaymentFormPage() {
                     onChange={(value) => updateNewExpense(ne.tempId, 'amount', value)}
                     placeholder={t('Amount')}
                     title="Expense amount"
+                  />
+                  <input
+                    className="field__input new-expense-row__date"
+                    type="date"
+                    value={ne.date}
+                    onChange={(e) => updateNewExpense(ne.tempId, 'date', e.target.value)}
+                    aria-label={t('Expense date')}
                   />
                   <input
                     className="field__input new-expense-row__note"

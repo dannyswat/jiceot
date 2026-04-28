@@ -21,6 +21,7 @@ interface NewExpenseEntry {
   tempId: number
   expense_type_id: string
   amount: string
+  date: string
   note: string
 }
 

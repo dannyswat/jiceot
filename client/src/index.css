@@ -3329,6 +3329,11 @@ select,
   max-width: 120px;
 }
 
+.new-expense-row__date {
+  flex: 1;
+  min-width: 148px;
+}
+
 .new-expense-row__note {
   flex: 1;
   min-width: 0;
@@ -3357,6 +3362,7 @@ select,
     flex: 1 1 100%;
   }
   .new-expense-row__amount,
+  .new-expense-row__date,
   .new-expense-row__note {
     flex: 1;
   }
