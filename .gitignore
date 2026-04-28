@@ -152,9 +152,6 @@ docs/_build/
 # yarn.lock
 # pnpm-lock.yaml
 
-# Docker
-.dockerignore
-
 # Terraform
 *.tfstate
 *.tfstate.*

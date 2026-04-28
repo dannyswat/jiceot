@@ -15,7 +15,7 @@ interface ExpenseTypePickerProps {
   triggerClassName?: string
 }
 
-function joinClassNames(...values: Array<string | undefined>): string {
+function joinClassNames(...values: (string | undefined)[]): string {
   return values.filter(Boolean).join(' ')
 }
 

@@ -1,4 +1,6 @@
 # Jiceot
+[![CI](https://github.com/dannyswat/jiceot/actions/workflows/ci.yml/badge.svg)](https://github.com/dannyswat/jiceot/actions/workflows/ci.yml)
+
 A lightweight and easy-to-use bills and expenses management system which helps lazy users to record spendings with minimal efforts.
 
 ## Demo

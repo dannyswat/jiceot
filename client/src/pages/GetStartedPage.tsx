@@ -22,7 +22,7 @@ const COMMON_TIMEZONES = Intl.supportedValuesOf('timeZone')
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 
 const REMINDER_HOURS = Array.from({ length: 24 }, (_, hour) => ({
-  value: String(hour).padStart(2, '0') + ':00',
+  value: `${String(hour).padStart(2, '0')}:00`,
   label: hour === 0 ? '12:00 AM' : hour < 12 ? `${hour}:00 AM` : hour === 12 ? '12:00 PM' : `${hour - 12}:00 PM`,
 }))
 
