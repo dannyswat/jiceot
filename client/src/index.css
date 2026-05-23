@@ -3684,6 +3684,16 @@ select,
   background: rgba(255,255,255,0.93);
 }
 
+.due-item-card--today {
+  border-color: rgba(244, 140, 6, 0.4);
+  background: linear-gradient(135deg, rgba(255, 244, 230, 0.96), rgba(255, 255, 255, 0.94));
+  box-shadow: 0 16px 30px rgba(244, 140, 6, 0.12);
+}
+
+.due-item-card--today:hover {
+  background: linear-gradient(135deg, rgba(255, 244, 230, 0.99), rgba(255, 255, 255, 0.96));
+}
+
 .due-item__leading {
   display: flex;
   align-items: center;
@@ -3708,6 +3718,14 @@ select,
   min-width: 0;
 }
 
+.due-item__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
 .due-item__name {
   font-weight: 600;
   font-size: 0.92rem;
@@ -3721,6 +3739,15 @@ select,
   color: var(--text-soft);
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.due-item__today-badge {
+  box-shadow: inset 0 0 0 1px rgba(244, 140, 6, 0.24);
+  font-weight: 700;
+}
+
+.due-item-card--today .due-item__meta {
+  color: rgba(64, 41, 14, 0.8);
 }
 
 .due-list .due-item__leading {

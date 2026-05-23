@@ -68,6 +68,7 @@ function reminderTypeLabel(reminderType: ReminderTypeValue): string {
 
 interface ExpenseTypeFormLocationState {
   returnTo?: string
+  expenseReturnTo?: string
   expenseDraft?: {
     expense_type_id: string
     wallet_id: string
@@ -200,6 +201,7 @@ export default function ExpenseTypeFormPage() {
         if (navigationState?.returnTo) {
           navigate(navigationState.returnTo, {
             state: {
+              returnTo: navigationState.expenseReturnTo,
               expenseDraft: {
                 ...navigationState.expenseDraft,
                 expense_type_id: createdExpenseType.id.toString(),
@@ -276,6 +278,7 @@ export default function ExpenseTypeFormPage() {
     if (returnTo) {
       navigate(returnTo, {
         state: {
+          returnTo: navigationState?.expenseReturnTo,
           expenseDraft: navigationState?.expenseDraft,
         },
       })

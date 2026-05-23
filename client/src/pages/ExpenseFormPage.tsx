@@ -19,6 +19,7 @@ interface ExpenseDraftFormState {
 }
 
 interface ExpenseFormLocationState {
+  returnTo?: string
   expenseDraft?: ExpenseDraftFormState
   createdExpenseTypeId?: number
 }
@@ -31,7 +32,8 @@ export default function ExpenseFormPage() {
   const [searchParams] = useSearchParams()
   const isEdit = Boolean(id)
   const navigationState = location.state as ExpenseFormLocationState | null
-  const returnTo = `${location.pathname}${location.search}`
+  const returnTo = !isEdit ? navigationState?.returnTo ?? '/expenses' : '/expenses'
+  const returnPath = `${location.pathname}${location.search}`
 
   const [form, setForm] = useState({
     expense_type_id: '' as string,
@@ -129,7 +131,8 @@ export default function ExpenseFormPage() {
   function handleCreateExpenseType() {
     navigate('/expense-types/new', {
       state: {
-        returnTo,
+        returnTo: returnPath,
+        expenseReturnTo: returnTo,
         expenseDraft: form,
       },
     })
@@ -138,7 +141,8 @@ export default function ExpenseFormPage() {
   function handleCreateWallet() {
     navigate('/wallets/new', {
       state: {
-        returnTo,
+        returnTo: returnPath,
+        expenseReturnTo: returnTo,
         expenseDraft: form,
       },
     })
@@ -161,12 +165,16 @@ export default function ExpenseFormPage() {
       } else {
         await expenseAPI.create(payload)
       }
-      navigate('/expenses')
+      navigate(returnTo, { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('Failed to save expense'))
     } finally {
       setLoading(false)
     }
+  }
+
+  function handleReturn(): void {
+    navigate(returnTo, { replace: true })
   }
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -187,7 +195,7 @@ export default function ExpenseFormPage() {
   return (
     <div className="page">
       <div className="page__header page__header--with-back">
-        <button className="back-button" onClick={() => navigate('/expenses')}>
+        <button className="back-button" onClick={handleReturn}>
           <ArrowLeftIcon />
         </button>
         <div>
@@ -346,7 +354,7 @@ export default function ExpenseFormPage() {
           <button
             type="button"
             className="btn btn--ghost"
-            onClick={() => navigate('/expenses')}
+            onClick={handleReturn}
           >
             {t('Cancel')}
           </button>

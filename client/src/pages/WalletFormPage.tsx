@@ -45,6 +45,7 @@ interface PaymentDraftState {
 
 interface WalletFormLocationState {
   returnTo?: string
+  expenseReturnTo?: string
   expenseDraft?: ExpenseDraftFormState
   paymentDraft?: PaymentDraftState
   paymentReturnTo?: string
@@ -153,6 +154,7 @@ export default function WalletFormPage() {
 
           navigate(returnTo, {
             state: {
+              returnTo: navigationState?.expenseReturnTo,
               expenseDraft: {
                 ...navigationState?.expenseDraft,
                 wallet_id: createdWallet.id.toString(),
@@ -188,6 +190,7 @@ export default function WalletFormPage() {
 
       navigate(returnTo, {
         state: {
+          returnTo: navigationState?.expenseReturnTo,
           expenseDraft: navigationState?.expenseDraft,
         },
       })

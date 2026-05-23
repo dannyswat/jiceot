@@ -16,6 +16,12 @@ import type { DueExpense, DueWallet } from '../types/dashboard'
 const currentYear = new Date().getFullYear()
 const currentMonth = new Date().getMonth() + 1
 
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string
+
+type DueItem =
+  | ({ kind: 'wallet'; key: string } & DueWallet)
+  | ({ kind: 'fixed' | 'flexible'; key: string } & DueExpense)
+
 function statusColor(status: string): string {
   switch (status) {
     case 'overdue':
@@ -55,6 +61,29 @@ function daysLabel(days: number, t: (key: string, params?: Record<string, string
 
 function periodLabel(period: string, t: (key: string) => string): string {
   return t(RECURRING_PERIOD_OPTIONS.find((o) => o.value === period)?.label ?? period)
+}
+
+function dueItemMeta(item: DueItem, t: TranslateFn): string {
+  if (item.kind === 'wallet') {
+    return [
+      t('Credit Bills'),
+      `${t('Due')} ${formatDate(item.next_due_date)}`,
+      `${t('Due day')} ${item.bill_due_day}`,
+      item.days_until_due === 0 ? null : daysLabel(item.days_until_due, t),
+      item.last_paid_at ? `${t('Last paid')} ${formatDate(item.last_paid_at)}` : null,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(' · ')
+  }
+
+  return [
+    item.kind === 'fixed' ? t('Recurring Expenses') : t('Suggested Tasks'),
+    periodLabel(item.recurring_period, t),
+    `${item.kind === 'fixed' ? t('Due') : t('Next')} ${formatDate(item.next_due_date)}`,
+    item.days_until_due === 0 ? null : daysLabel(item.days_until_due, t),
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(' · ')
 }
 
 export default function DueItemsPage() {
@@ -117,7 +146,25 @@ export default function DueItemsPage() {
     label: new Date(2000, i).toLocaleString(locale, { month: 'long' }),
   }))
 
-  const totalDueItems = dueWallets.length + fixedExpenses.length + flexibleExpenses.length
+  const dueItems: DueItem[] = [
+    ...dueWallets.map((wallet) => ({
+      ...wallet,
+      kind: 'wallet' as const,
+      key: `wallet-${wallet.id}`,
+    })),
+    ...fixedExpenses.map((expense) => ({
+      ...expense,
+      kind: 'fixed' as const,
+      key: `fixed-${expense.id}`,
+    })),
+    ...flexibleExpenses.map((expense) => ({
+      ...expense,
+      kind: 'flexible' as const,
+      key: `flexible-${expense.id}`,
+    })),
+  ].sort((left, right) => left.next_due_date.localeCompare(right.next_due_date))
+
+  const totalDueItems = dueItems.length
 
   return (
     <div className="page">
@@ -169,171 +216,94 @@ export default function DueItemsPage() {
       )}
 
       {!loading && totalDueItems > 0 && (
-        <div className="due-sections">
-          {/* Due Wallet Bills */}
-          {dueWallets.length > 0 && (
-            <section className="due-section">
-              <h2 className="due-section__title">
-                <span className="due-section__dot" style={{ background: '#f48c06' }} />
-                {t('Credit Bills')}
-                <span className="due-section__count">{dueWallets.length}</span>
-              </h2>
-              <div className="due-items-list">
-                {dueWallets.map((w) => (
-                  <div key={w.id} className="due-item-card">
-                    <div className="due-item__leading">
-                      <div className="due-item__icon" style={{ background: w.color || '#577590' }}>
-                        {w.icon || '💳'}
-                      </div>
-                      <div className="due-item__info">
-                        <span className="due-item__name">{w.name}</span>
-                        <span className="due-item__meta">
-                          {t('Due day')} {w.bill_due_day} · {daysLabel(w.days_until_due, t)}
-                          {w.last_paid_at && ` · ${t('Last paid')} ${formatDate(w.last_paid_at)}`}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="due-item__trailing">
-                      <span
-                        className="badge"
-                        style={{
-                          background: `${statusColor(w.status)}22`,
-                          color: statusColor(w.status),
-                        }}
-                      >
-                        {statusLabel(w.status, t)}
-                      </span>
-                      {w.has_payment ? (
-                        <span className="badge badge--green">{t('Paid')}</span>
-                      ) : (
-                        <Link
-                          to={`/payments/new?wallet_id=${w.id}`}
-                          state={{ returnTo: '/due-items' }}
-                          className="btn btn--sm btn--primary"
-                        >
-                          {t('Pay')}
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+        <div className="due-items-list due-list">
+          {dueItems.map((item) => {
+            const isDueToday = item.days_until_due === 0
 
-          {/* Fixed Day Expenses */}
-          {fixedExpenses.length > 0 && (
-            <section className="due-section">
-              <h2 className="due-section__title">
-                <span className="due-section__dot" style={{ background: '#d94f3d' }} />
-                {t('Recurring Expenses')}
-                <span className="due-section__count">{fixedExpenses.length}</span>
-              </h2>
-              <div className="due-items-list">
-                {fixedExpenses.map((e) => (
-                  <div key={e.id} className="due-item-card">
-                    <div className="due-item__leading">
-                      <div className="due-item__icon" style={{ background: e.color || '#577590' }}>
-                        {e.icon || '📋'}
-                      </div>
-                      <div className="due-item__info">
-                        <span className="due-item__name">{e.name}</span>
-                        <span className="due-item__meta">
-                          {periodLabel(e.recurring_period, t)} · {daysLabel(e.days_until_due, t)}
-                          {e.next_due_date && ` · ${t('Due')} ${formatDate(e.next_due_date)}`}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="due-item__trailing">
-                      {e.default_amount > 0 && (
-                        <span className="due-item__amount">{formatCurrency(e.default_amount)}</span>
+            return (
+              <div
+                key={item.key}
+                className={`due-item-card${isDueToday ? ' due-item-card--today' : ''}`}
+              >
+                <div className="due-item__leading">
+                  <div className="due-item__icon" style={{ background: item.color || '#577590' }}>
+                    {item.icon || (item.kind === 'wallet' ? '💳' : '📋')}
+                  </div>
+                  <div className="due-item__info">
+                    <div className="due-item__title">
+                      <span className="due-item__name">{item.name}</span>
+                      {isDueToday && (
+                        <span className="badge badge--orange due-item__today-badge">{t('Due today')}</span>
                       )}
-                      <span
-                        className="badge"
-                        style={{
-                          background: `${statusColor(e.status)}22`,
-                          color: statusColor(e.status),
-                        }}
+                    </div>
+                    <span className="due-item__meta">{dueItemMeta(item, t)}</span>
+                  </div>
+                </div>
+
+                <div className="due-item__trailing">
+                  {item.kind !== 'wallet' && item.default_amount > 0 && (
+                    <span className="due-item__amount">{formatCurrency(item.default_amount)}</span>
+                  )}
+
+                  <span
+                    className="badge"
+                    style={{
+                      background: `${statusColor(item.status)}22`,
+                      color: statusColor(item.status),
+                    }}
+                  >
+                    {statusLabel(item.status, t)}
+                  </span>
+
+                  {item.kind === 'wallet' ? (
+                    item.has_payment ? (
+                      <span className="badge badge--green">{t('Paid')}</span>
+                    ) : (
+                      <Link
+                        to={`/payments/new?wallet_id=${item.id}`}
+                        state={{ returnTo: '/due-items' }}
+                        className="btn btn--sm btn--primary"
                       >
-                        {statusLabel(e.status, t)}
-                      </span>
-                      <Link to={`/expenses/new?expense_type_id=${e.id}`} className="btn btn--sm btn--primary">
+                        {t('Pay')}
+                      </Link>
+                    )
+                  ) : (
+                    <>
+                      {item.kind === 'flexible' && item.days_until_due <= 3 && (
+                        <div className="due-item__postpone">
+                          <button
+                            className="btn btn--sm btn--ghost"
+                            disabled={postponingId === item.id}
+                            onClick={() => handlePostpone(item, 7)}
+                            title={t('Postpone 1 week')}
+                          >
+                            <ForwardIcon />
+                            <span>+7d</span>
+                          </button>
+                          <button
+                            className="btn btn--sm btn--ghost"
+                            disabled={postponingId === item.id}
+                            onClick={() => handlePostpone(item, 30)}
+                            title={t('Postpone 1 month')}
+                          >
+                            <ForwardIcon />
+                            <span>+30d</span>
+                          </button>
+                        </div>
+                      )}
+                      <Link
+                        to={`/expenses/new?expense_type_id=${item.id}`}
+                        state={{ returnTo: '/due-items' }}
+                        className="btn btn--sm btn--primary"
+                      >
                         {t('Record')}
                       </Link>
-                    </div>
-                  </div>
-                ))}
+                    </>
+                  )}
+                </div>
               </div>
-            </section>
-          )}
-
-          {/* Flexible / Suggested Expenses */}
-          {flexibleExpenses.length > 0 && (
-            <section className="due-section">
-              <h2 className="due-section__title">
-                <span className="due-section__dot" style={{ background: '#577590' }} />
-                {t('Suggested Tasks')}
-                <span className="due-section__count">{flexibleExpenses.length}</span>
-              </h2>
-              <div className="due-items-list">
-                {flexibleExpenses.map((e) => (
-                  <div key={e.id} className="due-item-card">
-                    <div className="due-item__leading">
-                      <div className="due-item__icon" style={{ background: e.color || '#577590' }}>
-                        {e.icon || '📋'}
-                      </div>
-                      <div className="due-item__info">
-                        <span className="due-item__name">{e.name}</span>
-                        <span className="due-item__meta">
-                          {periodLabel(e.recurring_period, t)} · {daysLabel(e.days_until_due, t)}
-                          {e.next_due_date && ` · ${t('Next')} ${formatDate(e.next_due_date)}`}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="due-item__trailing">
-                      {e.default_amount > 0 && (
-                        <span className="due-item__amount">{formatCurrency(e.default_amount)}</span>
-                      )}
-                      <span
-                        className="badge"
-                        style={{
-                          background: `${statusColor(e.status)}22`,
-                          color: statusColor(e.status),
-                        }}
-                      >
-                        {statusLabel(e.status, t)}
-                      </span>
-                      {e.days_until_due <= 3 && (
-                      <div className="due-item__postpone">
-                        <button
-                          className="btn btn--sm btn--ghost"
-                          disabled={postponingId === e.id}
-                          onClick={() => handlePostpone(e, 7)}
-                          title={t('Postpone 1 week')}
-                        >
-                          <ForwardIcon />
-                          <span>+7d</span>
-                        </button>
-                        <button
-                          className="btn btn--sm btn--ghost"
-                          disabled={postponingId === e.id}
-                          onClick={() => handlePostpone(e, 30)}
-                          title={t('Postpone 1 month')}
-                        >
-                          <ForwardIcon />
-                          <span>+30d</span>
-                        </button>
-                      </div>
-                      )}
-                      <Link to={`/expenses/new?expense_type_id=${e.id}`} className="btn btn--sm btn--primary">
-                        {t('Record')}
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+            )
+          })}
         </div>
       )}
     </div>
