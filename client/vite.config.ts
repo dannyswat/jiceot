@@ -1,8 +1,17 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import compression from 'vite-plugin-compression'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    compression({
+      ext: '.gz',
+      algorithm: 'gzip',
+      threshold: 0,
+      deleteOriginFile: false,
+    }),
+  ],
   esbuild: {
     legalComments: 'none',
     target: 'es2022',

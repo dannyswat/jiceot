@@ -3,7 +3,12 @@ package main
 import (
 	"fmt"
 	"log"
+	"mime"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
+	"strconv"
 	"strings"
 	_ "time/tzdata"
 
@@ -21,6 +26,8 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+const clientAssetsRoot = "client"
 
 func main() {
 	// Load environment variables
@@ -76,6 +83,7 @@ func main() {
 	// Middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(precompressedStaticMiddleware(clientAssetsRoot))
 
 	// Health check route
 	e.GET("/health", func(c echo.Context) error {
@@ -86,7 +94,7 @@ func main() {
 	})
 
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-		Root: "client",
+		Root: clientAssetsRoot,
 		Skipper: func(c echo.Context) bool {
 			// Skip static serving for API routes
 			return strings.HasPrefix(c.Request().URL.Path, "/api")
@@ -189,7 +197,7 @@ func main() {
 	// Start server
 	e.GET("*", func(c echo.Context) error {
 		c.Response().Header().Set(echo.HeaderCacheControl, "no-cache, no-store, must-revalidate")
-		return c.File("client/index.html")
+		return c.File(filepath.Join(clientAssetsRoot, "index.html"))
 	})
 
 	e.Logger.Printf("Server started at port %s", config.Port)
@@ -236,4 +244,130 @@ func migrateSchema(db *gorm.DB) error {
 	}
 
 	return nil
+}
+
+func precompressedStaticMiddleware(root string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			request := c.Request()
+			if request.Method != http.MethodGet && request.Method != http.MethodHead {
+				return next(c)
+			}
+
+			if strings.HasPrefix(request.URL.Path, "/api") {
+				return next(c)
+			}
+
+			rewrittenPath, contentType, isIndex := resolvePrecompressedAsset(root, request.URL.Path, request.Header.Get(echo.HeaderAcceptEncoding))
+			if rewrittenPath == "" {
+				return next(c)
+			}
+
+			response := c.Response()
+			response.Header().Add(echo.HeaderVary, echo.HeaderAcceptEncoding)
+			response.Header().Set(echo.HeaderContentEncoding, "gzip")
+			response.Header().Set(echo.HeaderContentType, contentType)
+			if isIndex {
+				response.Header().Set(echo.HeaderCacheControl, "no-cache, no-store, must-revalidate")
+			}
+
+			request.URL.Path = rewrittenPath
+			return next(c)
+		}
+	}
+}
+
+func resolvePrecompressedAsset(root, requestPath, acceptEncoding string) (string, string, bool) {
+	if !acceptsGzip(acceptEncoding) {
+		return "", "", false
+	}
+
+	cleanedPath := cleanedAssetPath(requestPath)
+	if strings.HasSuffix(cleanedPath, ".gz") {
+		return "", "", false
+	}
+
+	if assetExists(root, cleanedPath+".gz") {
+		return cleanedPath + ".gz", assetContentType(root, cleanedPath), cleanedPath == "/index.html"
+	}
+
+	if path.Ext(cleanedPath) == "" && assetExists(root, "/index.html.gz") {
+		return "/index.html.gz", assetContentType(root, "/index.html"), true
+	}
+
+	return "", "", false
+}
+
+func cleanedAssetPath(requestPath string) string {
+	cleanedPath := path.Clean("/" + strings.TrimPrefix(requestPath, "/"))
+	if cleanedPath == "/" {
+		return "/index.html"
+	}
+
+	return cleanedPath
+}
+
+func acceptsGzip(acceptEncoding string) bool {
+	for _, part := range strings.Split(acceptEncoding, ",") {
+		segment := strings.TrimSpace(part)
+		if segment == "" {
+			continue
+		}
+
+		params := strings.Split(segment, ";")
+		encoding := strings.TrimSpace(params[0])
+		if !strings.EqualFold(encoding, "gzip") && encoding != "*" {
+			continue
+		}
+
+		quality := 1.0
+		for _, param := range params[1:] {
+			key, value, found := strings.Cut(strings.TrimSpace(param), "=")
+			if !found || !strings.EqualFold(strings.TrimSpace(key), "q") {
+				continue
+			}
+
+			parsedQuality, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+			if err == nil {
+				quality = parsedQuality
+			}
+		}
+
+		if quality > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+func assetExists(root, requestPath string) bool {
+	assetPath := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(requestPath, "/")))
+	info, err := os.Stat(assetPath)
+	return err == nil && !info.IsDir()
+}
+
+func assetContentType(root, requestPath string) string {
+	if strings.HasSuffix(requestPath, ".map") {
+		return "application/json; charset=utf-8"
+	}
+
+	if contentType := mime.TypeByExtension(path.Ext(requestPath)); contentType != "" {
+		return contentType
+	}
+
+	assetPath := filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(requestPath, "/")))
+	file, err := os.Open(assetPath)
+	if err != nil {
+		return "application/octet-stream"
+	}
+	defer file.Close()
+
+	buffer := make([]byte, 512)
+	n, _ := file.Read(buffer)
+	if n == 0 {
+		return "application/octet-stream"
+	}
+
+	return http.DetectContentType(buffer[:n])
 }
