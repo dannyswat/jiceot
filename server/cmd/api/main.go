@@ -271,8 +271,7 @@ func precompressedStaticMiddleware(root string) echo.MiddlewareFunc {
 				response.Header().Set(echo.HeaderCacheControl, "no-cache, no-store, must-revalidate")
 			}
 
-			request.URL.Path = rewrittenPath
-			return next(c)
+			return c.File(filepath.Join(root, filepath.FromSlash(strings.TrimPrefix(rewrittenPath, "/"))))
 		}
 	}
 }
