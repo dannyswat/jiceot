@@ -214,11 +214,7 @@ func (n *Notifier) collectDueItems(userID uint, daysAhead int) []string {
 				continue
 			}
 			days := dayDiff(now, *nextDue)
-			effectiveReminderType := expenses.EffectiveReminderType(et)
-			if effectiveReminderType == expenses.ReminderTypeNone {
-				continue
-			}
-			if effectiveReminderType == expenses.ReminderTypeOnDay && days > 0 {
+			if !shouldNotifyExpenseType(et, days) {
 				continue
 			}
 			label := "📋"
@@ -244,6 +240,21 @@ func dayDiff(from, to time.Time) int {
 	from = expenses.NormalizeDateOnly(from)
 	to = expenses.NormalizeDateOnly(to)
 	return int(to.Sub(from).Hours() / 24)
+}
+
+func shouldNotifyExpenseType(expenseType expenses.ExpenseType, daysUntilDue int) bool {
+	if expenseType.RecurringPeriod == expenses.RecurringPeriodWeekly {
+		return daysUntilDue == 0
+	}
+
+	switch expenses.EffectiveReminderType(expenseType) {
+	case expenses.ReminderTypeNone:
+		return false
+	case expenses.ReminderTypeOnDay:
+		return daysUntilDue <= 0
+	default:
+		return true
+	}
 }
 
 func dueLabel(days int) string {
