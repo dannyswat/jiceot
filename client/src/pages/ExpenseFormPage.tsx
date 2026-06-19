@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { ArrowLeftIcon } from '@heroicons/react/24/outline'
+import { ArrowLeftIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 
 import AmountInput from '../components/AmountInput'
 import ExpenseTypePicker from '../components/ExpenseTypePicker'
 import { expenseAPI, expenseTypeAPI, walletAPI } from '../services/api'
 import { toDateInputValue } from '../common/date'
 import { useI18n } from '../contexts/I18nContext'
-import type { ExpenseType } from '../types/expense'
+import type { ExpenseType, UpdateExpenseTypeRequest } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
 interface ExpenseDraftFormState {
@@ -22,6 +22,25 @@ interface ExpenseFormLocationState {
   returnTo?: string
   expenseDraft?: ExpenseDraftFormState
   createdExpenseTypeId?: number
+}
+
+function buildExpenseTypeUpdatePayload(expenseType: ExpenseType, defaultAmount: number): UpdateExpenseTypeRequest {
+  return {
+    parent_id: expenseType.parent_id ?? null,
+    name: expenseType.name,
+    icon: expenseType.icon,
+    color: expenseType.color,
+    description: expenseType.description,
+    default_amount: defaultAmount,
+    default_wallet_id: expenseType.default_wallet_id ?? null,
+    recurring_type: expenseType.recurring_type,
+    recurring_period: expenseType.recurring_period,
+    recurring_due_day: expenseType.recurring_due_day,
+    reminder_type: expenseType.reminder_type,
+    next_due_day: expenseType.next_due_day ?? null,
+    ios_category: expenseType.ios_category,
+    stopped: expenseType.stopped,
+  }
 }
 
 export default function ExpenseFormPage() {
@@ -46,6 +65,7 @@ export default function ExpenseFormPage() {
   const [wallets, setWallets] = useState<Wallet[]>([])
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(isEdit)
+  const [updatingDefaultAmount, setUpdatingDefaultAmount] = useState(false)
   const [error, setError] = useState('')
   const [walletPickerOpen, setWalletPickerOpen] = useState(!isEdit)
 
@@ -148,6 +168,33 @@ export default function ExpenseFormPage() {
     })
   }
 
+  async function handleUpdateDefaultAmount(): Promise<void> {
+    if (!selectedType) {
+      return
+    }
+
+    const nextDefaultAmount = form.amount.trim() === '' ? Number.NaN : Number(form.amount)
+    if (!Number.isFinite(nextDefaultAmount) || nextDefaultAmount < 0) {
+      return
+    }
+
+    setError('')
+    setUpdatingDefaultAmount(true)
+    try {
+      const updatedExpenseType = await expenseTypeAPI.update(
+        selectedType.id,
+        buildExpenseTypeUpdatePayload(selectedType, nextDefaultAmount),
+      )
+      setExpenseTypes((prev) => prev.map((expenseType) => (
+        expenseType.id === updatedExpenseType.id ? updatedExpenseType : expenseType
+      )))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('Failed to update default amount'))
+    } finally {
+      setUpdatingDefaultAmount(false)
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent): Promise<void> {
     e.preventDefault()
     setError('')
@@ -191,6 +238,14 @@ export default function ExpenseFormPage() {
 
   const selectedType = expenseTypes.find((et) => et.id === Number(form.expense_type_id))
   const selectedWallet = wallets.find((wallet) => wallet.id === Number(form.wallet_id))
+  const parsedAmount = form.amount.trim() === '' ? null : Number(form.amount)
+  const canUpdateDefaultAmount = Boolean(
+    selectedType
+    && parsedAmount !== null
+    && Number.isFinite(parsedAmount)
+    && parsedAmount >= 0
+    && selectedType.default_amount !== parsedAmount,
+  )
 
   return (
     <div className="page">
@@ -232,7 +287,19 @@ export default function ExpenseFormPage() {
             />
           </div>
           <div className="field field--flex1">
-            <label className="field__label">{t('Amount')} *</label>
+            <div className="field__label-row">
+              <label className="field__label">{t('Amount')} *</label>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => void handleUpdateDefaultAmount()}
+                disabled={!canUpdateDefaultAmount || updatingDefaultAmount}
+                title={t('Update default amount')}
+                aria-label={t('Update default amount')}
+              >
+                {updatingDefaultAmount ? <ArrowPathIcon className="spin" /> : <ArrowPathIcon />}
+              </button>
+            </div>
             <AmountInput
               value={form.amount}
               onChange={(value) => set('amount', value)}
