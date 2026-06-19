@@ -320,8 +320,6 @@ func shouldIncludeDueExpense(reminderType string, daysUntilDue int) bool {
 	switch reminderType {
 	case expenses.ReminderTypeNone:
 		return false
-	case expenses.ReminderTypeOnDay:
-		return daysUntilDue <= 0
 	default:
 		return true
 	}
