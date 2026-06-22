@@ -23,6 +23,7 @@ import type {
 	ExpenseTypeTreeResponse,
 	PostponeExpenseTypeRequest,
 	UpdateExpenseRequest,
+	UpdateExpenseTypeDefaultAmountRequest,
 	UpdateExpenseTypeRequest,
 } from '../types/expense'
 import type { Payment, PaymentListResponse, PaymentMonthlyTotalResponse, CreatePaymentRequest, UpdatePaymentRequest } from '../types/payment'
@@ -234,6 +235,8 @@ export const expenseTypeAPI = {
 	create: async (payload: CreateExpenseTypeRequest): Promise<ExpenseType> => (await api.post<ExpenseType>('/expense-types', payload)).data,
 	update: async (expenseTypeId: number, payload: UpdateExpenseTypeRequest): Promise<ExpenseType> =>
 		(await api.put<ExpenseType>(`/expense-types/${expenseTypeId}`, payload)).data,
+	updateDefaultAmount: async (expenseTypeId: number, payload: UpdateExpenseTypeDefaultAmountRequest): Promise<ExpenseType> =>
+		(await api.put<ExpenseType>(`/expense-types/${expenseTypeId}/default-amount`, payload)).data,
 	delete: async (expenseTypeId: number): Promise<MessageResponse> => (await api.delete<MessageResponse>(`/expense-types/${expenseTypeId}`)).data,
 	tree: async (includeStopped = false): Promise<ExpenseTypeTreeResponse> => {
 		const response = (await api.get<ExpenseTypeTreeResponse>(`/expense-types/tree${queryString({ include_stopped: includeStopped })}`)).data

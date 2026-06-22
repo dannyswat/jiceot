@@ -13,6 +13,7 @@ var (
 	ErrExpenseTypeNotFound       = errors.New("expense type not found")
 	ErrExpenseTypeNameExists     = errors.New("expense type name already exists")
 	ErrEmptyExpenseTypeName      = errors.New("expense type name cannot be empty")
+	ErrInvalidDefaultAmount      = errors.New("default amount must be greater than or equal to 0")
 	ErrInvalidExpenseParent      = errors.New("expense type parent must be a top-level expense type")
 	ErrInvalidRecurringType      = errors.New("invalid recurring type")
 	ErrInvalidRecurringPeriod    = errors.New("invalid recurring period")
@@ -59,6 +60,10 @@ type UpdateExpenseTypeRequest struct {
 	NextDueDay      *string `json:"next_due_day"`
 	IOSCategory     string  `json:"ios_category"`
 	Stopped         bool    `json:"stopped"`
+}
+
+type UpdateExpenseTypeDefaultAmountRequest struct {
+	DefaultAmount *float64 `json:"default_amount"`
 }
 
 type PostponeExpenseTypeRequest struct {
@@ -133,6 +138,27 @@ func (s *ExpenseTypeService) UpdateExpenseType(userID, expenseTypeID uint, req U
 	if err := s.db.Preload("Parent").Preload("DefaultWallet").First(existing, existing.ID).Error; err != nil {
 		return nil, fmt.Errorf("failed to reload expense type: %w", err)
 	}
+	return existing, nil
+}
+
+func (s *ExpenseTypeService) UpdateExpenseTypeDefaultAmount(userID, expenseTypeID uint, defaultAmount float64) (*ExpenseType, error) {
+	if defaultAmount < 0 {
+		return nil, ErrInvalidDefaultAmount
+	}
+
+	existing, err := s.GetExpenseType(userID, expenseTypeID)
+	if err != nil {
+		return nil, err
+	}
+
+	existing.DefaultAmount = defaultAmount
+	if err := s.db.Save(existing).Error; err != nil {
+		return nil, fmt.Errorf("failed to update expense type default amount: %w", err)
+	}
+	if err := s.db.Preload("Parent").Preload("DefaultWallet").First(existing, existing.ID).Error; err != nil {
+		return nil, fmt.Errorf("failed to reload expense type: %w", err)
+	}
+
 	return existing, nil
 }
 

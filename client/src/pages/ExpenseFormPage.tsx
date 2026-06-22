@@ -7,7 +7,7 @@ import ExpenseTypePicker from '../components/ExpenseTypePicker'
 import { expenseAPI, expenseTypeAPI, walletAPI } from '../services/api'
 import { toDateInputValue } from '../common/date'
 import { useI18n } from '../contexts/I18nContext'
-import type { ExpenseType, UpdateExpenseTypeRequest } from '../types/expense'
+import type { ExpenseType } from '../types/expense'
 import type { Wallet } from '../types/wallet'
 
 interface ExpenseDraftFormState {
@@ -24,23 +24,9 @@ interface ExpenseFormLocationState {
   createdExpenseTypeId?: number
 }
 
-function buildExpenseTypeUpdatePayload(expenseType: ExpenseType, defaultAmount: number): UpdateExpenseTypeRequest {
-  return {
-    parent_id: expenseType.parent_id ?? null,
-    name: expenseType.name,
-    icon: expenseType.icon,
-    color: expenseType.color,
-    description: expenseType.description,
-    default_amount: defaultAmount,
-    default_wallet_id: expenseType.default_wallet_id ?? null,
-    recurring_type: expenseType.recurring_type,
-    recurring_period: expenseType.recurring_period,
-    recurring_due_day: expenseType.recurring_due_day,
-    reminder_type: expenseType.reminder_type,
-    next_due_day: expenseType.next_due_day ?? null,
-    ios_category: expenseType.ios_category,
-    stopped: expenseType.stopped,
-  }
+interface ToastState {
+  kind: 'success' | 'error'
+  message: string
 }
 
 export default function ExpenseFormPage() {
@@ -67,6 +53,7 @@ export default function ExpenseFormPage() {
   const [initialLoading, setInitialLoading] = useState(isEdit)
   const [updatingDefaultAmount, setUpdatingDefaultAmount] = useState(false)
   const [error, setError] = useState('')
+  const [toast, setToast] = useState<ToastState | null>(null)
   const [walletPickerOpen, setWalletPickerOpen] = useState(!isEdit)
 
   useEffect(() => {
@@ -89,6 +76,16 @@ export default function ExpenseFormPage() {
       setInitialLoading(false)
     }
   }, [isEdit, navigationState])
+
+  useEffect(() => {
+    if (!toast) return
+
+    const timeoutId = window.setTimeout(() => {
+      setToast(null)
+    }, 3000)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [toast])
 
   // Apply query params for preselection (expense_type_id, wallet_id, date)
   useEffect(() => {
@@ -178,18 +175,19 @@ export default function ExpenseFormPage() {
       return
     }
 
-    setError('')
+    setToast(null)
     setUpdatingDefaultAmount(true)
     try {
-      const updatedExpenseType = await expenseTypeAPI.update(
+      const updatedExpenseType = await expenseTypeAPI.updateDefaultAmount(
         selectedType.id,
-        buildExpenseTypeUpdatePayload(selectedType, nextDefaultAmount),
+        { default_amount: nextDefaultAmount },
       )
       setExpenseTypes((prev) => prev.map((expenseType) => (
         expenseType.id === updatedExpenseType.id ? updatedExpenseType : expenseType
       )))
+      setToast({ kind: 'success', message: t('Default amount updated') })
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('Failed to update default amount'))
+      setToast({ kind: 'error', message: err instanceof Error ? err.message : t('Failed to update default amount') })
     } finally {
       setUpdatingDefaultAmount(false)
     }
@@ -249,6 +247,26 @@ export default function ExpenseFormPage() {
 
   return (
     <div className="page">
+      {toast && (
+        <div
+          className={`alert ${toast.kind === 'success' ? 'alert--success' : 'alert--error'}`}
+          role={toast.kind === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+          style={{
+            position: 'fixed',
+            left: '50%',
+            bottom: '1.5rem',
+            transform: 'translateX(-50%)',
+            width: 'min(28rem, calc(100vw - 2rem))',
+            zIndex: 50,
+            boxShadow: '0 18px 40px rgba(15, 23, 42, 0.28)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          {toast.message}
+        </div>
+      )}
+
       <div className="page__header page__header--with-back">
         <button className="back-button" onClick={handleReturn}>
           <ArrowLeftIcon />

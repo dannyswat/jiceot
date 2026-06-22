@@ -172,6 +172,7 @@ func main() {
 	protected.GET("/expense-types/tree", expenseTypeHandler.GetExpenseTypeTree)
 	protected.GET("/expense-types/:id", expenseTypeHandler.GetExpenseType)
 	protected.PUT("/expense-types/:id", expenseTypeHandler.UpdateExpenseType)
+	protected.PUT("/expense-types/:id/default-amount", expenseTypeHandler.UpdateExpenseTypeDefaultAmount)
 	protected.PUT("/expense-types/:id/postpone", expenseTypeHandler.PostponeExpenseType)
 	protected.DELETE("/expense-types/:id", expenseTypeHandler.DeleteExpenseType)
 	protected.POST("/expense-types/:id/toggle", expenseTypeHandler.ToggleExpenseType)

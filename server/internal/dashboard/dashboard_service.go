@@ -270,7 +270,7 @@ func (s *DashboardService) GetDueExpenses(userID uint, year, month int) (*DueExp
 			continue
 		}
 		if expenseType.RecurringType == expenses.RecurringTypeFlexible {
-			entry.Status = "suggested"
+			entry.Status = suggestedDueStatus(now, *nextDue)
 			flexibleSuggested = append(flexibleSuggested, entry)
 			continue
 		}
@@ -314,6 +314,14 @@ func dueStatus(now, dueDate time.Time) string {
 		return "due_soon"
 	}
 	return "upcoming"
+}
+
+func suggestedDueStatus(now, dueDate time.Time) string {
+	days := dayDiff(now, dueDate)
+	if days < 0 {
+		return "overdue"
+	}
+	return "suggested"
 }
 
 func shouldIncludeDueExpense(reminderType string, daysUntilDue int) bool {

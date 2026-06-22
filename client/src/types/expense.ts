@@ -69,6 +69,10 @@ export interface CreateExpenseTypeRequest {
 
 export type UpdateExpenseTypeRequest = CreateExpenseTypeRequest
 
+export interface UpdateExpenseTypeDefaultAmountRequest {
+  default_amount: number
+}
+
 export interface PostponeExpenseTypeRequest {
   next_due_day: string
 }

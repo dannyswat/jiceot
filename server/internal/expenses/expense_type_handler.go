@@ -77,6 +77,32 @@ func (h *ExpenseTypeHandler) UpdateExpenseType(c echo.Context) error {
 	return c.JSON(http.StatusOK, expenseType)
 }
 
+// UpdateExpenseTypeDefaultAmount handles PUT /api/expense-types/:id/default-amount
+func (h *ExpenseTypeHandler) UpdateExpenseTypeDefaultAmount(c echo.Context) error {
+	userID := auth.GetUserIDFromContext(c)
+
+	idParam := c.Param("id")
+	expenseTypeID, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid expense type ID"})
+	}
+
+	var req UpdateExpenseTypeDefaultAmountRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request format"})
+	}
+	if req.DefaultAmount == nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "default amount is required"})
+	}
+
+	expenseType, err := h.expenseTypeService.UpdateExpenseTypeDefaultAmount(userID, uint(expenseTypeID), *req.DefaultAmount)
+	if err != nil {
+		return h.expenseTypeError(c, err, "Failed to update expense type default amount")
+	}
+
+	return c.JSON(http.StatusOK, expenseType)
+}
+
 // DeleteExpenseType handles DELETE /api/expense-types/:id
 func (h *ExpenseTypeHandler) DeleteExpenseType(c echo.Context) error {
 	userID := auth.GetUserIDFromContext(c)
@@ -173,7 +199,7 @@ func (h *ExpenseTypeHandler) expenseTypeError(c echo.Context, err error, fallbac
 		return c.JSON(http.StatusNotFound, map[string]string{"error": err.Error()})
 	case ErrExpenseTypeNameExists:
 		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error()})
-	case ErrEmptyExpenseTypeName, ErrInvalidExpenseParent, ErrInvalidRecurringType, ErrInvalidRecurringPeriod, ErrInvalidRecurringDueDay, ErrInvalidReminderType, ErrFlexiblePostponeOnly, ErrExpenseTypeCycleReference, ErrExpenseTypeInUse:
+	case ErrEmptyExpenseTypeName, ErrInvalidDefaultAmount, ErrInvalidExpenseParent, ErrInvalidRecurringType, ErrInvalidRecurringPeriod, ErrInvalidRecurringDueDay, ErrInvalidReminderType, ErrFlexiblePostponeOnly, ErrExpenseTypeCycleReference, ErrExpenseTypeInUse:
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	default:
 		if err != nil {
