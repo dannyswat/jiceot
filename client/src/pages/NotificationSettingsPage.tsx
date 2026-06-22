@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon } from '@heroicons/react/24/outline'
 
+import { formatDate } from '../common/date'
 import { useI18n } from '../contexts/I18nContext'
 import { notificationAPI } from '../services/api'
 import type { NotificationSetting } from '../types/notification'
@@ -226,7 +227,7 @@ export default function NotificationSettingsPage() {
         </div>
 
         {setting?.last_notified_at && (
-          <small>{t('Last notification sent:')} {new Date(setting.last_notified_at).toLocaleString()}</small>
+          <small>{t('Last notification sent:')} {formatDate(setting.last_notified_at)}</small>
         )}
       </div>
     </div>

@@ -1,10 +1,20 @@
 import { getLocaleForLanguage, getStoredLanguage } from '../contexts/I18nContext'
 
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/
+const MONTH_ABBREVIATIONS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export function formatDate(date: string | Date, locale = 'en-US'): string {
+	void locale
 	const resolved = typeof date === 'string' ? new Date(date) : date
-	return new Intl.DateTimeFormat(locale === 'en-US' ? getLocaleForLanguage(getStoredLanguage()) : locale, { month: 'short', day: 'numeric', year: 'numeric' }).format(resolved)
+	if (Number.isNaN(resolved.getTime())) {
+		return ''
+	}
+
+	const day = resolved.getDate()
+	const month = MONTH_ABBREVIATIONS[resolved.getMonth()]
+	const year = String(resolved.getFullYear()).slice(-2)
+
+	return `${day}-${month}-${year}`
 }
 
 export function formatMonthYear(date: string | Date, locale = 'en-US'): string {

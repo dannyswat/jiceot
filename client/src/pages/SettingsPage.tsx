@@ -15,6 +15,7 @@ import {
 
 import { useAuth } from '../contexts/AuthContext'
 import { LANGUAGE_OPTIONS, normalizeLanguage, useI18n, type SupportedLanguage } from '../contexts/I18nContext'
+import { formatDate } from '../common/date'
 import { formatCurrency } from '../common/currency'
 import { CURRENCY_SYMBOL_OPTIONS, DEFAULT_CURRENCY_SYMBOL } from '../common/constants'
 import { api } from '../services/api'
@@ -37,7 +38,7 @@ function buildAutomationURL(apiKey: string): string {
 
 export default function SettingsPage() {
   const auth: AuthContextValue = useAuth()
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const user: User | null = auth.user
   const navigate = useNavigate()
   const rawLanguage: unknown = user ? (user as { language?: unknown }).language : undefined
@@ -205,7 +206,7 @@ export default function SettingsPage() {
           <p className="settings-user-card__email">{user?.email ?? ''}</p>
           {user?.created_at && (
             <p className="settings-user-card__since">
-              {t('Member since')} {new Date(user.created_at).toLocaleDateString(locale)}
+              {t('Member since')} {formatDate(user.created_at)}
             </p>
           )}
         </div>

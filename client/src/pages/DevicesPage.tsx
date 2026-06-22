@@ -9,13 +9,14 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline'
 
+import { formatDate } from '../common/date'
 import { useI18n } from '../contexts/I18nContext'
 import { deviceAPI } from '../services/api'
 import type { UserDevice } from '../types/auth'
 
 export default function DevicesPage() {
   const navigate = useNavigate()
-  const { locale, t } = useI18n()
+  const { t } = useI18n()
   const [devices, setDevices] = useState<UserDevice[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -115,7 +116,7 @@ export default function DevicesPage() {
                   <span>{device.device_name}</span>
                   {device.is_current && <span className="badge badge--green">{t('Current')}</span>}
                 </div>
-                <small>{t('Last active:')} {formatRelative(device.last_used_at, locale, t)}</small>
+                <small>{t('Last active:')} {formatRelative(device.last_used_at, t)}</small>
                 {device.ip_address && <small>{t('IP:')} {device.ip_address}</small>}
               </div>
               {!device.is_current && (
@@ -194,7 +195,6 @@ function DeviceIconComponent({ type }: { type: string }) {
 
 function formatRelative(
   dateString: string,
-  locale: string,
   t: (key: string) => string,
 ): string {
   const date = new Date(dateString)
@@ -209,9 +209,5 @@ function formatRelative(
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
 
-  return date.toLocaleDateString(locale, {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-  })
+  return formatDate(date)
 }

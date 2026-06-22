@@ -67,8 +67,7 @@ function dueItemMeta(item: DueItem, t: TranslateFn): string {
   if (item.kind === 'wallet') {
     return [
       t('Credit Bills'),
-      `${t('Due')} ${formatDate(item.next_due_date)}`,
-      `${t('Due day')} ${item.bill_due_day}`,
+      `${t('Due')}: ${formatDate(item.next_due_date)}`,
       item.days_until_due === 0 ? null : daysLabel(item.days_until_due, t),
       item.last_paid_at ? `${t('Last paid')} ${formatDate(item.last_paid_at)}` : null,
     ]
@@ -79,7 +78,7 @@ function dueItemMeta(item: DueItem, t: TranslateFn): string {
   return [
     item.kind === 'fixed' ? t('Recurring Expenses') : t('Suggested Tasks'),
     periodLabel(item.recurring_period, t),
-    `${item.kind === 'fixed' ? t('Due') : t('Next')} ${formatDate(item.next_due_date)}`,
+    `${item.kind === 'fixed' ? t('Due') : t('Next')}: ${formatDate(item.next_due_date)}`,
     item.days_until_due === 0 ? null : daysLabel(item.days_until_due, t),
   ]
     .filter((value): value is string => Boolean(value))
